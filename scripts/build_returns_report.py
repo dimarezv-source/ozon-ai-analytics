@@ -121,7 +121,7 @@ def main():
     lines += [
         "", "## Interpretation", "",
         "- Data comes from the unified `/v1/returns/list` endpoint, filtered by `logistic_return_date`.",
-        "- The API record type (for example, FullReturn or PartialReturn) and visual status are reported separately.",
+        "- The API record type and visual status are reported separately: Cancellation = cancellation before handover; FullReturn = full refusal at handover; PartialReturn = partial refusal at handover; ClientReturn = customer return after receipt; Unknown = technical return.",
         "- This period is based on the logistics return date, not the original order date or the finance accrual date.",
         "- A return record does not by itself prove the refund amount or the amount ultimately lost by the seller.",
         "",
