@@ -16,7 +16,7 @@ In **Settings → Secrets and variables → Actions**, configure:
 - `OZON_CLIENT_ID`
 - `OZON_API_KEY`
 
-The API key must have read access to the relevant catalog, finance, FBO posting, and FBS posting methods. Do not grant write permissions for this project.
+The API key must have read access to the relevant catalog, finance, FBO posting, FBS posting, and Returns read-only methods. Do not grant write permissions for this project.
 
 ## Catalog export
 
