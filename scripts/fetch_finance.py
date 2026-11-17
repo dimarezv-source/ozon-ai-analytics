@@ -92,6 +92,14 @@ def main() -> int:
     total_records = 0
     for day in days:
         records = fetch_day(day, api_diagnostics)
+        diagnostic = api_diagnostics[-1]
+        if day == days[0]:
+            print(
+                f"API response diagnostic: keys={diagnostic['response_keys']}; "
+                f"accruals_type={diagnostic['accruals_type']}; "
+                f"first_page_records={diagnostic['first_page_records']}; "
+                f"last_id_present={diagnostic['last_id_present']}"
+            )
         by_day.append({"date": day, "count": len(records), "accruals": records})
         total_records += len(records)
         print(f"{day}: {len(records)} accrual records")
