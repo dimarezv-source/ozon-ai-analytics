@@ -1,13 +1,15 @@
-"""Ozon Seller API client foundation.
+"""Ozon Seller API client with an explicit read-only operation allowlist.
 
-No API operations are enabled yet. Add a public operation only after verifying
-the exact endpoint is read-only in current official Ozon API documentation.
-Some read operations use POST, so safety is enforced by an explicit allowlist.
+POST is permitted only for individually reviewed read operations. No write
+operation is registered here.
 """
-
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
+
+
+ALLOWED_API_HOSTS = {"api-seller.ozon.ru", "api-seller-sandbox.ozon.ru"}
 
 
 @dataclass(frozen=True)
@@ -16,12 +18,26 @@ class ReadOperation:
     http_method: str
 
 
-# Intentionally empty until each operation is verified against official docs.
+# Intentionally empty: the current official role map still lists the retired
+# /v2/product/list for Admin read-only, while current docs use /v3/product/list.
+# Enable an operation only after its access under this key is confirmed.
 READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {}
 
 
 class OzonReadOnlyClient:
     def __init__(self, client_id: str, api_key: str, base_url: str) -> None:
+        parsed = urlsplit(base_url)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname not in ALLOWED_API_HOSTS
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in ("", "/")
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("Ozon API base URL must be an approved HTTPS Ozon host")
+
         self._base_url = base_url.rstrip("/")
         self._headers = {
             "Client-Id": client_id,
