@@ -59,6 +59,18 @@ Important interpretation:
 
 The returns window covers either the logistics return date or a visual status change, not the original order date. Product-price value is not a confirmed refund or seller loss; reconcile return records with finance accruals before deducting anything from sales.
 
+## Combined sales reconciliation
+
+For the first end-to-end sales estimate, use **Actions → Ozon read-only sales reconciliation → Run workflow**.
+
+- Select the posting cohort window (1–365 completed UTC days; default 31).
+- The workflow fetches FBO and FBS postings for that cohort, then fetches return events and visual status changes for the last 365 days.
+- It matches returns to delivered posting lines by posting number and SKU.
+- It subtracts matched `Cancellation`, `FullReturn`, `PartialReturn`, and `ClientReturn` quantities. Unknown and unmatched records remain visible and are not silently deducted.
+- The `ozon-sales-reconciliation` artifact contains both raw exports and the SKU-level report (7-day retention).
+
+The net units and net GMV are still estimates from current posting/return snapshots and original item prices. Recent orders can receive returns later. Reconcile the report with finance accruals before treating it as actual net revenue or profit.
+
 ## Local development
 
 - Python 3.12+
@@ -76,6 +88,7 @@ The returns window covers either the logistics return date or a visual status ch
 - Read-only finance accrual export: implemented; the latest diagnostic run returned a valid empty `accruals` list for the tested period.
 - Read-only FBO/FBS posting export and delivered-product report: implemented; awaiting first live run under the seller account.
 - Read-only unified FBO/FBS returns export and SKU report: implemented; awaiting first live run and confirmation of API-key permissions.
+- Combined delivered-posting and 365-day return reconciliation: implemented with SKU-level net-unit/GMV estimates; awaiting first live run.
 - SKU profitability: not yet calculated; requires reconciliation of delivered postings, finance accruals, returns/refunds, and product purchase costs.
 
 All exports are manual GitHub Actions workflows. They do not run in the background or on a schedule.
