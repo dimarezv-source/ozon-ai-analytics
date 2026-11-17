@@ -3,8 +3,10 @@ import pytest
 from app.ozon.client import OzonReadOnlyClient, READ_ONLY_OPERATIONS
 
 
-def test_read_only_allowlist_starts_empty() -> None:
-    assert READ_ONLY_OPERATIONS == {}
+def test_allowlist_contains_only_read_only_catalog_listing() -> None:
+    assert set(READ_ONLY_OPERATIONS) == {"product_list"}
+    assert READ_ONLY_OPERATIONS["product_list"].path == "/v3/product/list"
+    assert READ_ONLY_OPERATIONS["product_list"].http_method == "POST"
 
 
 def test_client_rejects_unapproved_operation_before_network_access() -> None:
