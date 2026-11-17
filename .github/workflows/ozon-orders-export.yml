@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       days:
-        description: "Number of completed UTC days to export (1-31)"
+        description: "Number of completed UTC days to export (1-365)"
         required: false
         default: "7"
         type: string
