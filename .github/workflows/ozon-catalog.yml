@@ -25,10 +25,24 @@ jobs:
           OZON_API_KEY: ${{ secrets.OZON_API_KEY }}
         run: python scripts/fetch_catalog.py
 
-      - name: Upload catalog artifact
+      - name: Build Markdown report
+        run: python scripts/build_report.py
+
+      - name: Show report in GitHub Actions
+        if: always()
+        run: |
+          if [ -f output/report.md ]; then
+            cat output/report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Catalog report was not generated. Check the fetch step logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload catalog and report
         uses: actions/upload-artifact@v4
         with:
-          name: ozon-catalog
-          path: output/ozon-products.json
-          if-no-files-found: error
+          name: ozon-catalog-and-report
+          path: |
+            output/ozon-products.json
+            output/report.md
+          if-no-files-found: warn
           retention-days: 7
