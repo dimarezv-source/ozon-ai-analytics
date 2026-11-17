@@ -4,41 +4,68 @@ Private, read-only analytics workspace for an Ozon Seller account.
 
 ## Safety
 
-- The integration uses only read-only product information endpoints and finance accrual endpoints: `/v3/product/list`, `/v3/product/info/list`, `/v1/finance/accrual/types`, and `/v1/finance/accrual/by-day`.
+- The integration uses only explicitly allowlisted read-only Ozon Seller API methods.
 - It never changes products, prices, stock, orders, promotions, campaigns, reviews, chats, or returns.
 - Seller API credentials are stored only as GitHub Actions repository secrets. Never commit `.env`, API keys, or screenshots containing credentials.
-- The catalog and report are uploaded as private GitHub Actions artifacts and retained for 7 days.
+- Reports and raw JSON are uploaded as private GitHub Actions artifacts and retained for 7 days.
 
-## Run a catalog export
+## Required GitHub secrets
 
-1. In **Settings → Secrets and variables → Actions**, create Repository secrets `OZON_CLIENT_ID` and `OZON_API_KEY`.
-2. Open **Actions → Ozon read-only catalog export → Run workflow**.
-3. Open the completed run. The **Summary** page shows the Markdown report; no ChatGPT file upload is required.
-4. The `ozon-catalog-and-report` artifact is available for backup (7-day retention).
+In **Settings → Secrets and variables → Actions**, configure:
 
-## What the report contains
+- `OZON_CLIENT_ID`
+- `OZON_API_KEY`
 
-- Product count, archived count, missing offer IDs/names, and status distribution.
-- Product IDs, offer IDs, names, and any price/stock fields returned by the detail endpoint.
-- The export first reads product IDs from `/v3/product/list`, then enriches them through `/v3/product/info/list` in batches.
+The API key must have read access to the relevant catalog, finance, FBO posting, and FBS posting methods. Do not grant write permissions for this project.
 
-Important: a field is included only when Ozon returns it. Sales, commissions, logistics fees, and profitability require additional read-only endpoints and validated calculations.
+## Catalog export
 
-## Finance export\n\n1. Open **Actions → Ozon read-only finance export → Run workflow**.\n2. Choose the number of completed UTC days to export (1–31; default 7).\n3. The Summary contains the finance report; the `ozon-finance-and-report` artifact contains the raw JSON and Markdown report (7-day retention).\n4. The export uses the current `/v1/finance/accrual/types` and `/v1/finance/accrual/by-day` endpoints. The old `/v3/finance/transaction/list` endpoint is not used.\n\nThe report deliberately does not label accrual totals as profit. Product purchase costs must be entered separately, and fee types/returns must be interpreted before calculating SKU profitability.\n\n## Local development
+1. Open **Actions → Ozon read-only catalog export → Run workflow**.
+2. Open the completed run. The Summary page shows the Markdown report.
+3. Download the `ozon-catalog-and-report` artifact for raw JSON and report (7-day retention).
+
+The export reads product IDs from `/v3/product/list`, then enriches them through `/v3/product/info/list` in batches.
+
+## Finance export
+
+1. Open **Actions → Ozon read-only finance export → Run workflow**.
+2. Choose the number of completed UTC days to export (1–31; default 7).
+3. The Summary contains the finance report; the `ozon-finance-and-report` artifact contains raw JSON and Markdown.
+4. The export uses `/v1/finance/accrual/types` and `/v1/finance/accrual/by-day`. It does not use the retired `/v3/finance/transaction/list` endpoint.
+
+The report deliberately does not label accrual totals as profit. Product purchase costs must be entered separately, and fee types/returns must be interpreted before calculating SKU profitability.
+
+## Orders and postings export
+
+1. Open **Actions → Ozon read-only orders export → Run workflow**.
+2. Choose the number of completed UTC days to export (1–31; default 7).
+3. The workflow reads FBO via `/v3/posting/fbo/list` and FBS via `/v4/posting/fbs/list`, using cursor pagination.
+4. The Summary shows posting statuses, delivered posting counts, delivered units, and an item-price GMV estimate. The `ozon-orders-and-report` artifact contains raw JSON and Markdown (7-day retention).
+
+Important interpretation:
+
+- A posting is not the same as a unique order: one order can contain multiple postings.
+- The report counts an item as delivered only when the posting's current status is `delivered`.
+- GMV is estimated from item prices in posting responses. It is not seller payout, net revenue, or profit.
+- Delivered postings may later be returned/refunded. Returns and refunds require a separate reconciliation.
+- Finance accruals remain the source for settlements and fees. Orders and finance must be reconciled before profitability is calculated.
+
+## Local development
 
 - Python 3.12+
 - Install dependencies: `pip install -r requirements.txt`
-- Fetch catalog: `python scripts/fetch_catalog.py` (requires `OZON_CLIENT_ID` and `OZON_API_KEY` environment variables).
-- Build report: `python scripts/build_report.py`
+- Fetch catalog: `python scripts/fetch_catalog.py` (requires `OZON_CLIENT_ID` and `OZON_API_KEY`).
+- Fetch postings: `python scripts/fetch_postings.py` (requires the same environment variables; optional `SALES_DAYS`, 1–31).
+- Build posting report: `python scripts/build_postings_report.py`
+- Run tests: `python -m unittest discover -s tests -v`
 - Start the API: `uvicorn app.main:app --reload`
 - Open `/health` to verify the service.
 
 ## Project status
 
-- Secure FastAPI starter, Ozon read-only client, catalog pagination helper, and tests: present.
-- Manual GitHub Actions catalog export and Markdown report: present.\n- Manual read-only finance accrual export and report: added; awaiting first live run under the seller account.
-- Product detail enrichment via `/v3/product/info/list`: added; verify by the next successful workflow run.
-- Live account connection: catalog list endpoint verified; detailed endpoint pending verification under the account's API-key permissions.
-- Sales, fee, returns, and profitability analysis: future milestones.
+- Read-only catalog export and product detail enrichment: implemented; live catalog list verified.
+- Read-only finance accrual export: implemented; the latest diagnostic run returned a valid empty `accruals` list for the tested period.
+- Read-only FBO/FBS posting export and delivered-product report: implemented; awaiting first live run under the seller account.
+- SKU profitability: not yet calculated; requires reconciliation of delivered postings, finance accruals, returns/refunds, and product purchase costs.
 
-The workflow is manual only; it does not run in the background or on a schedule.
+All exports are manual GitHub Actions workflows. They do not run in the background or on a schedule.
