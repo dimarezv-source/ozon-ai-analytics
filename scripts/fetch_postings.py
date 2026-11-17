@@ -104,9 +104,9 @@ def main() -> int:
     try:
         days = int(raw_days)
     except ValueError:
-        raise RuntimeError("SALES_DAYS must be an integer from 1 to 31")
-    if not 1 <= days <= 31:
-        raise RuntimeError("SALES_DAYS must be from 1 to 31")
+        raise RuntimeError("SALES_DAYS must be an integer from 1 to 365")
+    if not 1 <= days <= 365:
+        raise RuntimeError("SALES_DAYS must be from 1 to 365")
 
     today = datetime.now(timezone.utc).date()
     first_day = today - timedelta(days=days)
