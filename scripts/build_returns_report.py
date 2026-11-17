@@ -85,7 +85,7 @@ def main():
     period = payload.get("period", {})
     lines = [
         "# Ozon returns report", "",
-        f"- Logistic return date period (UTC): **{clean(period.get('time_from'))} — {clean(period.get('time_to'))}**",
+        f"- Return event / status-change window (UTC): **{clean(period.get('time_from'))} — {clean(period.get('time_to'))}**",
         f"- Days requested: **{clean(period.get('days'))}**",
         f"- Return records: **{len(records)}**",
         f"- FBO returns: **{schemas.get('FBO', 0)}**",
@@ -120,9 +120,9 @@ def main():
         lines.append("| — | — | No returned product lines in this period | 0 | — | — |")
     lines += [
         "", "## Interpretation", "",
-        "- Data comes from the unified `/v1/returns/list` endpoint, filtered by `logistic_return_date`.",
+        "- Data comes from the unified `/v1/returns/list` endpoint. The exporter queries `logistic_return_date` and `visual_status_change_moment` separately (Ozon permits only one date filter per request), then deduplicates by return ID.",
         "- The API record type and visual status are reported separately: Cancellation = cancellation before handover; FullReturn = full refusal at handover; PartialReturn = partial refusal at handover; ClientReturn = customer return after receipt; Unknown = technical return.",
-        "- This period is based on the logistics return date, not the original order date or the finance accrual date.",
+        "- The window covers either a logistics return date or a visual status change, not the original order date or the finance accrual date.",
         "- A return record does not by itself prove the refund amount or the amount ultimately lost by the seller.",
         "",
     ]
