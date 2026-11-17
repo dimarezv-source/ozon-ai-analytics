@@ -1,0 +1,47 @@
+name: Ozon read-only returns export
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Logistic return date window in completed UTC days (1-365)"
+        required: false
+        default: "31"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  export-returns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate Python syntax and unit tests
+        run: |
+          python -m py_compile scripts/fetch_returns.py scripts/build_returns_report.py
+          python -m unittest discover -s tests -v
+      - name: Export FBO and FBS returns
+        env:
+          OZON_CLIENT_ID: ${{ secrets.OZON_CLIENT_ID }}
+          OZON_API_KEY: ${{ secrets.OZON_API_KEY }}
+          RETURNS_DAYS: ${{ inputs.days }}
+        run: python scripts/fetch_returns.py
+      - name: Build returns report
+        run: python scripts/build_returns_report.py
+      - name: Add report to job summary
+        run: cat output/returns-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw returns and report
+        uses: actions/upload-artifact@v5
+        with:
+          name: ozon-returns-and-report
+          path: |
+            output/ozon-returns.json
+            output/returns-report.md
+          retention-days: 7
