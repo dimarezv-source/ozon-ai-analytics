@@ -50,6 +50,15 @@ Important interpretation:
 - Delivered postings may later be returned/refunded. Returns and refunds require a separate reconciliation.
 - Finance accruals remain the source for settlements and fees. Orders and finance must be reconciled before profitability is calculated.
 
+## Returns export
+
+1. Open **Actions → Ozon read-only returns export → Run workflow**.
+2. Choose the logistic return date window (1–365 completed UTC days; default 31).
+3. The workflow reads FBO and FBS returns through `/v1/returns/list`, paginating with `last_id`.
+4. The Summary groups return records by scheme, return type, visual status, reason, and SKU. The `ozon-returns-and-report` artifact contains raw JSON and Markdown (7-day retention).
+
+The returns window is based on the logistics return date, not the original order date. Product-price value is not a confirmed refund or seller loss; reconcile return records with finance accruals before deducting anything from sales.
+
 ## Local development
 
 - Python 3.12+
@@ -66,6 +75,7 @@ Important interpretation:
 - Read-only catalog export and product detail enrichment: implemented; live catalog list verified.
 - Read-only finance accrual export: implemented; the latest diagnostic run returned a valid empty `accruals` list for the tested period.
 - Read-only FBO/FBS posting export and delivered-product report: implemented; awaiting first live run under the seller account.
+- Read-only unified FBO/FBS returns export and SKU report: implemented; awaiting first live run and confirmation of API-key permissions.
 - SKU profitability: not yet calculated; requires reconciliation of delivered postings, finance accruals, returns/refunds, and product purchase costs.
 
 All exports are manual GitHub Actions workflows. They do not run in the background or on a schedule.
