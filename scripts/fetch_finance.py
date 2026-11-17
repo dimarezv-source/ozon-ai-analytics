@@ -45,19 +45,34 @@ def get_days() -> list[str]:
     today = datetime.now(timezone.utc).date()
     return [(today - timedelta(days=offset)).isoformat() for offset in range(count, 0, -1)]
 
-def fetch_day(day: str) -> list[dict]:
+def fetch_day(day: str, diagnostics: list[dict]) -> list[dict]:
     records: list[dict] = []
     cursor = ""
     seen: set[str] = set()
-    for _ in range(MAX_PAGES_PER_DAY):
+    for page_number in range(1, MAX_PAGES_PER_DAY + 1):
         response = post("/v1/finance/accrual/by-day", {"date": day, "last_id": cursor})
-        page = response.get("accruals", [])
+        if "accruals" not in response:
+            raise RuntimeError(
+                f"Unexpected response for {day}: missing 'accruals'; "
+                f"top-level keys: {sorted(response.keys())}"
+            )
+        page = response["accruals"]
         if not isinstance(page, list):
             raise RuntimeError(f"Unexpected response for {day}: 'accruals' is not a list")
         if any(not isinstance(item, dict) for item in page):
             raise RuntimeError(f"Unexpected non-object accrual in response for {day}")
+        next_cursor_value = response.get("last_id")
+        if page_number == 1:
+            diagnostics.append({
+                "date": day,
+                "response_keys": sorted(response.keys()),
+                "accruals_type": type(page).__name__,
+                "first_page_records": len(page),
+                "last_id_type": type(next_cursor_value).__name__ if next_cursor_value is not None else "null",
+                "last_id_present": bool(next_cursor_value),
+            })
         records.extend(page)
-        next_cursor = response.get("last_id") or ""
+        next_cursor = next_cursor_value or ""
         if not next_cursor:
             return records
         if not isinstance(next_cursor, str) or next_cursor == cursor or next_cursor in seen:
@@ -73,9 +88,10 @@ def main() -> int:
     if not isinstance(types, list):
         raise RuntimeError("Unexpected response from /v1/finance/accrual/types: accrual_types is not a list")
     by_day = []
+    api_diagnostics = []
     total_records = 0
     for day in days:
-        records = fetch_day(day)
+        records = fetch_day(day, api_diagnostics)
         by_day.append({"date": day, "count": len(records), "accruals": records})
         total_records += len(records)
         print(f"{day}: {len(records)} accrual records")
@@ -89,6 +105,7 @@ def main() -> int:
         "days_requested": len(days),
         "records_received": total_records,
         "accrual_types": types,
+        "api_diagnostics": api_diagnostics,
         "days": by_day,
     }
     (output / "ozon-finance.json").write_text(
