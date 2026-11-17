@@ -54,7 +54,7 @@ class PostingExportTests(unittest.TestCase):
         self.assertIn("Delivered postings (current status): **1**", report)
         self.assertIn("Cancelled postings (current status): **1**", report)
         self.assertIn("Delivered GMV estimate: **200.00**", report)
-        self.assertIn("Delivered units: **2**", report)
+        self.assertIn("Units in delivered postings: **2**", report)
 
 
 if __name__ == "__main__":
