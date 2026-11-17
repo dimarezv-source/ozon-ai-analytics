@@ -35,8 +35,8 @@ def post(payload: dict) -> dict:
     if not isinstance(data, dict) or not isinstance(data.get("returns"), list):
         keys = sorted(data.keys()) if isinstance(data, dict) else type(data).__name__
         raise RuntimeError(f"Unexpected /v1/returns/list response: {keys}; expected returns array")
-    if not isinstance(data.get("has_next", False), bool):
-        raise RuntimeError("Invalid has_next field from /v1/returns/list")
+    if "has_next" not in data or not isinstance(data["has_next"], bool):
+        raise RuntimeError("Missing or invalid has_next field from /v1/returns/list")
     return data
 
 
