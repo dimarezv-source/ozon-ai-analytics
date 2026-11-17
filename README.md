@@ -31,7 +31,9 @@ Private, read-only analytics workspace for an Ozon Seller account.
 - `OZON_API_KEY`: Seller API key. Keep it secret.
 - `OZON_API_BASE_URL`: defaults to Ozon's Seller API host.
 
-The first integration milestone is to verify available read methods against https://dev.ozon.ru/ and add only explicitly approved analytics, catalog, and report methods.
+Catalog pagination helper is implemented in `app/ozon/catalog.py` and covered by tests. It is not connected to live Ozon requests yet: the current official role-mapping page lists `/v2/product/list` under `Admin read only`, but that endpoint was superseded by `/v3/product/list`. We must confirm that the current `/v3/product/list` method is available to this key before adding it to the client's allowlist. The code intentionally keeps `READ_ONLY_OPERATIONS` empty until that permission check is resolved. The helper reads `result.items` and follows `result.last_id`; it does not rely on the deprecated `total` field.
+
+The next integration milestone is to verify the current read-only permissions and exact request/response schema against https://dev.ozon.ru/, then enable only the confirmed catalog operation.
 
 ## Project status
 
