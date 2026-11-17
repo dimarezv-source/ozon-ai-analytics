@@ -18,10 +18,16 @@ class ReadOperation:
     http_method: str
 
 
-# Intentionally empty: the current official role map still lists the retired
-# /v2/product/list for Admin read-only, while current docs use /v3/product/list.
-# Enable an operation only after its access under this key is confirmed.
-READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {}
+# /v3/product/list is an informational catalog endpoint. The current role
+# mapping article still names its retired predecessor /v2/product/list under
+# Admin read-only; the Ozon key itself must therefore remain Admin read-only.
+# No product mutation, price, stock, order, or promotion operation is registered.
+READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {
+    "product_list": ReadOperation(
+        path="/v3/product/list",
+        http_method="POST",
+    ),
+}
 
 
 class OzonReadOnlyClient:
