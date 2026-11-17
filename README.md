@@ -2,39 +2,40 @@
 
 Private, read-only analytics workspace for an Ozon Seller account.
 
-## Safety first
+## Safety
 
-- Analytics only: never create or modify products, prices, stock, orders, promotions, campaigns, reviews, chats, or returns.
-- Credentials stay server-side in environment variables. Never commit `.env`, API keys, or screenshots containing credentials.
-- Ozon uses HTTP POST for some read operations. HTTP verb alone is not a safety boundary: each supported operation must be explicitly allowlisted after checking current official Ozon API documentation.
-- No Seller API operations are enabled in this starter scaffold. Only the local health endpoint is available until read-only methods are reviewed and implemented.
-- Never expose the API key to a browser or frontend.
+- The integration only calls the informational `POST /v3/product/list` endpoint.
+- It never changes products, prices, stock, orders, promotions, campaigns, reviews, chats, or returns.
+- Seller API credentials are stored only as GitHub Actions repository secrets. Never commit `.env`, API keys, or screenshots containing credentials.
+- The catalog export is uploaded as a private GitHub Actions artifact and retained for 7 days.
 
-## Stack
+## First live catalog export (phone-friendly)
+
+1. Open the repository **Settings → Secrets and variables → Actions**.
+2. Create two **Repository secrets**:
+   - `OZON_CLIENT_ID` — the Seller API Client-Id.
+   - `OZON_API_KEY` — the Seller API key.
+3. The key must have permission to read products. If Ozon returns HTTP 403, check the key's role in Seller API settings; do not replace it with a write-enabled key just to make the request pass.
+4. Open **Actions → Ozon read-only catalog export → Run workflow**.
+5. When the run finishes successfully, open the run and download the `ozon-catalog` artifact.
+6. Upload `ozon-products.json` into this ChatGPT conversation. I can then analyze the catalog, identify products with missing data, and prepare the next analytics step.
+
+The workflow is manual only. It does not run in the background or on a schedule.
+
+## Local development
 
 - Python 3.12+
-- FastAPI
-- httpx
-- pydantic-settings
-
-## Local setup
-
-1. Create a virtual environment.
-2. Install dependencies: `pip install -r requirements.txt`
-3. Copy `.env.example` to `.env` and fill in credentials locally. Never commit `.env`.
-4. Start the API: `uvicorn app.main:app --reload`
-5. Open `/health` to verify the service.
-
-## Configuration
-
-- `OZON_CLIENT_ID`: Seller API Client-Id.
-- `OZON_API_KEY`: Seller API key. Keep it secret.
-- `OZON_API_BASE_URL`: defaults to Ozon's Seller API host.
-
-Catalog pagination helper is implemented in `app/ozon/catalog.py` and covered by tests. It is not connected to live Ozon requests yet: the current official role-mapping page lists `/v2/product/list` under `Admin read only`, but that endpoint was superseded by `/v3/product/list`. We must confirm that the current `/v3/product/list` method is available to this key before adding it to the client's allowlist. The code intentionally keeps `READ_ONLY_OPERATIONS` empty until that permission check is resolved. The helper reads `result.items` and follows `result.last_id`; it does not rely on the deprecated `total` field.
-
-The next integration milestone is to verify the current read-only permissions and exact request/response schema against https://dev.ozon.ru/, then enable only the confirmed catalog operation.
+- Install dependencies: `pip install -r requirements.txt`
+- Copy `.env.example` to `.env` only for local development; never commit it.
+- Start the API: `uvicorn app.main:app --reload`
+- Open `/health` to verify the service.
 
 ## Project status
 
-Milestone 1: secure project scaffold. No live Ozon requests are made yet.
+- Secure FastAPI starter and Ozon read-only client: present.
+- Catalog pagination helper and tests: present.
+- Manual GitHub Actions catalog export: present.
+- Live account connection: pending repository secrets and a successful manual workflow run.
+- Sales, finance, returns, fees, and profitability analysis: next milestones after the catalog export is available.
+
+The product list endpoint is documented in Ozon's Seller API materials. Ozon's role-mapping page is updated periodically, so access is ultimately confirmed by the actual account key when the read-only request is run.
