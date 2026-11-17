@@ -121,7 +121,7 @@ def main():
     lines += [
         "", "## Interpretation", "",
         "- Data comes from the unified `/v1/returns/list` endpoint. The exporter queries `logistic_return_date` and `visual_status_change_moment` separately (Ozon permits only one date filter per request), then deduplicates by return ID.",
-        "- The API record type and visual status are reported separately: Cancellation = cancellation before handover; FullReturn = full refusal at handover; PartialReturn = partial refusal at handover; ClientReturn = customer return after receipt; Unknown = technical return.",
+        "- The API record type and visual status are reported separately: Cancellation = cancellation before delivery to the buyer; FullReturn = full refusal at handover; PartialReturn = partial refusal at handover; ClientReturn = customer return after receipt; Unknown = technical return.",
         "- The window covers either a logistics return date or a visual status change, not the original order date or the finance accrual date.",
         "- A return record does not by itself prove the refund amount or the amount ultimately lost by the seller.",
         "",
