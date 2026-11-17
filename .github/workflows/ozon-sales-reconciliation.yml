@@ -1,0 +1,54 @@
+name: Ozon read-only sales reconciliation
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Posting cohort: completed UTC days to analyze (1-365)"
+        required: false
+        default: "31"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile-sales:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate Python syntax and unit tests
+        run: |
+          python -m py_compile scripts/fetch_postings.py scripts/fetch_returns.py scripts/build_sales_reconciliation.py
+          python -m unittest discover -s tests -v
+      - name: Export FBO and FBS postings for the selected cohort
+        env:
+          OZON_CLIENT_ID: ${{ secrets.OZON_CLIENT_ID }}
+          OZON_API_KEY: ${{ secrets.OZON_API_KEY }}
+          SALES_DAYS: ${{ inputs.days }}
+        run: python scripts/fetch_postings.py
+      - name: Export returns and status changes for the last 365 days
+        env:
+          OZON_CLIENT_ID: ${{ secrets.OZON_CLIENT_ID }}
+          OZON_API_KEY: ${{ secrets.OZON_API_KEY }}
+          RETURNS_DAYS: "365"
+        run: python scripts/fetch_returns.py
+      - name: Reconcile delivered postings and observed returns
+        run: python scripts/build_sales_reconciliation.py
+      - name: Add reconciliation to job summary
+        run: cat output/sales-reconciliation.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw data and reconciliation
+        uses: actions/upload-artifact@v5
+        with:
+          name: ozon-sales-reconciliation
+          path: |
+            output/ozon-postings.json
+            output/ozon-returns.json
+            output/sales-reconciliation.md
+          retention-days: 7
