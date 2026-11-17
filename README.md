@@ -29,7 +29,7 @@ The export reads product IDs from `/v3/product/list`, then enriches them through
 ## Finance export
 
 1. Open **Actions → Ozon read-only finance export → Run workflow**.
-2. Choose the number of completed UTC days to export (1–31; default 7).
+2. Choose the number of completed UTC days to export (1–365; default 7).
 3. The Summary contains the finance report; the `ozon-finance-and-report` artifact contains raw JSON and Markdown.
 4. The export uses `/v1/finance/accrual/types` and `/v1/finance/accrual/by-day`. It does not use the retired `/v3/finance/transaction/list` endpoint.
 
@@ -38,7 +38,7 @@ The report deliberately does not label accrual totals as profit. Product purchas
 ## Orders and postings export
 
 1. Open **Actions → Ozon read-only orders export → Run workflow**.
-2. Choose the number of completed UTC days to export (1–31; default 7).
+2. Choose the number of completed UTC days to export (1–365; default 7).
 3. The workflow reads FBO via `/v3/posting/fbo/list` and FBS via `/v4/posting/fbs/list`, using cursor pagination.
 4. The Summary shows posting statuses, delivered posting counts, delivered units, and an item-price GMV estimate. The `ozon-orders-and-report` artifact contains raw JSON and Markdown (7-day retention).
 
