@@ -54,10 +54,10 @@ Important interpretation:
 
 1. Open **Actions → Ozon read-only returns export → Run workflow**.
 2. Choose the logistic return date window (1–365 completed UTC days; default 31).
-3. The workflow reads FBO and FBS returns through `/v1/returns/list`, paginating with `last_id`.
+3. The workflow reads FBO and FBS returns through `/v1/returns/list`, paginating with `last_id`. It queries `logistic_return_date` and `visual_status_change_moment` in separate requests and deduplicates records by return ID.
 4. The Summary groups return records by scheme, return type, visual status, reason, and SKU. The `ozon-returns-and-report` artifact contains raw JSON and Markdown (7-day retention).
 
-The returns window is based on the logistics return date, not the original order date. Product-price value is not a confirmed refund or seller loss; reconcile return records with finance accruals before deducting anything from sales.
+The returns window covers either the logistics return date or a visual status change, not the original order date. Product-price value is not a confirmed refund or seller loss; reconcile return records with finance accruals before deducting anything from sales.
 
 ## Local development
 
