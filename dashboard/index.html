@@ -207,6 +207,13 @@
  <div class="accrual-table-wrap" style="margin-top:14px"><table class="accrual-table"><thead><tr><th>Тип начисления</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Записей</th></tr></thead><tbody id="reconRows"><tr><td colspan="5" class="hint">Ожидаем загрузку данных.</td></tr></tbody></table></div>
  <p class="accrual-caveat">Категории известны только по справочнику Ozon. Неизвестные ID не переименовываются по знаку суммы. Это сверка компонентов, не выплата и не подтверждённая прибыль.</p>
 </section>
+<section class="sku-matrix-panel" id="skuMatrixPanel">
+ <div class="sku-matrix-heading"><div class="sku-matrix-title"><h2>Сверка продаж и начислений по SKU</h2><p class="hint">Точное сопоставление по SKU и FBO/FBS · валюты раздельно</p></div><div class="sku-matrix-actions"><button id="skuMatrixLoad" type="button">Собрать матрицу</button><button class="secondary" id="skuMatrixExport" type="button" disabled>Экспорт CSV</button></div></div>
+ <p id="skuMatrixStatus" class="hint sku-matrix-status" aria-live="polite">Выбери период в блоке финансовой сверки выше и нажми «Собрать матрицу SKU».</p>
+ <div class="sku-matrix-table-wrap"><table class="sku-matrix-table"><thead><tr><th>SKU</th><th>Схема</th><th>Продано</th><th>GMV · оценка</th><th>Возвраты</th><th>Начисления по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
+ <p class="hint sku-matrix-note">GMV — оценка по цене товара и количеству. Возвраты и начисления показаны отдельно; это не чистая прибыль и не сумма к выплате.</p>
+</section>
+
 <section class="card accrual-panel" id="financeAccrualPanel">
  <div class="sectionhead" style="margin:0">
   <div><h2>Фактические начисления Ozon</h2><p>Данные финансового API · без смешивания с прогнозными тарифами</p></div>
@@ -577,12 +584,7 @@
 </script>
 
 
-<section class="sku-matrix-panel" id="skuMatrixPanel">
- <div class="sku-matrix-heading"><div class="sku-matrix-title"><h2>Сверка продаж и начислений по SKU</h2><p class="hint">Точное сопоставление по SKU и FBO/FBS · валюты раздельно</p></div><div class="sku-matrix-actions"><button id="skuMatrixLoad" type="button">Собрать матрицу</button><button class="secondary" id="skuMatrixExport" type="button" disabled>Экспорт CSV</button></div></div>
- <p id="skuMatrixStatus" class="hint sku-matrix-status" aria-live="polite">Выбери период в блоке финансовой сверки выше и нажми «Собрать матрицу SKU».</p>
- <div class="sku-matrix-table-wrap"><table class="sku-matrix-table"><thead><tr><th>SKU</th><th>Схема</th><th>Продано</th><th>GMV · оценка</th><th>Возвраты</th><th>Начисления по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
- <p class="hint sku-matrix-note">GMV — оценка по цене товара и количеству. Возвраты и начисления показаны отдельно; это не чистая прибыль и не сумма к выплате.</p>
-</section>
+
 
 <script>
 (function setupReconciliation(){
