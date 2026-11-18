@@ -492,6 +492,81 @@ async def _fetch_delivered_posting_refs(client: OzonReadOnlyClient, date_from: d
             raise ValueError(f"{schema}: posting pagination safety limit reached.")
     return refs
 
+
+async def _fetch_returns(client: OzonReadOnlyClient, date_from: date, date_to: date) -> list[dict]:
+    """Read return records by logistic return date; never mutate return state."""
+    since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    rows, last_id, seen = [], 0, set()
+    for _page in range(5000):
+        response = await client.execute("returns_list", {
+            "filter": {"logistic_return_date": {"time_from": since, "time_to": to}},
+            "limit": 500,
+            "last_id": last_id,
+        })
+        page = response.get("returns", [])
+        if not isinstance(page, list):
+            raise ValueError("Unexpected Ozon returns response.")
+        rows.extend(item for item in page if isinstance(item, dict))
+        if not response.get("has_next", False):
+            break
+        if not page or page[-1].get("id") in (None, ""):
+            raise ValueError("Ozon returns pagination has no next return ID.")
+        next_id = int(page[-1]["id"])
+        if next_id == last_id or next_id in seen:
+            raise ValueError("Ozon returned a repeated returns pagination ID.")
+        seen.add(next_id)
+        last_id = next_id
+    else:
+        raise ValueError("Returns pagination safety limit reached.")
+    return rows
+
+
+def _summarize_returns(rows: list[dict]) -> list[dict]:
+    """Summarize explicit returned SKU quantities and source product prices."""
+    totals = {}
+    for row in rows:
+        product = row.get("product") if isinstance(row.get("product"), dict) else {}
+        sku = product.get("sku")
+        if sku in (None, ""):
+            continue
+        schema = str(row.get("schema") or "UNKNOWN").upper()
+        if schema not in ("FBO", "FBS"):
+            schema = "UNKNOWN"
+        price_obj = product.get("price") if isinstance(product.get("price"), dict) else {}
+        currency = str(price_obj.get("currency_code") or "")
+        quantity_value = product.get("quantity")
+        try:
+            quantity = max(0, int(quantity_value))
+        except (TypeError, ValueError):
+            quantity = 0
+        if not quantity:
+            continue
+        try:
+            price = Decimal(str(price_obj.get("price")))
+            if not price.is_finite() or price < 0:
+                raise InvalidOperation
+        except (InvalidOperation, ValueError, TypeError):
+            price = None
+        key = (schema, str(sku), currency, str(row.get("type") or "UNKNOWN"))
+        item = totals.setdefault(key, {
+            "fulfillment_type": schema, "sku": str(sku),
+            "offer_id": str(product.get("offer_id") or ""),
+            "name": str(product.get("name") or ""),
+            "currency": currency, "return_type": str(row.get("type") or "UNKNOWN"),
+            "quantity": 0, "returned_value": Decimal("0"),
+            "priced_quantity": 0, "return_records": 0,
+        })
+        item["quantity"] += quantity
+        item["return_records"] += 1
+        if price is not None:
+            item["returned_value"] += price * quantity
+            item["priced_quantity"] += quantity
+    return [
+        {**item, "returned_value": str(item["returned_value"])}
+        for _, item in sorted(totals.items(), key=lambda pair: pair[0])
+    ]
+
 @app.get("/api/finance/reconciliation", tags=["dashboard"])
 async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Return conservative normalized reconciliation totals, with unknowns exposed."""
@@ -529,11 +604,13 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
             else: raise ValueError("Pagination safety limit reached")
             day += timedelta(days=1)
         delivered_postings = await _fetch_delivered_posting_refs(client, date_from, date_to)
+        return_records = await _fetch_returns(client, date_from, date_to)
         normalized = normalize_accrual_records(records, dictionary, delivered_postings)
         return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
                 "source_records":len(records), "delivered_posting_count":len(delivered_postings),
+                "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
                 "dictionary":dictionary, **normalized,
-                "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated."}
+                "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated. Returns are summarized separately by logistic return date and are not subtracted from profit automatically."}
     except Exception as exc:
         logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
