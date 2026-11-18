@@ -41,6 +41,26 @@
 
 .catalogtools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:0 0 13px}.catalogtools input{flex:1;min-width:190px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;background:#fff}.catalogtools button{border:0;border-radius:10px;padding:10px 13px;background:linear-gradient(110deg,var(--orange),var(--orange2));font-weight:800;cursor:pointer}.catalogtools button.secondary{background:#fff;border:1px solid var(--line);color:var(--ink)}.productmeta{font-size:10px;color:var(--muted);margin-top:5px}.product .result{margin-top:15px}.catalogempty{display:none}.catalogtools .toolhint{font-size:11px;color:var(--muted)}
 
+
+.period-profit{margin:0 0 18px;overflow:hidden;position:relative;background:linear-gradient(125deg,#202640 0%,#302d56 58%,#22505a 100%);border:1px solid #343c5c;color:#fff;box-shadow:0 14px 32px #202b5020}
+.period-profit:after{content:"";position:absolute;right:-35px;top:-70px;width:260px;height:220px;border-radius:50%;background:radial-gradient(circle,#ff9b5440 0,transparent 68%);pointer-events:none}
+.period-profit .sectionhead{position:relative;z-index:1;margin:0 0 15px}
+.period-profit .sectionhead h2{color:#fff}
+.period-profit .sectionhead p{color:#c0c5d6}
+.period-profit .sectionhead h2:before{background:linear-gradient(180deg,#ff9b54,#26c6da)}
+.profit-period-tag{font-size:10px;letter-spacing:.8px;font-weight:800;color:#ffd0ad;background:#ffffff16;border:1px solid #ffffff22;border-radius:30px;padding:6px 10px;white-space:nowrap}
+.profit-period-main{position:relative;z-index:1;display:flex;align-items:end;justify-content:space-between;gap:18px}
+.profit-period-main small,.profit-stat small{display:block;color:#c0c5d6;font-size:11px}
+.profit-period-main strong{display:block;font-size:clamp(29px,4vw,40px);line-height:1.15;letter-spacing:-1.3px;margin-top:5px}
+.profit-period-main .profit-caption{font-size:11px;color:#c0c5d6;text-align:right;max-width:260px}
+.profit-period-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}
+.profit-stat{padding:11px 13px;border:1px solid #ffffff1b;border-radius:11px;background:#ffffff0b;min-width:0}
+.profit-stat b{display:block;font-size:17px;margin-top:4px;color:#fff;overflow-wrap:anywhere}
+.profit-period-note{position:relative;z-index:1;font-size:11px;line-height:1.5;color:#c0c5d6;margin-top:13px}
+.period-profit.negative .profit-period-main strong{color:#ff9ca6}
+.period-profit.positive .profit-period-main strong{color:#a7f0d5}
+@media(max-width:650px){.profit-period-main{align-items:flex-start;flex-direction:column}.profit-period-main .profit-caption{text-align:left}.profit-period-stats{grid-template-columns:1fr 1fr}.profit-stat:last-child{grid-column:1/-1}}
+
 .salesbreak{margin:0 0 16px;display:none}.salesbreak table{width:100%;border-collapse:collapse;font-size:12px}.salesbreak th,.salesbreak td{padding:10px 9px;text-align:left;border-bottom:1px solid var(--line)}.salesbreak th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px}.salesbreak td:last-child,.salesbreak th:last-child{text-align:right}.salesbreak td:nth-last-child(2),.salesbreak th:nth-last-child(2){text-align:right}.salesbreak .muted{color:var(--muted)}@media(max-width:650px){.salesbreak{overflow:auto}.salesbreak table{min-width:520px}}
 </style>
 </head>
@@ -64,6 +84,16 @@
   <div class="card"><div class="klabel">Продано, шт.</div><div class="kvalue" data-sales-units>—</div><div class="hint" data-sales-units-hint>Количество в доставленных заказах</div></div>
   <div class="card"><div class="klabel">Товаров в каталоге</div><div class="kvalue" data-catalog-count>—</div><div class="hint">Получено из Seller API</div></div>
   <div class="card"><div class="klabel">Комиссия FBS</div><div class="kvalue accent" data-commission-average>—</div><div class="hint">Средняя комиссия по каталогу</div></div>
+ </section>
+ <section class="card period-profit" id="periodProfit" aria-live="polite">
+  <div class="sectionhead"><div><h2>Прибыль за период</h2><p>Расчёт по доставленным заказам за выбранные выше даты</p></div><span class="profit-period-tag">ОЦЕНКА</span></div>
+  <div class="profit-period-main"><div><small>Расчётная прибыль после известных расходов</small><strong id="periodProfitValue">—</strong></div><div class="profit-caption" id="periodProfitCaption">Выбери период и загрузи продажи</div></div>
+  <div class="profit-period-stats">
+   <div class="profit-stat"><small>Маржинальность</small><b id="periodProfitMargin">—</b></div>
+   <div class="profit-stat"><small>Оборот в расчёте</small><b id="periodProfitRevenue">—</b></div>
+   <div class="profit-stat"><small>Учтено товаров</small><b id="periodProfitCoverage">—</b></div>
+  </div>
+  <div class="profit-period-note" id="periodProfitNote">Прибыль появится после загрузки продаж и каталога. Для расчёта используются расходы из карточек юнит-экономики.</div>
  </section>
  <div class="alert" id="liveNotice" style="margin:0 0 18px"><b>Подключаем данные</b>Получаем актуальный каталог и тарифы из Ozon. Расходы, которые ты введёшь, сохраняются в этом браузере.</div>
  <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
@@ -105,9 +135,84 @@
  const safeKey=p=>String(p.product_id||p.sku||p.offer_id||'unknown');
  const storageKey='ozon-ai-analytics-costs-v1';
  let products=[];
+ let periodSales=null;
  function loadCosts(){try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(_){return {}}}
  function saveCosts(){try{localStorage.setItem(storageKey,JSON.stringify(loadCosts()))}catch(_){}}
  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+ function updatePeriodProfit(){
+  const box=document.getElementById('periodProfit');
+  if(!box||!periodSales)return;
+  const fmt=n=>money(n);
+  const totalUnits=Number(periodSales.delivered_units)||0;
+  const rows=Array.isArray(periodSales.products)?periodSales.products:[];
+  if(!totalUnits){
+   box.classList.remove('positive','negative');
+   document.getElementById('periodProfitValue').textContent='—';
+   document.getElementById('periodProfitCaption').textContent='За выбранный период доставленных продаж нет';
+   document.getElementById('periodProfitMargin').textContent='—';
+   document.getElementById('periodProfitRevenue').textContent=fmt(0);
+   document.getElementById('periodProfitCoverage').textContent='0 из 0 шт.';
+   document.getElementById('periodProfitNote').textContent='Когда появятся доставленные заказы, здесь рассчитаем прибыль за выбранный период.';
+   return;
+  }
+  const catalogById=new Map();
+  for(const p of products){
+   for(const field of ['sku','product_id','offer_id']){
+    const value=p[field];
+    if(value!==null&&value!==undefined&&String(value)!=='')catalogById.set(field+':'+String(value),p);
+   }
+  }
+  const saved=loadCosts();
+  let profit=0,revenue=0,includedUnits=0,unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0;
+  for(const sale of rows){
+   const units=Math.max(0,Number(sale.units)||0);
+   const salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
+   if(!units)continue;
+   if(!salesGmv){unpricedUnits+=units;continue;}
+   let product=null;
+   for(const field of ['sku','product_id','offer_id']){
+    const value=sale[field];
+    if(value!==null&&value!==undefined&&String(value)!==''){
+     product=catalogById.get(field+':'+String(value));
+     if(product)break;
+    }
+   }
+   if(!product){unmatchedUnits+=units;continue;}
+   const required=['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max'];
+   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){
+    missingTariffUnits+=units;continue;
+   }
+   const unitPrice=salesGmv/units;
+   const values=saved[safeKey(product)]||{};
+   const cost=Math.max(0,Number(values.cost)||0);
+   const pack=Math.max(0,Number(values.pack)||0);
+   const ads=Math.max(0,Number(values.ads)||0);
+   const transit=Math.max(0,Number(values.transit)||0);
+   const other=Math.max(0,Number(values.other)||0);
+   const taxRate=Math.max(0,Number(values.tax)||0);
+   const commission=unitPrice*Number(product.sales_percent_fbs)/100;
+   const firstMile=(Number(product.first_mile_min)+Number(product.first_mile_max))/2;
+   const tax=unitPrice*taxRate/100;
+   const unitProfit=unitPrice-commission-Number(product.acquiring)-Number(product.delivery_to_customer)-firstMile-cost-pack-ads-transit-other-tax;
+   profit+=unitProfit*units;
+   revenue+=salesGmv;
+   includedUnits+=units;
+  }
+  const margin=revenue?profit/revenue*100:0;
+  box.classList.toggle('positive',profit>0);
+  box.classList.toggle('negative',profit<0);
+  document.getElementById('periodProfitValue').textContent=includedUnits?((profit>0?'+':'')+fmt(profit)):'—';
+  document.getElementById('periodProfitCaption').textContent=includedUnits?'За '+periodSales.period.date_from+' — '+periodSales.period.date_to+' · UTC':'Недостаточно данных для расчёта прибыли';
+  document.getElementById('periodProfitMargin').textContent=includedUnits?(margin.toFixed(1).replace('.',',')+'%'):'—';
+  document.getElementById('periodProfitRevenue').textContent=fmt(revenue);
+  document.getElementById('periodProfitCoverage').textContent=includedUnits+' из '+totalUnits+' шт. ('+(includedUnits/totalUnits*100).toFixed(0)+'%)';
+  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits;
+  let note='В расчёте: закупка, упаковка, реклама, транзит, прочие расходы, налог и текущие тарифы Seller API. Незаполненные расходы считаются равными 0 ₽.';
+  note+=' Это предварительная оценка: для FBO/FBS применяются текущие тарифы FBS, первая миля усредняется по диапазону; возвраты и фактические начисления не учтены.';
+  if(excluded)note+=' Исключено из расчёта: '+excluded+' шт. — без цены: '+unpricedUnits+', не найден товар в каталоге: '+unmatchedUnits+', нет тарифов: '+missingTariffUnits+'.';
+  document.getElementById('periodProfitNote').textContent=note;
+ }
+ window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
    const missingTariffs=!price||p.sales_percent_fbs==null||p.acquiring==null||p.delivery_to_customer==null||p.first_mile_min==null||p.first_mile_max==null;
@@ -130,6 +235,7 @@
    const out=card.querySelector('[data-out=margin]');out.textContent=missingTariffs?'Неполные данные':price?(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%':'—';out.style.color=missingTariffs?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
    const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
    card.dataset.profit=missingTariffs?'':String(profit);card.dataset.margin=missingTariffs?'':String(margin);
+   updatePeriodProfit();
   }
   card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));calc();return card;
  }
@@ -147,7 +253,7 @@
    let r;try{r=await fetch('/api/dashboard',{headers:{Accept:'application/json'},signal:controller.signal})}finally{clearTimeout(timer)}
    const data=await r.json();if(!r.ok)throw new Error(data.detail||'Не удалось загрузить каталог');
    if(data.status!=='ok'||!Array.isArray(data.products))throw new Error('Некорректный ответ Seller API');
-   products=data.products;render();
+   products=data.products;render();updatePeriodProfit();
    document.querySelector('[data-catalog-count]').textContent=String(data.products_count);
    const commissions=products.map(p=>Number(p.sales_percent_fbs)).filter(n=>Number.isFinite(n)&&n>0);
    document.querySelector('[data-commission-average]').textContent=commissions.length?pct(commissions.reduce((a,b)=>a+b,0)/commissions.length):'—';
@@ -200,6 +306,7 @@
    }
    if(!(data.products||[]).length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='За выбранный период доставленных товаров не найдено.';td.className='muted';tr.appendChild(td);salesRows.appendChild(tr)}
    salesBox.style.display='block';
+   window.dispatchEvent(new CustomEvent('ozon:sales-loaded',{detail:data}));
    message.textContent='Обновлено: '+data.period.date_from+' — '+data.period.date_to+' UTC · FBO: '+data.fbo_postings+', FBS: '+data.fbs_postings+(data.unpriced_units?' · без цены: '+data.unpriced_units+' шт.':'');
   }catch(error){message.textContent=error.message;message.classList.add('error');}
   finally{button.disabled=false;button.textContent='Показать';}
