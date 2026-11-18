@@ -113,3 +113,14 @@ def test_collects_only_explicit_sku_context_for_product_fee_allocation():
     ]
     assert result["metrics"]["sku_attributed_count"] == 2
     assert result["metrics"]["sku_unattributed_count"] == 1
+
+
+def test_unknown_type_amounts_are_reported_separately_by_currency():
+    result = normalize_accrual_records([
+        {"fee": {"type_id": 7, "accrued": {"amount": "-12.50", "currency": "RUB"}}},
+        {"fee": {"type_id": 999, "accrued": {"amount": "-3.25", "currency": "RUB"}}},
+        {"fee": {"type_id": 998, "accrued": {"amount": "4.00", "currency": "KZT"}}},
+    ], {"7": {"name": "Delivery"}})
+    assert result["metrics"]["known_type_amount_by_currency"] == {"RUB": "-12.50"}
+    assert result["metrics"]["unknown_type_amount_by_currency"] == {"KZT": "4.00", "RUB": "-3.25"}
+    assert result["metrics"]["total_component_amount_by_currency"] == {"KZT": "4.00", "RUB": "-15.75"}
