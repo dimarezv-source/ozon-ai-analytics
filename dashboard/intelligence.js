@@ -35,7 +35,7 @@
       }
       if(!product){excluded.unmatched+=units;continue;}
       const key=productKey(product),expense=costs[key]||{};
-      if(expense.cost===null||expense.cost===undefined||expense.cost===''||!Number.isFinite(Number(expense.cost))||Number(expense.cost)<0){
+      if((expense.costConfigured!==true&&!(expense.cost!==null&&expense.cost!==undefined&&expense.cost!==''&&Number(expense.cost)>0))||!Number.isFinite(Number(expense.cost))||Number(expense.cost)<0){
         excluded.missingCost+=units;continue;
       }
       const price=revenue/units;
