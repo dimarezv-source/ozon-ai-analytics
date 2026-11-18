@@ -39,6 +39,20 @@
 
 .periodbar{display:grid;grid-template-columns:minmax(150px,.7fr) auto minmax(180px,1fr);align-items:center;gap:14px;background:linear-gradient(110deg,#fff 0%,#fff8f3 58%,#f0fbfc 100%);border:1px solid #e7eaf2;border-radius:16px;padding:14px 17px;margin:0 0 15px;box-shadow:0 7px 22px #202b500c}.periodbar b{display:block;font-size:13px}.periodbar small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.periodfields{display:flex;align-items:end;gap:8px}.periodfields label{display:grid;gap:4px;color:var(--muted);font-size:10px}.periodfields input{width:145px;max-width:100%;border:1px solid #dfe4ee;border-radius:8px;padding:8px 9px;background:#fff;color:var(--ink);font:inherit;font-size:12px}.periodfields input:focus{outline:0;border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da22}.periodfields button{border:0;border-radius:9px;padding:9px 14px;background:linear-gradient(110deg,var(--orange),var(--orange2));color:#241c25;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}.periodfields button:disabled{opacity:.6;cursor:wait}.periodmessage{font-size:11px;color:var(--muted);text-align:right}.periodmessage.error{color:#bd4657}@media(max-width:1050px){.periodbar{grid-template-columns:1fr auto}.periodmessage{grid-column:1/-1;text-align:left}}@media(max-width:650px){.periodbar{grid-template-columns:1fr;padding:13px;gap:10px}.periodfields{flex-wrap:wrap}.periodfields label{flex:1;min-width:110px}.periodfields input{width:100%}.periodfields button{flex:1}.periodmessage{grid-column:auto}}
 
+
+.price-simulator{display:grid;grid-template-columns:minmax(140px,.75fr) minmax(0,1.5fr);gap:12px;align-items:center;margin-top:12px;padding:12px;border:1px solid #dceaf2;border-radius:12px;background:linear-gradient(115deg,#f7f9ff 0%,#fff8f2 58%,#f0fbfc 100%)}
+.price-simulator-title{font-size:11px;font-weight:850;color:#343b59;margin-bottom:5px}
+.price-simulator label{display:block;font-size:10px;color:var(--muted);margin-bottom:5px}
+.price-simulator input{width:100%;min-width:0;border:1px solid #dfe4ee;border-radius:8px;padding:9px 10px;background:#fff;font:inherit;font-size:13px}
+.price-simulator input:focus{outline:0;border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da22}
+.price-simulator-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.price-simulator-result{min-width:0;padding:8px 9px;border:1px solid #e7eaf2;border-radius:9px;background:#ffffffc9}
+.price-simulator-result small{display:block;font-size:9px;line-height:1.3;color:var(--muted)}
+.price-simulator-result b{display:block;margin-top:4px;font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.price-simulator-result b.positive{color:#168b70}.price-simulator-result b.negative{color:#d65363}
+.price-simulator-note{grid-column:1/-1;font-size:9px;line-height:1.4;color:var(--muted)}
+@media(max-width:650px){.price-simulator{grid-template-columns:1fr}.price-simulator-results{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
 .catalogtools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:0 0 13px}.catalogtools input{flex:1;min-width:190px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;background:#fff}.catalogtools button{border:0;border-radius:10px;padding:10px 13px;background:linear-gradient(110deg,var(--orange),var(--orange2));font-weight:800;cursor:pointer}.catalogtools button.secondary{background:#fff;border:1px solid var(--line);color:var(--ink)}.productmeta{font-size:10px;color:var(--muted);margin-top:5px}.product .result{margin-top:15px}.catalogempty{display:none}.catalogtools .toolhint{font-size:11px;color:var(--muted)}
 
 
@@ -392,18 +406,32 @@
    '<div class="productbody"><div class="field"><label>Схема продаж для расчёта</label><select data-fulfillment><option value="FBS">FBS · со своего склада</option><option value="FBO">FBO · со склада Ozon</option></select></div><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
    '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Доп. логистика сверх тарифов Ozon, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
+   '<div class="price-simulator"><div><div class="price-simulator-title">Симулятор цены</div><label>Новая цена, ₽</label><input data-sim-price type="number" min="0.01" step="0.01" value="'+(price?esc(price):'')+'" placeholder="Введи цену"></div><div class="price-simulator-results"><div class="price-simulator-result"><small>Прибыль / шт.</small><b data-sim-out="profit">—</b></div><div class="price-simulator-result"><small>Маржа</small><b data-sim-out="margin">—</b></div><div class="price-simulator-result"><small>Разница к текущей</small><b data-sim-out="delta">—</b></div><div class="price-simulator-note" data-sim-out="status">Сценарий: те же расходы и тарифы, без прогноза изменения спроса. Текущая цена Ozon не меняется.</div></div></div>'+
    '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · FBS транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · FBS возврат '+(p.return_flow==null?'—':money(p.return_flow))+' · FBO доставка '+(p.fbo_delivery_to_customer==null?'—':money(p.fbo_delivery_to_customer))+' · FBO транзит '+(p.fbo_transit_min==null?'—':money(p.fbo_transit_min)+'–'+money(p.fbo_transit_max))+' · FBO возврат '+(p.fbo_return_flow==null?'—':money(p.fbo_return_flow))+'</div></div>';
   function calc(){
-   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));vals.costConfigured=card.dataset.costConfigured==='true';
+   const vals={};card.querySelectorAll('input[data-key]').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));vals.costConfigured=card.dataset.costConfigured==='true';
    const fulfillmentType=card.querySelector('[data-fulfillment]').value;const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType,unitPrice:price,product:p,expenses:vals});
    const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
    const out=card.querySelector('[data-out=margin]');out.textContent=!valid?'Неполные данные':(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%';out.style.color=!valid?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
    const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
    card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
+   const scenarioInput=card.querySelector('[data-sim-price]'),scenarioPrice=scenarioInput&&scenarioInput.value!==''?Number(scenarioInput.value):NaN;
+   const scenario=window.OzonProfitCalculator.simulatePrice({fulfillmentType,currentPrice:price,scenarioPrice,product:p,expenses:vals});
+   const simProfit=card.querySelector('[data-sim-out=profit]'),simMargin=card.querySelector('[data-sim-out=margin]'),simDelta=card.querySelector('[data-sim-out=delta]'),simStatus=card.querySelector('[data-sim-out=status]');
+   if(scenario.ok){
+    simProfit.textContent=money(scenario.scenario.profit);
+    simMargin.textContent=(scenario.scenario.marginPercent>=0?'+':'')+scenario.scenario.marginPercent.toFixed(1).replace('.',',')+'%';
+    simDelta.textContent=(scenario.deltaProfitPerUnit>0?'+':'')+money(scenario.deltaProfitPerUnit);
+    [simProfit,simMargin,simDelta].forEach(node=>{const value=Number(node.textContent.replace(/[^0-9,.-]/g,'').replace(',','.'));node.classList.toggle('positive',value>=0);node.classList.toggle('negative',value<0)});
+    simStatus.textContent='Изменение прибыли на единицу; спрос и объём продаж не прогнозируются. Цена в кабинете Ozon не меняется.';
+   }else{
+    simProfit.textContent='—';simMargin.textContent='—';simDelta.textContent='—';
+    simStatus.textContent=scenario.reason==='invalid_current_price'?'Нет текущей цены для сравнения.':'Введи корректную цену больше нуля. Расчёт не меняет цену в Ozon.';
+   }
    updatePeriodProfit();
   }
-  card.querySelectorAll('input').forEach(i=>{i.addEventListener('input',()=>{if(i.dataset.key==='cost')card.dataset.costConfigured='true';calc()});if(i.dataset.key==='cost')i.addEventListener('focus',()=>{card.dataset.costConfigured='true';calc()})});card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
+  card.querySelectorAll('input[data-key]').forEach(i=>{i.addEventListener('input',()=>{if(i.dataset.key==='cost')card.dataset.costConfigured='true';calc()});if(i.dataset.key==='cost')i.addEventListener('focus',()=>{card.dataset.costConfigured='true';calc()})});card.querySelector('[data-sim-price]').addEventListener('input',calc);card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
  }
  function render(){
   const q=(document.getElementById('productSearch').value||'').toLowerCase().trim();
@@ -434,7 +462,7 @@
  document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров в этом браузере?'))return;localStorage.removeItem(storageKey);render()});
  document.getElementById('exportEconomics').addEventListener('click',()=>{
   const rows=[['Товар','SKU','Product ID','Offer ID','Схема','Цена','Комиссия FBS %','Комиссия FBO %','Себестоимость','Упаковка','Реклама','Доп. транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
-  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,card.querySelector('[data-fulfillment]').value,p.price,p.sales_percent_fbs,p.sales_percent_fbo,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
+  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input[data-key]').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,card.querySelector('[data-fulfillment]').value,p.price,p.sales_percent_fbs,p.sales_percent_fbo,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
   const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ozon-unit-economics.csv';a.click();URL.revokeObjectURL(url);
  });

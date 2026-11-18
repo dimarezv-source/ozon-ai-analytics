@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculateProfit } = require('../dashboard/profit-calculator.js');
+const { calculateProfit, simulatePrice } = require('../dashboard/profit-calculator.js');
 const product={
  sales_percent_fbo:12,sales_percent_fbs:15,acquiring:2,
  delivery_to_customer:30,first_mile_min:10,first_mile_max:20,
@@ -52,4 +52,20 @@ test('missing return tariff stays unknown and is never charged as zero',()=>{
 });
 test('unknown fulfillment is rejected',()=>{
  assert.equal(calculateProfit({fulfillmentType:'FBY',unitPrice:1000,product}).reason,'unknown_fulfillment');
+});
+
+test('price simulator compares current and scenario price with unchanged costs and tariffs',()=>{
+ const r=simulatePrice({fulfillmentType:'FBS',currentPrice:1000,scenarioPrice:1200,product,expenses:{cost:500,pack:10,ads:20,transit:7,other:5,tax:6}});
+ assert.equal(r.ok,true);
+ assert.equal(r.current.profit,186);
+ assert.equal(r.scenario.profit,344);
+ assert.equal(r.deltaProfitPerUnit,158);
+ assert.equal(r.deltaMarginPoints,10.07);
+ assert.equal(r.scenarioAssumption,'same_costs_and_tariffs_no_demand_response');
+});
+test('price simulator rejects an invalid scenario price without changing the baseline',()=>{
+ const r=simulatePrice({fulfillmentType:'FBO',currentPrice:1000,scenarioPrice:0,product,expenses:{cost:500}});
+ assert.equal(r.ok,false);
+ assert.equal(r.reason,'invalid_scenario_price');
+ assert.equal(r.current.ok,true);
 });
