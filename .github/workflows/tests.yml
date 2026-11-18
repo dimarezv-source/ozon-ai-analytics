@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feature/fbo-fbs-profit-split, feature/ozon-intelligence-profit-center, feature/ozon-intelligence-finance-reconciliation]
   pull_request:
-    branches: [main]
+    branches: [main, feature/ozon-intelligence-loss-detection]
 
 permissions:
   contents: read
