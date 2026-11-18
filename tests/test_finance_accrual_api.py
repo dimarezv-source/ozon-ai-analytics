@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
-from app.main import app
+from app.main import _extract_fee_components, app
 
 
 @pytest.fixture(autouse=True)
@@ -70,3 +70,59 @@ def test_finance_accrual_endpoint_rejects_invalid_period(monkeypatch, date_from,
         auth=("owner", "test-password"),
     )
     assert response.status_code == 400
+
+
+def test_extract_fee_components_keeps_each_type_paired_with_its_amount() -> None:
+    record = {
+        "accrued_category": "POSTING",
+        "posting": {
+            "products": [{
+                "delivery": {
+                    "services": [
+                        {"type_id": 32, "name": "Delivery", "accrued": {"amount": "-12.50", "currency": "RUB"}},
+                        {"type_id": 41, "accrued": {"amount": "-3.00", "currency": "RUB"}},
+                    ]
+                }
+            }]
+        },
+        "item_fees": {
+            "fees": [{
+                "sku": 123,
+                "fees": [{"type_id": 77, "accrued": {"amount": "-1.25", "currency": "RUB"}}],
+            }]
+        },
+        "non_item_fee": {
+            "type_id": 98,
+            "accrued": {"amount": "4.00", "currency": "RUB"},
+        },
+        "container_fees": [{
+            "type_id": 105,
+            "accrued": {"amount": "-0.50", "currency": "RUB"},
+        }],
+    }
+
+    components = _extract_fee_components(record)
+
+    assert [(item["type_id"], item["amount"], item["currency"]) for item in components] == [
+        ("32", "-12.50", "RUB"),
+        ("41", "-3.00", "RUB"),
+        ("77", "-1.25", "RUB"),
+        ("98", "4.00", "RUB"),
+        ("105", "-0.50", "RUB"),
+    ]
+    assert len({item["path"] for item in components}) == 5
+
+
+def test_extract_fee_components_does_not_guess_missing_type_or_amount() -> None:
+    record = {
+        "fees": [
+            {"type_id": 32, "accrued": {"amount": "-2", "currency": "RUB"}},
+            {"type_id": 41, "accrued": None},
+            {"accrued": {"amount": "-9", "currency": "RUB"}},
+            {"type_id": 77, "accrued": {"currency": "RUB"}},
+        ]
+    }
+
+    assert _extract_fee_components(record) == [
+        {"type_id": "32", "amount": "-2", "currency": "RUB", "path": "fees[0]"}
+    ]
