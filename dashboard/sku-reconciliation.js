@@ -41,7 +41,7 @@
    const data=await Promise.all(responses.map(async response=>{const body=await response.json();if(!response.ok)throw new Error(body.detail||'Ошибка загрузки данных Ozon');return body}));
    const matrix=buildMatrix(data[0],data[1]);render(matrix);
    const matched=matrix.rows.filter(row=>row.feeRecords>0).length;
-   status.textContent='Готово · SKU в матрице: '+matrix.rows.length+' · SKU с финансовыми строками: '+matched+' · финансовые строки без точного FBO/FBS совпадения: '+matrix.unmatchedFinance+'. GMV — оценка по цене товара; начисления показаны отдельно по валютам.';
+   status.textContent='Готово · SKU в матрице: '+matrix.rows.length+' · SKU с финансовыми строками: '+matched+' · групп начислений без точного FBO/FBS совпадения: '+matrix.unmatchedFinance+'. GMV — оценка по цене товара; начисления показаны отдельно по валютам.';
   }catch(error){status.textContent=String(error.message||'Не удалось собрать сверку');status.classList.add('error')}
   finally{button.disabled=false;button.textContent='Собрать матрицу SKU'}
  }
