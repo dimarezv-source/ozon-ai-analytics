@@ -62,15 +62,15 @@
     if(!from||!to)return;
     const start=Date.parse(from+'T00:00:00Z'),end=Date.parse(to+'T00:00:00Z');
     const days=Math.round((end-start)/86400000)+1;
+    const key=from+'|'+to;
+    if(feeRequestKey===key)return;
+    feeRequestKey=key;
     root.__ozonFeeAlerts=[];
     if(days<1||days>31){
       root.__ozonFeeAlerts.push({severity:'neutral',title:'Изменения удержаний не проверены',
         detail:'Сравнение начислений доступно для периодов до 31 дня. Выбранный период: '+days+' дней.'});
       render();return;
     }
-    const key=from+'|'+to;
-    if(feeRequestKey===key)return;
-    feeRequestKey=key;
     const previousEnd=new Date(start-86400000),previousStart=new Date(start-days*86400000);
     const iso=d=>new Date(d).toISOString().slice(0,10);
     try{
