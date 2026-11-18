@@ -29,7 +29,7 @@ DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html
 def _session_token(username: str, password: str, expires: int) -> str:
     payload = f"{username}:{expires}".encode("utf-8")
     signature = hmac.new(password.encode("utf-8"), payload, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(payload + b"." + signature).decode("ascii")
+    return base64.urlsafe_b64encode(payload + b"." + signature.hex().encode("ascii")).decode("ascii")
 
 
 def _valid_session(token: str | None, username: str, password: str) -> bool:
@@ -44,7 +44,7 @@ def _valid_session(token: str | None, username: str, password: str) -> bool:
         return (
             secrets.compare_digest(token_user, username)
             and expires >= int(time.time())
-            and hmac.compare_digest(signature, expected)
+            and hmac.compare_digest(signature, expected.hex().encode("ascii"))
         )
     except (ValueError, UnicodeError):
         return False
