@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     )
 
     app_env: str = "development"
+    database_url: str = "sqlite:///./ozon_ai_analytics.db"
     ozon_client_id: str | None = None
     ozon_api_key: str | None = None
     ozon_api_base_url: str = "https://api-seller.ozon.ru"
