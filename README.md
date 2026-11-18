@@ -86,6 +86,17 @@ The net units and net GMV are still estimates from current posting/return snapsh
 - Start the API: `uvicorn app.main:app --reload`
 - Open `/health` to verify the service.
 
+## Hosted dashboard (Render)
+
+A Render Blueprint is provided in `render.yaml`. To deploy the private dashboard:
+
+1. Open [Render Blueprints](https://dashboard.render.com/blueprints), connect the GitHub account that can access this private repository, and create a Blueprint from `dimarezv-source/ozon-ai-analytics`.
+2. Render reads `render.yaml` and prompts for four values: `OZON_CLIENT_ID`, `OZON_API_KEY`, `DASHBOARD_USERNAME`, and `DASHBOARD_PASSWORD`. Enter the Ozon read-only API credentials and choose a separate dashboard login/password. These values are server-side environment variables; they are not committed to Git.
+3. When the service deploys, open `https://<your-render-service>.onrender.com/dashboard` and enter the dashboard login/password in the browser's HTTP Basic Authentication prompt. `/health` is available for service health checks.
+4. The free Render instance is suitable for a trial, not uninterrupted production use: it can spin down after 15 minutes without traffic and may take about a minute to wake. The dashboard does not require local data persistence; exports and historical reports continue to live in GitHub Actions artifacts.
+
+The live dashboard endpoint reads the catalog and price/commission data from Ozon. Sales, returns, and finance are still sourced from the separate manual GitHub Actions reports; they are not yet live in the dashboard API.
+
 ## Project status
 
 - Read-only catalog export and product detail enrichment: implemented; live catalog list verified.
