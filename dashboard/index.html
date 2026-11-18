@@ -142,7 +142,7 @@
  <div class="accrual-summary-wrap" style="margin-top:14px">
   <h3 style="margin:0 0 8px;font-size:15px">Начисления по отправлениям</h3>
   <p class="hint" style="margin:0 0 8px">Только записи с явным номером отправления из Ozon. Без номера не распределяем суммы по заказам.</p>
-  <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Отправление</th><th>Тип</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Компонентов</th></tr></thead><tbody id="accrualPostingSummaryRows"><tr><td colspan="6" class="hint">Появится после загрузки.</td></tr></tbody></table></div>
+  <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Схема</th><th>Отправление</th><th>Тип</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Компонентов</th></tr></thead><tbody id="accrualPostingSummaryRows"><tr><td colspan="6" class="hint">Появится после загрузки.</td></tr></tbody></table></div>
  </div>
  <div class="accrual-table-wrap" style="margin-top:12px">
   <table class="accrual-table"><thead><tr><th>Дата</th><th>Категория</th><th>Тип начисления</th><th>Сумма / компоненты</th><th>Исходная запись</th></tr></thead>
@@ -411,14 +411,19 @@
   try{
    const response=await fetch('/api/finance/accruals?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
    const data=await response.json();if(!response.ok)throw new Error(data.detail||'Не удалось получить начисления.');
+   let fulfillmentByPosting={};
+   try{
+    const salesResponse=await fetch('/api/sales?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
+    if(salesResponse.ok){const salesData=await salesResponse.json();for(const item of (salesData.delivered_posting_refs||[]))fulfillmentByPosting[item.posting_number]=item.fulfillment_type;}
+   }catch(_){}
    const types=data.accrual_types||{};tbody.replaceChildren();feeSummaryRows.replaceChildren();postingSummaryRows.replaceChildren();
    for(const item of (data.posting_fee_summary||[])){
     const tr=document.createElement('tr');const type=types[String(item.type_id)]||{};
-    cell(tr,safe(item.posting_number));cell(tr,type.description||type.name||('Тип ID '+item.type_id));
+    cell(tr,fulfillmentByPosting[item.posting_number]||'Не сопоставлено');cell(tr,safe(item.posting_number));cell(tr,type.description||type.name||('Тип ID '+item.type_id));
     cell(tr,String(item.type_id),'muted');cell(tr,safe(item.currency));cell(tr,safe(item.amount),'amount');
     cell(tr,numberFormat(item.count));postingSummaryRows.appendChild(tr);
    }
-   if(!(data.posting_fee_summary||[]).length){const tr=document.createElement('tr');cell(tr,'Нет начислений с явным номером отправления.');tr.firstChild.colSpan=6;postingSummaryRows.appendChild(tr)}
+   if(!(data.posting_fee_summary||[]).length){const tr=document.createElement('tr');cell(tr,'Нет начислений с явным номером отправления.');tr.firstChild.colSpan=7;postingSummaryRows.appendChild(tr)}
    
    for(const item of (data.fee_summary||[])){
     const tr=document.createElement('tr');const type=types[String(item.type_id)]||{};
