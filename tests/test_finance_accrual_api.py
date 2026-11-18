@@ -230,6 +230,16 @@ def test_finance_reconciliation_matches_delivered_fbo_fbs_postings(monkeypatch) 
                 return {"result": {"postings": [
                     {"posting_number": "FBS-1", "status": "delivered"},
                 ], "has_next": False, "cursor": ""}}
+            if operation == "finance_accrual_postings":
+                assert payload["posting_numbers"] == ["FBO-1", "FBS-1", "UNMATCHED"]
+                return {"posting_accruals": [
+                    {"posting_number": "FBO-1", "accruals": [
+                        {"sku": 123, "type_id": 7, "accrued": {"amount": "-2.50", "currency": "RUB"}, "quantity": 1}
+                    ]},
+                    {"posting_number": "UNMATCHED", "accruals": [
+                        {"sku": 456, "type_id": 7, "accrued": {"amount": "-1", "currency": "RUB"}, "quantity": 2}
+                    ]},
+                ]}
             if operation == "returns_list" and payload["last_id"] == 0:
                 return {"returns": [{
                     "id": 101, "schema": "Fbs", "type": "FullReturn",
@@ -259,11 +269,18 @@ def test_finance_reconciliation_matches_delivered_fbo_fbs_postings(monkeypatch) 
     assert data["metrics"]["posting_match_count"] == 2
     assert data["metrics"]["posting_unmatched_count"] == 1
     assert data["unmatched_summary"][0]["amount"] == "-4"
+    assert data["posting_accrual_metrics"] == {
+        "posting_count": 2, "sku_record_count": 2, "unmatched_posting_count": 1,
+    }
+    assert [(row["sku"], row["fulfillment_type"], row["amount"]) for row in data["posting_product_summary"]] == [
+        ("123", "FBO", "-2.50"), ("456", "UNMATCHED", "-1"),
+    ]
     assert data["return_record_count"] == 2
     assert [(row["fulfillment_type"], row["quantity"], row["returned_value"]) for row in data["returns_summary"]] == [
         ("FBO", 2, "160"), ("FBS", 1, "100"),
     ]
     assert [call[0] for call in calls] == [
         "finance_accrual_types", "finance_accrual_by_day",
-        "posting_fbo_list", "posting_fbs_list", "returns_list", "returns_list",
+        "posting_fbo_list", "posting_fbs_list", "finance_accrual_postings",
+        "returns_list", "returns_list",
     ]
