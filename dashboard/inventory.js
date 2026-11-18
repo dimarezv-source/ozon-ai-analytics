@@ -3,7 +3,7 @@
  const el=id=>document.getElementById(id);
  const number=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value)||0);
  const fmtDays=value=>Number.isFinite(value)?(value<1?'< 1 дня':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(value)+' дн.'):'—';
- const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0,frozenThresholdDays:60,replenishmentItems:[],clearanceItems:[]};
+ const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0,frozenThresholdDays:60,replenishmentItems:[],clearanceItems:[],frozenSummary:null};
  const SETTINGS_KEY='ozonInventoryReplenishmentSettings';
  const COSTS_KEY='ozon-ai-analytics-costs-v1';
  const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(Number(value)||0))+' ₽';
@@ -159,7 +159,7 @@
    }
   }
   const result=calculateFrozenStock(rows,savedCosts,state.frozenThresholdDays);
-  const clearance=calculateClearanceRanking(result.items);state.clearanceItems=clearance;
+  const clearance=calculateClearanceRanking(result.items);state.clearanceItems=clearance;\n  state.frozenSummary={positions:result.items.length,knownValue:result.frozenValue,missingCosts:result.missingCostItems,topItems:clearance.slice(0,3).map(item=>({name:item.name,type:item.type,available:item.available,coverage:item.coverage,costKnown:item.costKnown,frozenValue:item.frozenValue}))};
   [['frozenValue',money(result.frozenValue)],['frozenUnits',number(result.frozenUnits)],['frozenPositions',number(result.items.length)],['frozenMissingCosts',number(result.missingCostItems)],['frozenFboValue',money(result.FBO)],['frozenFbsValue',money(result.FBS)]].forEach(([id,value])=>{const node=el(id);if(node)node.textContent=value});
   const clearanceBody=el('clearanceRows');if(clearanceBody){clearanceBody.replaceChildren();for(const item of clearance){
    const tr=document.createElement('tr');const values=[item.rank,item.name+' · '+(item.sku?'SKU '+item.sku:item.offer),item.type,number(item.available),item.coverage===null?'Нет продаж':fmtDays(item.coverage),item.costKnown?money(item.unitCost):'Не указана',item.costKnown?money(item.frozenValue):'Не рассчитано',item.costKnown?'Приоритет распродажи':'Уточнить себестоимость'];
@@ -224,7 +224,7 @@
    items:display.filter(item=>item.level==='critical'||item.level==='warning').map(item=>({
     name:item.name,type:item.type,sku:item.sku,available:item.available,coverage:item.coverage,level:item.level
    })),
-   totals:{FBO:totals.FBO,FBS:totals.FBS,reserved:totals.reserved,empty:totals.empty},
+   totals:{FBO:totals.FBO,FBS:totals.FBS,reserved:totals.reserved,empty:totals.empty},\n   frozen:state.frozenSummary,
    updatedAt:new Date().toISOString()
   }}));
  }
