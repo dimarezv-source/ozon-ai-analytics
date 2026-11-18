@@ -58,6 +58,8 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     classified_amount = Decimal("0")
     total_amount = Decimal("0")
     currencies = set()
+    currency_metrics = {}
+    fulfillment_metrics = {"FBO": {"components": 0, "amount": {}}, "FBS": {"components": 0, "amount": {}}, "unmatched": {"components": 0, "amount": {}}}
 
     for record in records or []:
         components = collect_components(record)
@@ -80,11 +82,20 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             item["amount"] += amount
             item["records"] += 1
             total_amount += amount
+            bucket = currency_metrics.setdefault(currency or "UNKNOWN", {"total": Decimal("0"), "matched": Decimal("0"), "known": Decimal("0"), "unknown": Decimal("0"), "components": 0})
+            bucket["total"] += amount; bucket["components"] += 1
+            fulfillment_bucket = fulfillment_metrics[fulfillment] if fulfillment else fulfillment_metrics["unmatched"]
+            fulfillment_bucket["components"] += 1
+            fulfillment_bucket["amount"][currency or "UNKNOWN"] = fulfillment_bucket["amount"].get(currency or "UNKNOWN", Decimal("0")) + amount
             if label:
                 classified_amount += amount
+                bucket["known"] += amount
+            else:
+                bucket["unknown"] += amount
             if fulfillment:
                 item["matched_records"] += 1
                 matched_amount += amount
+                bucket["matched"] += amount
             output.append({**component, "label": label,
                 "posting_number": number, "fulfillment_type": fulfillment,
                 "posting_match": "matched" if fulfillment else "unmatched",
