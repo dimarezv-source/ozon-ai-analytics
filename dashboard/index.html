@@ -19,14 +19,14 @@
  <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
 </aside>
 <main class="main">
- <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Главная</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>API подключён · только чтение</div></header>
+ <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Предварительный расчёт</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>Снимок выгрузки · ручное обновление</div></header>
  <section class="grid kpis">
-  <div class="card"><div class="klabel">Продажи за период <span>↗</span></div><div class="kvalue">0 ₽</div><div class="hint">Нет подтверждённых заказов</div></div>
+  <div class="card"><div class="klabel">Продажи за период <span>↗</span></div><div class="kvalue">0 ₽</div><div class="hint">Последняя сверка: заказов не было</div></div>
   <div class="card"><div class="klabel">Продано, шт.</div><div class="kvalue">0</div><div class="hint">По сверке заказов и возвратов</div></div>
   <div class="card"><div class="klabel">Товаров в каталоге</div><div class="kvalue">2</div><div class="hint">Получено из Seller API</div></div>
   <div class="card"><div class="klabel">Комиссия FBS</div><div class="kvalue accent">47%</div><div class="hint">Текущий тариф для обоих SKU</div></div>
  </section>
- <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
+ <div class="alert" style="margin:0 0 18px"><b>Важно: это не live-дашборд</b>Каталог и тарифы взяты из последней ручной выгрузки Ozon. Заказы и начисления сейчас равны нулю по последней проверке. Страница сама не обновляется — для актуализации требуется новый запуск выгрузки.</div>\n <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
  <section class="grid products">
   <article class="card product" data-product="hunter">
    <div class="producttop"><div><div class="sku">SKU 6320918122 · ХАНТЕР</div><h3>Зеркала заднего вида УАЗ-31519</h3></div><div class="price">2 561 ₽</div></div>
@@ -37,7 +37,7 @@
      <div class="field"><label>Реклама на 1 заказ, ₽</label><input data-key="ads" type="number" min="0" value="0"></div>
      <div class="field"><label>Транзит / логистика, ₽</label><input data-key="transit" type="number" min="0" value="0" placeholder="введите сумму"></div>
      <div class="field wide"><label>Прочие расходы, ₽</label><input data-key="other" type="number" min="0" value="0"></div>
-    </div><div class="result"><div><small>Остаток с единицы до налога*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">Укажите расходы</div></div>
+    </div><div class="result"><div><small>Остаток до транзита и налога*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">Без транзита</div></div>
    </div>
   </article>
   <article class="card product" data-product="bukhanka">
