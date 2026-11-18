@@ -227,7 +227,7 @@
   }
   const saved=loadCosts();
   const totals={FBO:{profit:0,revenue:0,units:0},FBS:{profit:0,revenue:0,units:0}};
-  let unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
+  let unmatchedUnits=0,missingCostUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
   for(const sale of rows){
    const units=Math.max(0,Number(sale.units)||0),salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
    if(!units)continue;
@@ -242,6 +242,8 @@
    const required=type==='FBO'?['sales_percent_fbo','acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
    if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
    const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
+   const costKnown=values.costConfigured===true||(values.cost!==null&&values.cost!==undefined&&values.cost!==''&&Number(values.cost)>0);
+   if(!costKnown){missingCostUnits+=units;continue;}
    const cost=values.cost??0,pack=values.pack??0;
    const ads=values.ads??0,transit=values.transit??0;
    const other=values.other??0,taxRate=values.tax??0;
@@ -265,8 +267,8 @@
   set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
   let note='FBO: комиссия FBO + эквайринг + доставка клиенту + транзит (среднее диапазона). FBS: комиссия FBS + эквайринг + первая миля + доставка клиенту + транзит (среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и налог берутся из карточек товара.';
   note+=' Для FBO отдельные услуги фулфилмента и хранения не включены, если их нет в доступных тарифах API. Возвраты и фактические начисления не учтены.';
-  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
-  if(excluded)note+=' Исключено: '+excluded+' шт. — без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
+  const excluded=unmatchedUnits+missingCostUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
+  if(excluded)note+=' Исключено: '+excluded+' шт. — без себестоимости: '+missingCostUnits+', без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
   set('periodProfitNote',note);
   renderIntelligence();
  }
