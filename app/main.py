@@ -335,7 +335,7 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
                     record["fee_components"] = _extract_fee_components(record)
                     rows.append(record)
                 next_id = response.get("last_id") or ""
-                if not next_id or not page:
+                if not next_id:
                     break
                 if not isinstance(next_id, str) or next_id == last_id or next_id in seen_ids:
                     raise ValueError("Ozon returned an invalid accrual pagination cursor.")
