@@ -30,9 +30,13 @@ def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -
             if operation == "finance_accrual_types":
                 return {"accrual_types": [{"id": 7, "name": "Logistics", "description": "Доставка"}]}
             if payload["date"] == "2026-11-17" and not payload["last_id"]:
-                return {"accruals": [{"accrued_category": "POSTING", "posting": {"products": []}}], "last_id": "next"}
+                # A cursor, not an empty page, determines whether pagination continues.
+                return {"accruals": [], "last_id": "next"}
             if payload["date"] == "2026-11-17":
-                return {"accruals": [{"accrued_category": "NON_ITEM", "non_item_fee": {"type_id": 7, "accrued": {"amount": "-10.00", "currency": "RUB"}}}], "last_id": ""}
+                return {"accruals": [
+                    {"accrued_category": "POSTING", "posting": {"products": []}},
+                    {"accrued_category": "NON_ITEM", "non_item_fee": {"type_id": 7, "accrued": {"amount": "-10.00", "currency": "RUB"}}},
+                ], "last_id": ""}
             return {"accruals": [], "last_id": ""}
 
     monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
