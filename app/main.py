@@ -249,6 +249,80 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
         raise HTTPException(status_code=502, detail="Не удалось получить продажи из Ozon. Проверьте логи сервера.") from None
 
 
+@app.get("/api/finance/accruals", tags=["dashboard"])
+async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
+    raw_from = request.query_params.get("date_from", "")
+    raw_to = request.query_params.get("date_to", "")
+    try:
+        date_from = date.fromisoformat(raw_from)
+        date_to = date.fromisoformat(raw_to)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
+    if date_to < date_from:
+        raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
+    if (date_to - date_from).days > 30:
+        raise HTTPException(status_code=400, detail="Максимальный период финансовых начислений — 31 день.")
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    try:
+        # Ozon requires sequential calls for this API family. Keep by-day pages
+        # sequential too; never infer totals from forecast tariffs.
+        type_response = await client.execute("finance_accrual_types", {})
+        types = type_response.get("accrual_types", [])
+        if not isinstance(types, list):
+            raise ValueError("Unexpected accrual types response.")
+        type_names = {
+            str(item.get("id")): {
+                "name": item.get("name"),
+                "description": item.get("description"),
+            }
+            for item in types if isinstance(item, dict) and item.get("id") is not None
+        }
+        rows = []
+        day = date_from
+        while day <= date_to:
+            last_id = ""
+            seen_ids = set()
+            for _ in range(200):
+                response = await client.execute(
+                    "finance_accrual_by_day", {"date": day.isoformat(), "last_id": last_id}
+                )
+                page = response.get("accruals", [])
+                if not isinstance(page, list):
+                    raise ValueError("Unexpected accruals response.")
+                for item in page:
+                    if not isinstance(item, dict):
+                        raise ValueError("Unexpected accrual record.")
+                    record = dict(item)
+                    record["date"] = day.isoformat()
+                    rows.append(record)
+                next_id = response.get("last_id") or ""
+                if not next_id or not page:
+                    break
+                if not isinstance(next_id, str) or next_id == last_id or next_id in seen_ids:
+                    raise ValueError("Ozon returned an invalid accrual pagination cursor.")
+                seen_ids.add(next_id)
+                last_id = next_id
+            else:
+                raise ValueError("Accrual pagination safety limit reached.")
+            day += timedelta(days=1)
+        return {
+            "status": "ok",
+            "mode": "read-only",
+            "period": {"date_from": raw_from, "date_to": raw_to},
+            "record_count": len(rows),
+            "accrual_types": type_names,
+            "accruals": rows,
+            "basis": "Raw Ozon accrual records by calendar day. No forecast tariffs or estimated zero values are mixed into this report.",
+        }
+    except Exception as exc:
+        logger.exception("Could not retrieve Ozon accruals for selected period: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось получить финансовые начисления Ozon. Проверьте логи сервера.") from None
+
+
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
     return {"status": "ok", "mode": "read-only"}
