@@ -31,6 +31,12 @@ PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "pr
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
 LOSS_ALERTS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "loss-alerts.js"
 INVENTORY_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "inventory.js"
+MODULE_MANAGER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "module-manager.js"
+ACTION_PRIORITIZER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "action-prioritizer.js"
+CATALOG_ECONOMICS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "catalog-economics.js"
+SALES_PERIOD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "sales-period.js"
+FINANCE_ACCRUALS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "finance-accruals.js"
+FINANCE_RECONCILIATION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "finance-reconciliation.js"
 
 
 def _session_token(username: str, password: str, expires: int) -> str:
@@ -650,6 +656,36 @@ async def health() -> dict[str, str]:
 async def dashboard(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(DASHBOARD_FILE, media_type="text/html")
 
+
+
+@app.get("/dashboard/module-manager.js", tags=["dashboard"], include_in_schema=False)
+async def module_manager_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(MODULE_MANAGER_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/action-prioritizer.js", tags=["dashboard"], include_in_schema=False)
+async def action_prioritizer_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(ACTION_PRIORITIZER_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/catalog-economics.js", tags=["dashboard"], include_in_schema=False)
+async def catalog_economics_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(CATALOG_ECONOMICS_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/sales-period.js", tags=["dashboard"], include_in_schema=False)
+async def sales_period_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(SALES_PERIOD_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/finance-accruals.js", tags=["dashboard"], include_in_schema=False)
+async def finance_accruals_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(FINANCE_ACCRUALS_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/finance-reconciliation.js", tags=["dashboard"], include_in_schema=False)
+async def finance_reconciliation_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(FINANCE_RECONCILIATION_FILE, media_type="application/javascript")
 
 @app.get("/dashboard/profit-calculator.js", tags=["dashboard"], include_in_schema=False)
 async def profit_calculator_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
