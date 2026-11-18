@@ -97,7 +97,7 @@ form{width:min(92vw,390px);padding:30px;background:#1f2937;border:1px solid #374
 h1{font-size:23px;margin:0 0 8px}p{color:#9ca3af;margin:0 0 24px}
 label{display:block;margin:15px 0 7px;color:#d1d5db;font-size:14px}
 input{width:100%;padding:13px;border:1px solid #4b5563;border-radius:9px;background:#111827;color:white;font-size:16px}
-button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:9px;background:#f97316;color:#111827;font-weight:700;font-size:16px;cursor:pointer}
+button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:9px;background:#2789e8;color:#ffffff;font-weight:700;font-size:16px;cursor:pointer}
 </style>
 <form method="post" action="/login"><h1>Ozon AI Analytics</h1><p>Войдите в личный кабинет</p>
 <label for="username">Логин</label><input id="username" name="username" autocomplete="username" required>
