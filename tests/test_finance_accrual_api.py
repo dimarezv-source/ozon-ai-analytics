@@ -176,3 +176,25 @@ def test_summarize_posting_fees_requires_explicit_posting_number() -> None:
         {"posting_number": "123-ABC", "type_id": "7", "currency": "RUB", "amount": "-2.00", "count": 2},
         {"posting_number": "456-DEF", "type_id": "7", "currency": "RUB", "amount": "-4", "count": 1},
     ]
+
+
+def test_reconcile_posting_fees_uses_only_exact_delivered_posting_matches() -> None:
+    from app.main import _reconcile_posting_fees
+
+    fees = [
+        {"posting_number": "FBO-1", "type_id": "7", "currency": "RUB", "amount": "-10"},
+        {"posting_number": "FBS-2", "type_id": "7", "currency": "RUB", "amount": "-20"},
+        {"posting_number": "UNKNOWN", "type_id": "7", "currency": "RUB", "amount": "-30"},
+    ]
+    sales_refs = [
+        {"posting_number": "FBO-1", "fulfillment_type": "FBO"},
+        {"posting_number": "FBS-2", "fulfillment_type": "FBS"},
+        # Invalid or missing schema must not create a false match.
+        {"posting_number": "UNKNOWN", "fulfillment_type": "OTHER"},
+    ]
+
+    assert _reconcile_posting_fees(fees, sales_refs) == [
+        {**fees[0], "fulfillment_type": "FBO", "reconciliation_status": "matched"},
+        {**fees[1], "fulfillment_type": "FBS", "reconciliation_status": "matched"},
+        {**fees[2], "fulfillment_type": None, "reconciliation_status": "unmatched"},
+    ]
