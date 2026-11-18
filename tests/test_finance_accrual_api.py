@@ -155,3 +155,23 @@ def test_summarize_fee_components_preserves_sign_currency_and_exact_decimal_tota
         {"type_id": "7", "currency": "RUB", "amount": "-10.00", "count": 3},
         {"type_id": "8", "currency": "RUB", "amount": "4", "count": 1},
     ]
+
+
+def test_summarize_posting_fees_requires_explicit_posting_number() -> None:
+    from app.main import _summarize_posting_fee_components
+
+    rows = [
+        {"posting": {"posting_number": "123-ABC"}, "fee_components": [
+            {"type_id": "7", "amount": "-2.10", "currency": "RUB"},
+            {"type_id": "7", "amount": "0.10", "currency": "RUB"},
+        ]},
+        {"posting_number": "456-DEF", "fee_components": [
+            {"type_id": "7", "amount": "-4", "currency": "RUB"},
+        ]},
+        {"fee_components": [{"type_id": "7", "amount": "-99", "currency": "RUB"}]},
+    ]
+
+    assert _summarize_posting_fee_components(rows) == [
+        {"posting_number": "123-ABC", "type_id": "7", "currency": "RUB", "amount": "-2.00", "count": 2},
+        {"posting_number": "456-DEF", "type_id": "7", "currency": "RUB", "amount": "-4", "count": 1},
+    ]
