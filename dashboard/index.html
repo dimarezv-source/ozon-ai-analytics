@@ -83,6 +83,24 @@
 @media(max-width:650px){.accrual-status{width:100%;margin:0}}
 
 .intelligence-panel{margin:0 0 18px}.intel-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.intel-kpi{background:#f7f8fc;border:1px solid var(--line);border-radius:12px;padding:13px}.intel-kpi small{display:block;color:var(--muted);font-size:10px;margin-bottom:7px}.intel-kpi strong{font-size:clamp(17px,2vw,24px);font-weight:850;font-variant-numeric:tabular-nums}.intel-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.intel-table{width:100%;border-collapse:collapse;min-width:760px;font-size:12px}.intel-table th,.intel-table td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}.intel-table th{font-size:10px;letter-spacing:.45px;text-transform:uppercase;color:var(--muted);background:#f8f9fc}.intel-table tr:last-child td{border-bottom:0}.intel-table .num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:750}.intel-table .loss{color:#c2413b}.intel-table .gain{color:#167b58}.intel-footnote{font-size:11px;line-height:1.55;color:var(--muted);margin-top:10px}@media(max-width:760px){.intel-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.risk-panel{margin:0 0 18px;border:1px solid #dce7f4;background:linear-gradient(125deg,#fff 0%,#f5faff 58%,#effbfc 100%)}
+.risk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.risk-level{font-size:12px;font-weight:850;padding:8px 13px;border-radius:30px;background:#e8f3ff;color:#1764a5;border:1px solid #cfe4fa}
+.risk-level[data-level="high"]{background:#fff0f0;color:#b52e42;border-color:#f4c9cf}
+.risk-level[data-level="medium"]{background:#fff7e8;color:#94620d;border-color:#f0dfb7}
+.risk-level[data-level="low"]{background:#e9f8f4;color:#16745e;border-color:#c8eadd}
+.risk-level[data-level="unknown"]{background:#eef3f8;color:#64748b;border-color:#dce4ed}
+.risk-meta{font-size:11px;color:var(--muted);margin:8px 0 13px}
+.risk-alerts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.risk-item{padding:12px 14px;border:1px solid #e4eaf2;border-left:3px solid #7ba7d8;border-radius:11px;background:#fff;min-width:0}
+.risk-item b{display:block;font-size:12px;color:#26344b}
+.risk-item p{margin:5px 0 0;font-size:11px;line-height:1.55;color:#65748a}
+.risk-item.critical{border-left-color:#d65363;background:#fffafa}
+.risk-item.warning{border-left-color:#d6a23f;background:#fffdf7}
+.risk-item.neutral{grid-column:1/-1}
+@media(max-width:650px){.risk-alerts{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -129,6 +147,14 @@
  <div class="hint" id="intelStatus">Загрузи продажи за период и укажи себестоимость товаров, чтобы построить рейтинг.</div>
  <div class="intel-table-wrap" style="margin-top:12px"><table class="intel-table"><thead><tr><th>Товар</th><th>Схема</th><th>Шт.</th><th>Оборот</th><th>Расчётная прибыль</th><th>Маржа</th><th>Рекомендация</th></tr></thead><tbody id="intelRows"><tr><td colspan="7" class="hint">Ожидаем данные за период.</td></tr></tbody></table></div>
  <p class="intel-footnote">Оценка по доставленным продажам, тарифам Seller API и введённым расходам. Товары без себестоимости или полных тарифов исключаются из рейтинга, а не считаются прибыльными с нулевыми затратами. Фактические начисления, возвраты и выплаты Ozon пока не смешиваются с этой оценкой.</p>
+</section>
+
+
+<section class="card risk-panel" id="storeRisk">
+ <div class="risk-head"><div><div class="sectionhead" style="margin:0"><div><h2>Риски магазина</h2><p>Убытки, низкая маржа и изменения удержаний</p></div></div></div><span class="risk-level" id="riskLevel" data-level="unknown">Нет данных</span></div>
+ <div class="risk-meta" id="riskSummary">Загрузи продажи за период и каталог, чтобы оценить риски.</div>
+ <div class="risk-alerts" id="riskAlerts"><article class="risk-item neutral"><b>Ожидаем данные</b><p>Сигналы появятся после расчёта экономики товаров.</p></article></div>
+ <div class="intel-footnote">Риск — индикатор по доступным данным, а не аудит всего магазина. Прибыль по товарам предварительная; изменение удержания отмечается только при сравнении одинакового типа и валюты, если изменение не менее 50% и 100 денежных единиц. Цены автоматически не меняются.</div>
 </section>
 
 <section class="card accrual-panel" id="reconciliationPanel">
@@ -202,6 +228,7 @@
 </main></div>
 <script src="/dashboard/profit-calculator.js"></script>
 <script src="/dashboard/intelligence.js"></script>
+<script src="/dashboard/loss-alerts.js"></script>
 <script>
 (function(){
  const grid=document.getElementById('productGrid'),status=document.querySelector('.status'),notice=document.getElementById('liveNotice');
@@ -300,6 +327,7 @@
    rows.appendChild(tr);
   }
   if(!ranking.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.className='hint';td.textContent='Пока нет товаров с полными тарифами и заполненной себестоимостью.';tr.appendChild(td);rows.appendChild(tr)}
+  window.dispatchEvent(new CustomEvent('ozon:ranking-updated',{detail:ranking}));
   const ex=ranking.excluded;
   set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
  }
@@ -342,7 +370,7 @@
    let r;try{r=await fetch('/api/dashboard',{headers:{Accept:'application/json'},signal:controller.signal})}finally{clearTimeout(timer)}
    const data=await r.json();if(!r.ok)throw new Error(data.detail||'Не удалось загрузить каталог');
    if(data.status!=='ok'||!Array.isArray(data.products))throw new Error('Некорректный ответ Seller API');
-   products=data.products;render();updatePeriodProfit();
+   products=data.products;render();updatePeriodProfit();window.dispatchEvent(new CustomEvent('ozon:catalog-loaded'));
    document.querySelector('[data-catalog-count]').textContent=String(data.products_count);
    const commissionsFbs=products.map(p=>Number(p.sales_percent_fbs)).filter(n=>Number.isFinite(n)&&n>0);
    const commissionsFbo=products.map(p=>Number(p.sales_percent_fbo)).filter(n=>Number.isFinite(n)&&n>0);
