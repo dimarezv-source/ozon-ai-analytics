@@ -170,6 +170,11 @@
         actions.push({level:'warning',impact:hasLift?lift:0,impactLabel:hasLift?'Потенциал +'+money(lift):'',impactKind:'upside',title:'Поднять маржу: '+(item.name||'товар'),detail:'SKU '+(item.sku??'—')+' · маржа '+number(margin)+'%. '+(hasLift?'Сценарный эффект за период: +'+money(lift)+' при тех же продажах. ':'')+'Сверь закупку, рекламу, упаковку и цену.',href:'#unit',link:'Проверить расходы'});
       }
     }
+    const frozen=latestStock&&latestStock.frozen;
+    if(frozen&&Number(frozen.knownValue)>0){
+      const names=(frozen.topItems||[]).slice(0,3).map(item=>item.name+' ('+item.type+')').join(', ');
+      actions.push({level:'warning',impact:Number(frozen.knownValue),impactLabel:'Связано: '+money(frozen.knownValue),impactKind:'tied',title:'Высвободить деньги из залежавшихся остатков',detail:'Позиций: '+number(frozen.positions)+'. Оценочная себестоимость: '+money(frozen.knownValue)+'. '+(names?'В первую очередь проверь: '+names+'. ':'')+(frozen.missingCosts?'Без себестоимости: '+frozen.missingCosts+'. ':'')+'Это оценка вложенной себестоимости, а не гарантированная сумма возврата.',href:'#inventory',link:'Открыть остатки'});
+    }
     for(const item of stock){
       if(item.level==='critical')actions.push({level:'critical',impact:0,title:'Нет доступного остатка · '+item.name,detail:item.type+' · '+(item.sku?'SKU '+item.sku:'товар')+'. Проверь пополнение или доступность товара.',href:'#inventory',link:'Открыть остатки'});
       else if(item.level==='warning')actions.push({level:'warning',impact:0,title:'Запас скоро закончится · '+item.name,detail:item.type+' · доступно '+number(item.available)+' шт. · ориентир '+daysText(item.coverage)+'.',href:'#inventory',link:'Проверить остатки'});
