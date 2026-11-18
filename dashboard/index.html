@@ -361,16 +361,24 @@
  const start=new Date(end);start.setUTCDate(start.getUTCDate()-6);from.value=fmt(start);to.value=fmt(end);
  const safe=v=>v===null||v===undefined||v===''?'—':String(v);
  const money=v=>{if(!v||typeof v!=='object'||!('amount'in v))return null;return safe(v.amount)+' '+safe(v.currency)};
- function components(record){
-  const out=[];
-  for(const [key,value] of Object.entries(record||{})){
-   if(value&&typeof value==='object'&&!Array.isArray(value)){
-    const formatted=money(value);if(formatted)out.push(key+': '+formatted);
-    else if(Array.isArray(value.services))for(const service of value.services){const m=money(service);if(m)out.push(safe(service.name||service.service_name||key)+': '+m)}
-    else if(Array.isArray(value.fees))for(const fee of value.fees){const m=money(fee);if(m)out.push(safe(fee.name||fee.type||key)+': '+m)}
+ function inspectRecord(record){
+  const amounts=[],typeIds=new Set();
+  function walk(value,path){
+   if(Array.isArray(value)){value.forEach((item,index)=>walk(item,path+'['+index+']'));return}
+   if(!value||typeof value!=='object')return;
+   const formatted=money(value);
+   if(formatted){amounts.push(path+': '+formatted);return}
+   for(const [key,child] of Object.entries(value)){
+    if(key==='type_id'&&child!==null&&child!==undefined)typeIds.add(String(child));
+    walk(child,path?path+'.'+key:key);
    }
   }
-  return out.length?out.join('\n'):'Суммы не распознаны — смотри исходную запись';
+  walk(record,'');
+  return {amounts,typeIds:[...typeIds]};
+ }
+ function components(record){
+  const found=inspectRecord(record);
+  return found.amounts.length?found.amounts.join('\\n'):'Суммы не распознаны — смотри исходную запись';
  }
  function cell(tr,value,className){const td=document.createElement('td');td.textContent=value;if(className)td.className=className;tr.appendChild(td);return td}
  async function load(){
@@ -384,12 +392,15 @@
    const types=data.accrual_types||{};tbody.replaceChildren();
    for(const record of (data.accruals||[])){
     const tr=document.createElement('tr');
-    const typeId=record.operation_type_id??record.accrual_type_id??record.type_id??record.operation_type??record.type??'—';
-    const typeInfo=types[String(typeId)]||{};
+    const found=inspectRecord(record);
+    const directType=record.operation_type_id??record.accrual_type_id??record.type_id??record.operation_type??record.type??null;
+    if(directType!==null)found.typeIds.unshift(String(directType));
+    const uniqueTypeIds=[...new Set(found.typeIds)];
+    const typeLabels=uniqueTypeIds.map(id=>types[id]?.name||('ID '+id));
     cell(tr,safe(record.date));
     cell(tr,safe(record.accrued_category||record.category||'—'));
-    const typeCell=cell(tr,safe(typeInfo.name||record.operation_type_name||record.operation_name||typeId));
-    if(!typeInfo.name&&String(typeId)!=='—')typeCell.title='Тип не найден в справочнике Ozon: '+String(typeId);
+    const typeCell=cell(tr,typeLabels.length?typeLabels.join(', '):safe(record.operation_type_name||record.operation_name||'—'));
+    if(uniqueTypeIds.some(id=>!types[id]?.name))typeCell.title='Часть типов отсутствует в справочнике Ozon: '+uniqueTypeIds.filter(id=>!types[id]?.name).join(', ');
     cell(tr,components(record),'amount');
     const detail=cell(tr,'');const details=document.createElement('details');const summaryEl=document.createElement('summary');summaryEl.textContent='Показать JSON';const pre=document.createElement('pre');pre.className='accrual-json';pre.textContent=JSON.stringify(record,null,2);details.append(summaryEl,pre);detail.appendChild(details);
     tbody.appendChild(tr);
