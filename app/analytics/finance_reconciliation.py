@@ -2,7 +2,8 @@
 
 This module never guesses semantic categories from amount sign alone. Unknown
 accrual types remain explicitly unclassified; posting attribution requires an
-exact posting number present in the source record.
+exact posting number present in the source record. Monetary totals are never
+combined across currencies.
 """
 from decimal import Decimal, InvalidOperation
 
@@ -43,6 +44,13 @@ def collect_components(record):
     return found
 
 
+def _serialize_totals(totals, keys):
+    return [
+        {**item, "amount": str(item["amount"])}
+        for _, item in sorted(totals.items(), key=lambda pair: pair[0])
+    ]
+
+
 def normalize_accrual_records(records, type_dictionary=None, delivered_postings=None):
     """Normalize source records without inventing attribution or meanings."""
     types = type_dictionary or {}
@@ -54,9 +62,12 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     }
     output = []
     summary = {}
-    matched_amount = Decimal("0")
-    classified_amount = Decimal("0")
-    total_amount = Decimal("0")
+    fulfillment_totals = {}
+    unmatched_totals = {}
+    currency_totals = {}
+    matched_by_currency = {}
+    known_by_currency = {}
+    total_by_currency = {}
     currencies = set()
 
     for record in records or []:
@@ -76,15 +87,31 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             key = (type_id, currency)
             item = summary.setdefault(key, {"type_id": type_id, "label": label,
                 "currency": currency, "amount": Decimal("0"), "records": 0,
-                "matched_records": 0})
+                "matched_records": 0, "unmatched_records": 0})
             item["amount"] += amount
             item["records"] += 1
-            total_amount += amount
+            currency_totals[currency] = currency_totals.get(currency, Decimal("0")) + amount
+            total_by_currency[currency] = total_by_currency.get(currency, Decimal("0")) + amount
             if label:
-                classified_amount += amount
+                known_by_currency[currency] = known_by_currency.get(currency, Decimal("0")) + amount
             if fulfillment:
                 item["matched_records"] += 1
-                matched_amount += amount
+                matched_by_currency[currency] = matched_by_currency.get(currency, Decimal("0")) + amount
+                fkey = (fulfillment, type_id, currency)
+                target = fulfillment_totals.setdefault(fkey, {
+                    "fulfillment_type": fulfillment, "type_id": type_id,
+                    "label": label, "currency": currency, "amount": Decimal("0"),
+                    "components": 0})
+                target["amount"] += amount
+                target["components"] += 1
+            else:
+                item["unmatched_records"] += 1
+                ukey = (type_id, currency)
+                target = unmatched_totals.setdefault(ukey, {
+                    "type_id": type_id, "label": label, "currency": currency,
+                    "amount": Decimal("0"), "components": 0})
+                target["amount"] += amount
+                target["components"] += 1
             output.append({**component, "label": label,
                 "posting_number": number, "fulfillment_type": fulfillment,
                 "posting_match": "matched" if fulfillment else "unmatched",
@@ -92,13 +119,35 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             if currency:
                 currencies.add(currency)
 
-    serialized = [{**item, "amount": str(item["amount"])}
-        for _, item in sorted(summary.items(), key=lambda x: x[0])]
-    return {"components": output, "summary": serialized,
-        "metrics": {"component_count": len(output),
-            "posting_match_count": sum(1 for row in output if row["posting_match"] == "matched"),
-            "known_type_count": sum(1 for row in output if row["classification"] == "known_type"),
-            "unknown_type_count": sum(1 for row in output if row["classification"] == "unknown_type"),
-            "matched_amount": str(matched_amount), "known_type_amount": str(classified_amount),
-            "total_component_amount": str(total_amount), "currencies": sorted(currencies)},
-        "basis": "Raw source components; type labels only from Ozon dictionary. Posting attribution requires exact delivered posting-number match."}
+    serialized = _serialize_totals(summary, ())
+    for row in serialized:
+        row["amount"] = str(row["amount"])
+    def amounts(values):
+        return {currency: str(amount) for currency, amount in sorted(values.items())}
+    matched_count = sum(1 for row in output if row["posting_match"] == "matched")
+    unknown_count = sum(1 for row in output if row["classification"] == "unknown_type")
+    known_count = len(output) - unknown_count
+    # Legacy scalar totals remain meaningful only when the source uses one currency.
+    single_currency = len(currencies) <= 1
+    return {
+        "components": output,
+        "summary": serialized,
+        "fulfillment_summary": _serialize_totals(fulfillment_totals, ()),
+        "unmatched_summary": _serialize_totals(unmatched_totals, ()),
+        "metrics": {
+            "component_count": len(output),
+            "posting_match_count": matched_count,
+            "posting_unmatched_count": len(output) - matched_count,
+            "posting_match_percent": round(matched_count / len(output) * 100, 2) if output else 0,
+            "known_type_count": known_count,
+            "unknown_type_count": unknown_count,
+            "matched_amount": str(sum(matched_by_currency.values(), Decimal("0"))) if single_currency else None,
+            "known_type_amount": str(sum(known_by_currency.values(), Decimal("0"))) if single_currency else None,
+            "total_component_amount": str(sum(total_by_currency.values(), Decimal("0"))) if single_currency else None,
+            "matched_amount_by_currency": amounts(matched_by_currency),
+            "known_type_amount_by_currency": amounts(known_by_currency),
+            "total_component_amount_by_currency": amounts(total_by_currency),
+            "currencies": sorted(currencies),
+        },
+        "basis": "Raw source components; type labels only from Ozon dictionary. Posting attribution requires exact delivered posting-number match. Amounts are separated by currency.",
+    }
