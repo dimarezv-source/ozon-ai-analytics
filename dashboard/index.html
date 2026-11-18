@@ -185,7 +185,7 @@
    const other=Math.max(0,Number(values.other)||0),taxRate=Math.max(0,Number(values.tax)||0);
    const commissionRate=Number(type==='FBO'?product.sales_percent_fbo:product.sales_percent_fbs);
    const commission=unitPrice*commissionRate/100,acquiring=Number(product.acquiring)||0;
-   const logistics=type==='FBS'?Number(product.delivery_to_customer)+((Number(product.first_mile_min)+Number(product.first_mile_max))/2)+transit:0;
+   const logistics=type==='FBS'?Number(product.delivery_to_customer)+((Number(product.first_mile_min)+Number(product.first_mile_max))/2):0;
    const tax=unitPrice*taxRate/100;
    const transitCost=type==='FBS'?transit:0;
    const unitProfit=unitPrice-commission-acquiring-logistics-cost-pack-ads-other-transitCost-tax;
