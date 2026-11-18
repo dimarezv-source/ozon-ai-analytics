@@ -103,6 +103,28 @@
 
 .inventory-panel{margin:18px 0;overflow:hidden}.inventory-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}.inventory-kpi{background:linear-gradient(145deg,#f1f7ff,#eaf9ff);border:1px solid #dceefa;border-radius:12px;padding:13px}.inventory-kpi small{display:block;color:var(--muted);font-size:11px}.inventory-kpi strong{display:block;font-size:22px;margin-top:6px;font-variant-numeric:tabular-nums}.inventory-status{font-size:12px;color:var(--muted);margin:8px 0}.inventory-table-wrap{overflow:auto}.inventory-table{width:100%;border-collapse:collapse;min-width:720px}.inventory-table th,.inventory-table td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line);font-size:12px}.inventory-table th{color:var(--muted);font-weight:650}.inventory-table td.num{font-variant-numeric:tabular-nums}.stock-signal{display:inline-block;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:750;white-space:nowrap}.stock-signal.critical{background:#fff0f1;color:#b8324b}.stock-signal.warning{background:#fff7e8;color:#93621a}.stock-signal.ok{background:#eaf8f3;color:#16795e}.stock-signal.unknown{background:#eef1f6;color:#667085}.inventory-note{font-size:11px;color:var(--muted);line-height:1.55;margin:12px 0 0}@media(max-width:650px){.inventory-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+/* Compact SKU reconciliation panel — match the dashboard card scale */
+.sku-matrix-panel{margin:0 0 18px;padding:18px 19px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px #202b5010;min-width:0;max-width:100%;overflow:hidden}
+.sku-matrix-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 12px}
+.sku-matrix-title{min-width:0}
+.sku-matrix-title h2{font-size:16px;line-height:1.3;letter-spacing:-.25px;margin:0}
+.sku-matrix-title p{margin:4px 0 0}
+.sku-matrix-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.sku-matrix-actions button{padding:9px 12px;font-size:11px}
+.sku-matrix-actions button.secondary{background:#f7f8fc;border:1px solid var(--line);color:var(--ink)}
+.sku-matrix-actions button:disabled{opacity:.45;cursor:not-allowed}
+.sku-matrix-status{margin:0 0 10px;line-height:1.45}
+.sku-matrix-table-wrap{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:11px;overscroll-behavior:contain}
+.sku-matrix-table{width:100%;border-collapse:separate;border-spacing:0;min-width:680px;font-size:11px}
+.sku-matrix-table th,.sku-matrix-table td{padding:8px 10px;border-bottom:1px solid #edf0f5;text-align:left;vertical-align:middle}
+.sku-matrix-table th{position:sticky;top:0;z-index:1;background:#f7f8fc;color:var(--muted);font-size:9px;letter-spacing:.45px;text-transform:uppercase;white-space:nowrap}
+.sku-matrix-table td{font-variant-numeric:tabular-nums}
+.sku-matrix-table td.num{text-align:right;white-space:nowrap}
+.sku-matrix-table tbody tr:last-child td{border-bottom:0}
+.sku-matrix-table tbody tr:hover{background:#f9fbff}
+.sku-matrix-note{font-size:10px;line-height:1.5;margin:10px 0 0}
+@media(max-width:760px){.sku-matrix-panel{padding:14px}.sku-matrix-heading{align-items:flex-start;flex-direction:column;gap:10px}.sku-matrix-actions{width:100%}.sku-matrix-actions button{flex:1}.sku-matrix-table-wrap{max-height:280px}}
 </style>
 </head>
 <body>
@@ -556,11 +578,11 @@
 </script>
 
 
-<section class="panel" id="skuMatrixPanel">
- <div class="section-heading"><div><h2>Сверка продаж и начислений по SKU</h2><p class="hint">Сопоставление только по точному SKU и схеме FBO/FBS. Валюты не смешиваются.</p></div><div class="actions"><button id="skuMatrixLoad" type="button">Собрать матрицу SKU</button><button id="skuMatrixExport" type="button" disabled>Экспорт CSV</button></div></div>
- <p id="skuMatrixStatus" class="hint" aria-live="polite">Выбери период в блоке финансовой сверки выше и нажми «Собрать матрицу SKU».</p>
- <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Схема</th><th>Продано, шт.</th><th>GMV, оценка</th><th>Возвраты, шт.</th><th>Начисления Ozon по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
- <p class="hint">Важно: GMV рассчитан по цене товара и количеству, возвраты показаны отдельно, а финансовые начисления — только по строкам с явным SKU и точным совпадением отправления. Это не чистая прибыль и не сумма к выплате.</p>
+<section class="sku-matrix-panel" id="skuMatrixPanel">
+ <div class="sku-matrix-heading"><div class="sku-matrix-title"><h2>Сверка продаж и начислений по SKU</h2><p class="hint">Точное сопоставление по SKU и FBO/FBS · валюты раздельно</p></div><div class="sku-matrix-actions"><button id="skuMatrixLoad" type="button">Собрать матрицу</button><button class="secondary" id="skuMatrixExport" type="button" disabled>Экспорт CSV</button></div></div>
+ <p id="skuMatrixStatus" class="hint sku-matrix-status" aria-live="polite">Выбери период в блоке финансовой сверки выше и нажми «Собрать матрицу SKU».</p>
+ <div class="sku-matrix-table-wrap"><table class="sku-matrix-table"><thead><tr><th>SKU</th><th>Схема</th><th>Продано</th><th>GMV · оценка</th><th>Возвраты</th><th>Начисления по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
+ <p class="hint sku-matrix-note">GMV — оценка по цене товара и количеству. Возвраты и начисления показаны отдельно; это не чистая прибыль и не сумма к выплате.</p>
 </section>
 
 <script>
