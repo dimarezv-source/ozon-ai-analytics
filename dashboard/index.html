@@ -7,7 +7,7 @@
 <style>
 :root{--orange:#ff6b35;--orange2:#ff9b54;--cyan:#26c6da;--violet:#8b7cf6;--ink:#171b2d;--muted:#737b91;--line:#e7eaf2;--bg:#f3f5fb;--green:#168b70;--red:#d65363}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-.shell{display:grid;grid-template-columns:228px 1fr;min-height:100vh}.side{background:linear-gradient(165deg,#171b31 0%,#202744 58%,#29264b 100%);color:#fff;padding:26px 18px;display:flex;flex-direction:column;gap:32px}.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:16px}.mark{width:36px;height:36px;background:linear-gradient(135deg,var(--orange),var(--orange2) 58%,var(--cyan));border-radius:11px;display:grid;place-items:center;color:#17191d;font-weight:900;font-size:20px}.subbrand{font-size:10px;color:#aeb2b9;letter-spacing:1.7px;margin:4px 0 0 47px}.navlabel{color:#777e88;font-size:10px;letter-spacing:1.5px;margin:0 10px 10px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;margin:3px 0;color:#bfc3c9;text-decoration:none;border-radius:9px}.nav a.active{background:linear-gradient(100deg,#ff6b352b,#8b7cf629);color:#fff;border-left:3px solid var(--orange);box-shadow:inset 0 0 0 1px #ffffff12}.nav a span{font-size:17px;width:18px;text-align:center}.sidefoot{margin-top:auto;color:#9298a1;font-size:11px;line-height:1.7}.main{padding:28px 34px 50px;max-width:1600px;width:100%;margin:auto;background:radial-gradient(ellipse at 95% 0%,#dff8fa 0,transparent 28%),radial-gradient(ellipse at 0% 35%,#f2eaff 0,transparent 24%)}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:28px}.eyebrow{font-size:11px;letter-spacing:1.6px;color:var(--muted);text-transform:uppercase}.top h1{font-size:27px;letter-spacing:-.8px;margin:5px 0 0}.status{background:#fff;border:1px solid var(--line);border-radius:30px;padding:9px 14px;color:#50565e;font-size:12px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px}.grid{display:grid;gap:14px}.kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:18px}.card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:16px;padding:18px 19px;min-width:0;box-shadow:0 8px 24px #202b5010}.klabel{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}.kvalue{font-size:27px;font-weight:760;letter-spacing:-1px;margin:13px 0 4px}.hint{font-size:11px;color:var(--muted)}.accent{color:var(--orange)}.sectionhead{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:27px 0 13px}.sectionhead h2{font-size:17px;margin:0;letter-spacing:-.3px}.sectionhead p{margin:4px 0 0;color:var(--muted);font-size:12px}.tag{font-size:10px;letter-spacing:.7px;border-radius:30px;padding:6px 10px;background:linear-gradient(100deg,#fff0e8,#f0edff);color:#8b4a8d;font-weight:800}.products{grid-template-columns:1fr 1fr;align-items:stretch}.product{height:100%;display:flex;flex-direction:column}.producttop{min-height:88px;align-items:center}.producttop>div:first-child{flex:1;min-width:0}.product h3{line-height:1.35;min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.price{flex-shrink:0}.product{padding:0;overflow:hidden}.producttop{padding:17px 19px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.sku{font-size:10px;color:var(--muted);letter-spacing:1px}.product h3{font-size:15px;margin:5px 0 0}.price{font-size:22px;font-weight:800;white-space:nowrap}.productbody{padding:17px 19px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:16px}.metric{background:linear-gradient(145deg,#f4f6fc,#edf8fa);border:1px solid #edf0f7;border-radius:11px;padding:10px}.metric small{display:block;color:var(--muted);font-size:10px}.metric b{display:block;font-size:15px;margin-top:5px}.costgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;color:#646b74;font-size:11px;margin-bottom:5px}.field input{width:100%;border:1px solid #e3e6ea;border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da25}.result{margin-top:15px;border-radius:12px;background:linear-gradient(110deg,#202640,#34305b 72%,#23505b);color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px}.result small{display:block;color:#aeb3bb;font-size:10px}.result strong{font-size:22px}.result .pct{font-size:12px;color:#ffc18f}.wide{grid-column:1/-1}.bottom{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.bottom>.card{height:100%;min-width:0;display:flex;flex-direction:column}.bottom>.card .barlist{flex:1;align-content:start}.barlist{display:grid;gap:13px;margin-top:16px}.barrow{display:grid;grid-template-columns:130px 1fr 48px;gap:10px;align-items:center;font-size:12px}.track{height:8px;border-radius:20px;background:#f0f1f3;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--orange2),var(--cyan));border-radius:20px}.alert{background:linear-gradient(110deg,#fff5ee,#fff9f4 55%,#f1faff);border:1px solid #ffe0cf;border-radius:12px;padding:13px 14px;color:#70422f;font-size:12px;margin-top:13px;box-shadow:0 5px 16px #ff9b5410}.alert b{display:block;margin-bottom:4px;color:#3a2418}.note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6}.empty{border:1px dashed #d8dce1;border-radius:11px;padding:17px;color:var(--muted);font-size:12px;text-align:center}.footer{margin-top:22px;color:#8a9098;font-size:10px;display:flex;justify-content:space-between;gap:10px}
+.shell{display:grid;grid-template-columns:228px 1fr;min-height:100vh}.side{background:linear-gradient(165deg,#171b31 0%,#202744 58%,#29264b 100%);color:#fff;padding:26px 18px;display:flex;flex-direction:column;gap:32px}.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:16px}.mark{width:36px;height:36px;background:linear-gradient(135deg,var(--orange),var(--orange2) 58%,var(--cyan));border-radius:11px;display:grid;place-items:center;color:#17191d;font-weight:900;font-size:20px}.subbrand{font-size:10px;color:#aeb2b9;letter-spacing:1.7px;margin:4px 0 0 47px}.navlabel{color:#777e88;font-size:10px;letter-spacing:1.5px;margin:0 10px 10px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;margin:3px 0;color:#bfc3c9;text-decoration:none;border-radius:9px}.nav a.active{background:linear-gradient(100deg,#ff6b352b,#8b7cf629);color:#fff;border-left:3px solid var(--orange);box-shadow:inset 0 0 0 1px #ffffff12}.nav a span{font-size:17px;width:18px;text-align:center}.sidefoot{margin-top:auto;color:#9298a1;font-size:11px;line-height:1.7}.main{padding:28px 34px 50px;max-width:1600px;width:100%;margin:auto;background:radial-gradient(ellipse at 95% 0%,#dff8fa 0,transparent 28%),radial-gradient(ellipse at 0% 35%,#f2eaff 0,transparent 24%)}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:28px}.eyebrow{font-size:11px;letter-spacing:1.6px;color:var(--muted);text-transform:uppercase}.top h1{font-size:27px;letter-spacing:-.8px;margin:5px 0 0}.status{background:#fff;border:1px solid var(--line);border-radius:30px;padding:9px 14px;color:#50565e;font-size:12px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px}.grid{display:grid;gap:14px}.kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:18px}.card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:16px;padding:18px 19px;min-width:0;box-shadow:0 8px 24px #202b5010}.klabel{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}.kvalue{font-size:27px;font-weight:760;letter-spacing:-1px;margin:13px 0 4px}.hint{font-size:11px;color:var(--muted)}.accent{color:var(--orange)}.sectionhead{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:27px 0 13px}.sectionhead h2{font-size:17px;margin:0;letter-spacing:-.3px}.sectionhead p{margin:4px 0 0;color:var(--muted);font-size:12px}.tag{font-size:10px;letter-spacing:.7px;border-radius:30px;padding:6px 10px;background:linear-gradient(100deg,#fff0e8,#f0edff);color:#8b4a8d;font-weight:800}.products{grid-template-columns:1fr 1fr;align-items:stretch}.product{height:100%;display:flex;flex-direction:column}.producttop{min-height:88px;align-items:center}.producttop>div:first-child{flex:1;min-width:0}.product h3{line-height:1.35;min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.price{flex-shrink:0}.product{padding:0;overflow:hidden}.producttop{padding:17px 19px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.sku{font-size:10px;color:var(--muted);letter-spacing:1px}.product h3{font-size:15px;margin:5px 0 0}.price{font-size:22px;font-weight:800;white-space:nowrap}.productbody{padding:17px 19px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:16px}.metric{background:linear-gradient(145deg,#f4f6fc,#edf8fa);border:1px solid #edf0f7;border-radius:11px;padding:10px}.metric small{display:flex;align-items:flex-end;min-height:30px;line-height:1.25;color:var(--muted);font-size:10px}.metric b{display:block;font-size:15px;margin-top:6px;line-height:1.25;font-variant-numeric:tabular-nums}.costgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;color:#646b74;font-size:11px;margin-bottom:5px}.field input{width:100%;border:1px solid #e3e6ea;border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da25}.result{margin-top:15px;border-radius:12px;background:linear-gradient(110deg,#202640,#34305b 72%,#23505b);color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px}.result small{display:block;color:#aeb3bb;font-size:10px}.result strong{font-size:22px}.result .pct{font-size:12px;color:#ffc18f}.wide{grid-column:1/-1}.bottom{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.bottom>.card{height:100%;min-width:0;display:flex;flex-direction:column}.bottom>.card .barlist{flex:1;align-content:start}.barlist{display:grid;gap:13px;margin-top:16px}.barrow{display:grid;grid-template-columns:130px 1fr 48px;gap:10px;align-items:center;font-size:12px}.track{height:8px;border-radius:20px;background:#f0f1f3;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--orange2),var(--cyan));border-radius:20px}.alert{background:linear-gradient(110deg,#fff5ee,#fff9f4 55%,#f1faff);border:1px solid #ffe0cf;border-radius:12px;padding:13px 14px;color:#70422f;font-size:12px;margin-top:13px;box-shadow:0 5px 16px #ff9b5410}.alert b{display:block;margin-bottom:4px;color:#3a2418}.note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6}.empty{border:1px dashed #d8dce1;border-radius:11px;padding:17px;color:var(--muted);font-size:12px;text-align:center}.footer{margin-top:22px;color:#8a9098;font-size:10px;display:flex;justify-content:space-between;gap:10px}
 @media(max-width:1050px){.shell{grid-template-columns:190px 1fr}.main{padding:24px 20px}.kpis{grid-template-columns:repeat(2,1fr)}.products{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}}
 @media(max-width:650px){.shell{display:block}.side{padding:12px 14px;display:block}.brand{display:inline-flex}.subbrand{display:none}.navlabel,.sidefoot{display:none}.nav{display:flex;overflow:auto;margin-top:12px;gap:5px}.nav a{white-space:nowrap;padding:8px 10px;font-size:11px;margin:0}.nav a span{font-size:14px}.main{padding:22px 13px 35px}.top{align-items:flex-start;flex-direction:column;margin-bottom:20px}.top h1{font-size:23px}.kpis{gap:9px}.card{padding:14px}.kvalue{font-size:22px}.producttop{padding:14px}.productbody{padding:14px}.metrics{gap:6px}.metric{padding:8px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric b{font-size:13px}.barrow{grid-template-columns:95px 1fr 42px}.footer{flex-direction:column}}
 
@@ -62,6 +62,26 @@
 @media(max-width:650px){.profit-period-main{align-items:flex-start;flex-direction:column}.profit-period-main .profit-caption{text-align:left}.profit-period-stats{grid-template-columns:1fr 1fr}.profit-stat:last-child{grid-column:1/-1}}
 
 .salesbreak{margin:0 0 16px;display:none}.salesbreak table{width:100%;border-collapse:collapse;font-size:12px}.salesbreak th,.salesbreak td{padding:10px 9px;text-align:left;border-bottom:1px solid var(--line)}.salesbreak th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px}.salesbreak td:last-child,.salesbreak th:last-child{text-align:right}.salesbreak td:nth-last-child(2),.salesbreak th:nth-last-child(2){text-align:right}.salesbreak .muted{color:var(--muted)}@media(max-width:650px){.salesbreak{overflow:auto}.salesbreak table{min-width:520px}}
+
+/* Actual Ozon finance accruals — raw, auditable records */
+.accrual-panel{margin:18px 0;overflow:hidden}
+.accrual-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:14px 0}
+.accrual-toolbar label{display:grid;gap:5px;color:var(--muted);font-size:10px}
+.accrual-toolbar input{border:1px solid #dfe4ee;border-radius:8px;padding:9px 10px;font:inherit;font-size:12px}
+.accrual-toolbar button{border:0;border-radius:9px;padding:10px 15px;background:linear-gradient(110deg,var(--orange),var(--orange2));font-weight:800;cursor:pointer}
+.accrual-toolbar button:disabled{opacity:.6;cursor:wait}
+.accrual-status{font-size:11px;color:var(--muted);margin-left:auto}
+.accrual-status.error{color:var(--red)}
+.accrual-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}
+.accrual-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}
+.accrual-table th,.accrual-table td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.accrual-table th{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);background:#f8f9fc}
+.accrual-table tr:last-child td{border-bottom:0}
+.accrual-table .amount{font-weight:750;font-variant-numeric:tabular-nums;white-space:pre-line}
+.accrual-json{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.5 ui-monospace,monospace;color:#596174;background:#f7f8fc;border-radius:8px;padding:9px}
+.accrual-caveat{font-size:11px;color:var(--muted);line-height:1.55;margin-top:12px}
+@media(max-width:650px){.accrual-status{width:100%;margin:0}}
+
 </style>
 </head>
 <body>
@@ -94,8 +114,43 @@
    <div class="profit-stat"><small>Оборот в расчёте</small><b id="periodProfitRevenue">—</b></div>
    <div class="profit-stat"><small>Учтено товаров</small><b id="periodProfitCoverage">—</b></div>
   </div>
+  <div class="profit-period-stats split-profit">
+   <div class="profit-stat"><small>Прибыль FBO</small><b id="periodProfitFbo">—</b></div>
+   <div class="profit-stat"><small>Прибыль FBS</small><b id="periodProfitFbs">—</b></div>
+   <div class="profit-stat"><small>Оборот FBO / FBS</small><b id="periodRevenueSplit">—</b></div>
+  </div>
   <div class="profit-period-note" id="periodProfitNote">Прибыль появится после загрузки продаж и каталога. Для расчёта используются расходы из карточек юнит-экономики.</div>
  </section>
+ 
+<section class="card accrual-panel" id="financeAccrualPanel">
+ <div class="sectionhead" style="margin:0">
+  <div><h2>Фактические начисления Ozon</h2><p>Данные финансового API · без смешивания с прогнозными тарифами</p></div>
+  <span class="tag">RAW DATA</span>
+ </div>
+ <div class="accrual-toolbar">
+  <label>С <input id="accrualFrom" type="date"></label>
+  <label>По <input id="accrualTo" type="date"></label>
+  <button id="accrualLoad" type="button">Загрузить начисления</button>
+  <span class="accrual-status" id="accrualStatus" role="status">Выбери период до 31 дня.</span>
+ </div>
+ <div id="accrualSummary" class="hint">Начисления ещё не загружались.</div>
+ <div class="accrual-summary-wrap" style="margin-top:14px">
+  <h3 style="margin:0 0 8px;font-size:15px">Сводка по типам начислений</h3>
+  <p class="hint" style="margin:0 0 8px">Сумма только явно связанных компонентов Ozon, отдельно по валютам. Это не прибыль и не выплата.</p>
+  <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Тип</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Компонентов</th></tr></thead><tbody id="accrualFeeSummaryRows"><tr><td colspan="5" class="hint">Сводка появится после загрузки.</td></tr></tbody></table></div>
+ </div>
+ <div class="accrual-summary-wrap" style="margin-top:14px">
+  <h3 style="margin:0 0 8px;font-size:15px">Начисления по отправлениям</h3>
+  <p class="hint" style="margin:0 0 8px">Только записи с явным номером отправления из Ozon. Без номера не распределяем суммы по заказам.</p>
+  <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Схема</th><th>Отправление</th><th>Тип</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Компонентов</th></tr></thead><tbody id="accrualPostingSummaryRows"><tr><td colspan="6" class="hint">Появится после загрузки.</td></tr></tbody></table></div>
+ </div>
+ <div class="accrual-table-wrap" style="margin-top:12px">
+  <table class="accrual-table"><thead><tr><th>Дата</th><th>Категория</th><th>Тип начисления</th><th>Сумма / компоненты</th><th>Исходная запись</th></tr></thead>
+  <tbody id="accrualRows"><tr><td colspan="5" class="hint">Нет загруженных записей.</td></tr></tbody></table>
+ </div>
+ <p class="accrual-caveat">Важно: здесь показаны исходные записи Ozon. Итоговая прибыль пока не рассчитывается по ним: сначала нужно сверить типы начислений, возвраты и удержания с финансовым отчётом кабинета. Неизвестные типы не скрываются и не считаются нулём.</p>
+</section>
+
  <div class="alert" id="liveNotice" style="margin:0 0 18px"><b>Подключаем данные</b>Получаем актуальный каталог и тарифы из Ozon. Расходы, которые ты введёшь, сохраняются в этом браузере.</div>
  <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
  <div class="catalogtools">
@@ -128,6 +183,7 @@
  </section>
  <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
 </main></div>
+<script src="/dashboard/profit-calculator.js"></script>
 <script>
 (function(){
  const grid=document.getElementById('productGrid'),status=document.querySelector('.status'),notice=document.getElementById('liveNotice');
@@ -143,103 +199,89 @@
  function updatePeriodProfit(){
   const box=document.getElementById('periodProfit');
   if(!box||!periodSales)return;
-  const fmt=n=>money(n);
   const totalUnits=Number(periodSales.delivered_units)||0;
   const rows=Array.isArray(periodSales.products)?periodSales.products:[];
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
   if(!totalUnits){
    box.classList.remove('positive','negative');
-   document.getElementById('periodProfitValue').textContent='—';
-   document.getElementById('periodProfitCaption').textContent='За выбранный период доставленных продаж нет';
-   document.getElementById('periodProfitMargin').textContent='—';
-   document.getElementById('periodProfitRevenue').textContent=fmt(0);
-   document.getElementById('periodProfitCoverage').textContent='0 из 0 шт.';
-   document.getElementById('periodProfitNote').textContent='Когда появятся доставленные заказы, здесь рассчитаем прибыль за выбранный период.';
+   set('periodProfitValue','—');set('periodProfitCaption','За выбранный период доставленных продаж нет');
+   set('periodProfitMargin','—');set('periodProfitRevenue',money(0));set('periodProfitCoverage','0 из 0 шт.');
+   set('periodProfitFbo','—');set('periodProfitFbs','—');set('periodRevenueSplit','—');
+   set('periodProfitNote','Когда появятся доставленные заказы, здесь рассчитаем прибыль отдельно для FBO и FBS.');
    return;
   }
   const catalogById=new Map();
-  for(const p of products){
-   for(const field of ['sku','product_id','offer_id']){
-    const value=p[field];
-    if(value!==null&&value!==undefined&&String(value)!=='')catalogById.set(field+':'+String(value),p);
-   }
+  for(const p of products)for(const field of ['sku','product_id','offer_id']){
+   const value=p[field];if(value!==null&&value!==undefined&&String(value)!=='')catalogById.set(field+':'+String(value),p);
   }
   const saved=loadCosts();
-  let profit=0,revenue=0,includedUnits=0,unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0;
+  const totals={FBO:{profit:0,revenue:0,units:0},FBS:{profit:0,revenue:0,units:0}};
+  let unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
   for(const sale of rows){
-   const units=Math.max(0,Number(sale.units)||0);
-   const salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
+   const units=Math.max(0,Number(sale.units)||0),salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
    if(!units)continue;
+   const type=String(sale.fulfillment_type||'').toUpperCase();
+   if(!totals[type]){unknownTypeUnits+=units;continue;}
    if(!salesGmv){unpricedUnits+=units;continue;}
    let product=null;
    for(const field of ['sku','product_id','offer_id']){
-    const value=sale[field];
-    if(value!==null&&value!==undefined&&String(value)!==''){
-     product=catalogById.get(field+':'+String(value));
-     if(product)break;
-    }
+    const value=sale[field];if(value!==null&&value!==undefined&&String(value)!==''){product=catalogById.get(field+':'+String(value));if(product)break;}
    }
    if(!product){unmatchedUnits+=units;continue;}
-   const required=['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max'];
-   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){
-    missingTariffUnits+=units;continue;
-   }
-   const unitPrice=salesGmv/units;
-   const values=saved[safeKey(product)]||{};
-   const cost=Math.max(0,Number(values.cost)||0);
-   const pack=Math.max(0,Number(values.pack)||0);
-   const ads=Math.max(0,Number(values.ads)||0);
-   const transit=Math.max(0,Number(values.transit)||0);
-   const other=Math.max(0,Number(values.other)||0);
-   const taxRate=Math.max(0,Number(values.tax)||0);
-   const commission=unitPrice*Number(product.sales_percent_fbs)/100;
-   const firstMile=(Number(product.first_mile_min)+Number(product.first_mile_max))/2;
-   const tax=unitPrice*taxRate/100;
-   const unitProfit=unitPrice-commission-Number(product.acquiring)-Number(product.delivery_to_customer)-firstMile-cost-pack-ads-transit-other-tax;
-   profit+=unitProfit*units;
-   revenue+=salesGmv;
-   includedUnits+=units;
+   const required=type==='FBO'?['sales_percent_fbo','acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
+   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
+   const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
+   const cost=values.cost??0,pack=values.pack??0;
+   const ads=values.ads??0,transit=values.transit??0;
+   const other=values.other??0,taxRate=values.tax??0;
+   const calculation=window.OzonProfitCalculator.calculateProfit({
+    fulfillmentType:type,unitPrice,product,
+    expenses:{cost,pack,ads,transit,other,tax:taxRate}
+   });
+   if(!calculation.ok){missingTariffUnits+=units;continue;}
+   totals[type].profit+=calculation.profit*units;totals[type].revenue+=salesGmv;totals[type].units+=units;
   }
-  const margin=revenue?profit/revenue*100:0;
-  box.classList.toggle('positive',profit>0);
-  box.classList.toggle('negative',profit<0);
-  document.getElementById('periodProfitValue').textContent=includedUnits?((profit>0?'+':'')+fmt(profit)):'—';
-  document.getElementById('periodProfitCaption').textContent=includedUnits?'За '+periodSales.period.date_from+' — '+periodSales.period.date_to+' · UTC':'Недостаточно данных для расчёта прибыли';
-  document.getElementById('periodProfitMargin').textContent=includedUnits?(margin.toFixed(1).replace('.',',')+'%'):'—';
-  document.getElementById('periodProfitRevenue').textContent=fmt(revenue);
-  document.getElementById('periodProfitCoverage').textContent=includedUnits+' из '+totalUnits+' шт. ('+(includedUnits/totalUnits*100).toFixed(0)+'%)';
-  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits;
-  let note='В расчёте: закупка, упаковка, реклама, транзит, прочие расходы, налог и текущие тарифы Seller API. Незаполненные расходы считаются равными 0 ₽.';
-  note+=' Это предварительная оценка: для FBO/FBS применяются текущие тарифы FBS, первая миля усредняется по диапазону; возвраты и фактические начисления не учтены.';
-  if(excluded)note+=' Исключено из расчёта: '+excluded+' шт. — без цены: '+unpricedUnits+', не найден товар в каталоге: '+unmatchedUnits+', нет тарифов: '+missingTariffUnits+'.';
-  document.getElementById('periodProfitNote').textContent=note;
+  const profit=totals.FBO.profit+totals.FBS.profit,revenue=totals.FBO.revenue+totals.FBS.revenue;
+  const includedUnits=totals.FBO.units+totals.FBS.units,margin=revenue?profit/revenue*100:0;
+  box.classList.toggle('positive',profit>0);box.classList.toggle('negative',profit<0);
+  set('periodProfitValue',includedUnits?((profit>0?'+':'')+money(profit)):'—');
+  set('periodProfitCaption',includedUnits?'За '+periodSales.period.date_from+' — '+periodSales.period.date_to+' · UTC':'Недостаточно данных для расчёта прибыли');
+  set('periodProfitMargin',includedUnits?margin.toFixed(1).replace('.',',')+'%':'—');
+  set('periodProfitRevenue',money(revenue));
+  set('periodProfitCoverage',includedUnits+' из '+totalUnits+' шт. ('+(includedUnits/totalUnits*100).toFixed(0)+'%)');
+  set('periodProfitFbo',totals.FBO.units?((totals.FBO.profit>0?'+':'')+money(totals.FBO.profit)):'Нет данных');
+  set('periodProfitFbs',totals.FBS.units?((totals.FBS.profit>0?'+':'')+money(totals.FBS.profit)):'Нет данных');
+  set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
+  let note='FBO: комиссия FBO + эквайринг + доставка клиенту + транзит (среднее диапазона). FBS: комиссия FBS + эквайринг + первая миля + доставка клиенту + транзит (среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и налог берутся из карточек товара.';
+  note+=' Для FBO отдельные услуги фулфилмента и хранения не включены, если их нет в доступных тарифах API. Возвраты и фактические начисления не учтены.';
+  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
+  if(excluded)note+=' Исключено: '+excluded+' шт. — без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
+  set('periodProfitNote',note);
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
-   const missingTariffs=!price||p.sales_percent_fbs==null||p.acquiring==null||p.delivery_to_customer==null||p.first_mile_min==null||p.first_mile_max==null;
-  const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0,first=(firstMin+firstMax)/2;
+  const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;
   const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
   const card=document.createElement('article');card.className='card product';card.dataset.key=key;
   const fboCommission=Number(p.sales_percent_fbo)||0;
   const metrics=[['Комиссия FBS · '+pct(commission),money(price*commission/100)],['Комиссия FBO · '+pct(fboCommission),p.sales_percent_fbo==null?'—':money(price*fboCommission/100)],['Эквайринг',p.acquiring==null?'—':money(acq)],['Доставка клиенту',p.delivery_to_customer==null?'—':money(delivery)]];
   card.innerHTML='<div class="producttop"><div><div class="sku">SKU '+esc(p.sku??'—')+' · ID '+esc(p.product_id??'—')+'</div><h3>'+esc(p.name||p.offer_id||'Товар без названия')+'</h3><div class="productmeta">Offer ID: '+esc(p.offer_id??'—')+'</div></div><div class="price">'+(price?money(price):'Цена не указана')+'</div></div>'+
-   '<div class="productbody"><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
-   '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Транзит / логистика, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
+   '<div class="productbody"><div class="field"><label>Схема продаж для расчёта</label><select data-fulfillment><option value="FBS">FBS · со своего склада</option><option value="FBO">FBO · со склада Ozon</option></select></div><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
+   '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Доп. логистика сверх тарифов Ozon, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
-   '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+'</div></div>';
+   '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · FBS транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · FBS возврат '+(p.return_flow==null?'—':money(p.return_flow))+' · FBO доставка '+(p.fbo_delivery_to_customer==null?'—':money(p.fbo_delivery_to_customer))+' · FBO транзит '+(p.fbo_transit_min==null?'—':money(p.fbo_transit_min)+'–'+money(p.fbo_transit_max))+' · FBO возврат '+(p.fbo_return_flow==null?'—':money(p.fbo_return_flow))+'</div></div>';
   function calc(){
-   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=Math.max(0,Number(i.value)||0));
-   const fee=price*commission/100+acq+first+delivery;
-   const tax=price*vals.tax/100;
-   const profit=price-fee-vals.cost-vals.pack-vals.ads-vals.transit-vals.other-tax;
-   const margin=price?profit/price*100:0;
-   card.querySelector('[data-out=profit]').textContent=missingTariffs?'Нужны тарифы':price?money(profit):'Нет цены';
-   const out=card.querySelector('[data-out=margin]');out.textContent=missingTariffs?'Неполные данные':price?(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%':'—';out.style.color=missingTariffs?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
+   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));
+   const fulfillmentType=card.querySelector('[data-fulfillment]').value;const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType,unitPrice:price,product:p,expenses:vals});
+   const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
+   card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
+   const out=card.querySelector('[data-out=margin]');out.textContent=!valid?'Неполные данные':(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%';out.style.color=!valid?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
    const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
-   card.dataset.profit=missingTariffs?'':String(profit);card.dataset.margin=missingTariffs?'':String(margin);
+   card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    updatePeriodProfit();
   }
-  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));calc();return card;
+  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
  }
  function render(){
   const q=(document.getElementById('productSearch').value||'').toLowerCase().trim();
@@ -269,8 +311,8 @@
  document.getElementById('refreshCatalog').addEventListener('click',refresh);
  document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров в этом браузере?'))return;localStorage.removeItem(storageKey);render()});
  document.getElementById('exportEconomics').addEventListener('click',()=>{
-  const rows=[['Товар','SKU','Product ID','Offer ID','Цена','Комиссия %','Себестоимость','Упаковка','Реклама','Транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
-  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,p.price,p.sales_percent_fbs,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
+  const rows=[['Товар','SKU','Product ID','Offer ID','Схема','Цена','Комиссия FBS %','Комиссия FBO %','Себестоимость','Упаковка','Реклама','Доп. транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
+  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,card.querySelector('[data-fulfillment]').value,p.price,p.sales_percent_fbs,p.sales_percent_fbo,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
   const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ozon-unit-economics.csv';a.click();URL.revokeObjectURL(url);
  });
@@ -318,4 +360,106 @@
  button.addEventListener('click',load);
 })();
 </script>
+
+<script>
+(function setupFinanceAccruals(){
+ const panel=document.getElementById('financeAccrualPanel');if(!panel)return;
+ const from=document.getElementById('accrualFrom'),to=document.getElementById('accrualTo'),button=document.getElementById('accrualLoad');
+ const status=document.getElementById('accrualStatus'),summary=document.getElementById('accrualSummary'),tbody=document.getElementById('accrualRows');
+ const feeSummaryRows=document.getElementById('accrualFeeSummaryRows');
+ const postingSummaryRows=document.getElementById('accrualPostingSummaryRows');
+ const utcToday=new Date();const fmt=d=>d.toISOString().slice(0,10);
+ const end=new Date(Date.UTC(utcToday.getUTCFullYear(),utcToday.getUTCMonth(),utcToday.getUTCDate()));
+ const start=new Date(end);start.setUTCDate(start.getUTCDate()-6);from.value=fmt(start);to.value=fmt(end);
+ const safe=v=>v===null||v===undefined||v===''?'—':String(v);
+ const numberFormat=v=>new Intl.NumberFormat('ru-RU').format(Number(v)||0);
+ const money=v=>{if(!v||typeof v!=='object'||!('amount'in v))return null;return safe(v.amount)+' '+safe(v.currency)};
+ function inspectRecord(record){
+  const amounts=[],typeIds=new Set();
+  function walk(value,path){
+   if(Array.isArray(value)){value.forEach((item,index)=>walk(item,path+'['+index+']'));return}
+   if(!value||typeof value!=='object')return;
+   const formatted=money(value);
+   if(formatted){amounts.push(path+': '+formatted);return}
+   const hasTypedAccrued=value.type_id!==undefined&&value.accrued&&typeof value.accrued==='object'&&'amount'in value.accrued;
+   for(const [key,child] of Object.entries(value)){
+    if(key==='fee_components'||(hasTypedAccrued&&key==='accrued'))continue;
+    if(key==='type_id'&&child!==null&&child!==undefined)typeIds.add(String(child));
+    walk(child,path?path+'.'+key:key);
+   }
+  }
+  walk(record,'');
+  return {amounts,typeIds:[...typeIds]};
+ }
+ function components(record,types){
+  const paired=Array.isArray(record.fee_components)?record.fee_components:[];
+  const found=inspectRecord(record);
+  const feeLines=paired.map(item=>{
+   const type=types[String(item.type_id)]||{};
+   const label=type.description||type.name||('Тип ID '+item.type_id);
+   return label+': '+safe(item.amount)+' '+safe(item.currency);
+  });
+  const lines=[...feeLines,...found.amounts];
+  return lines.length?lines.join('\n'):'Суммы не распознаны — смотри исходную запись';
+ }
+ function cell(tr,value,className){const td=document.createElement('td');td.textContent=value;if(className)td.className=className;tr.appendChild(td);return td}
+ async function load(){
+  if(!from.value||!to.value){status.textContent='Укажи обе даты.';status.classList.add('error');return}
+  const days=(Date.parse(to.value+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z'))/86400000;
+  if(days<0||days>30){status.textContent='Период должен быть от 1 до 31 дня.';status.classList.add('error');return}
+  button.disabled=true;button.textContent='Загружаю…';status.classList.remove('error');status.textContent='Запрашиваю начисления Ozon…';
+  try{
+   const response=await fetch('/api/finance/accruals?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
+   const data=await response.json();if(!response.ok)throw new Error(data.detail||'Не удалось получить начисления.');
+   let fulfillmentByPosting={},reconciliationWarning='';
+   try{
+    const salesResponse=await fetch('/api/sales?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
+    if(!salesResponse.ok)throw new Error('HTTP '+salesResponse.status);
+    const salesData=await salesResponse.json();
+    for(const item of (salesData.delivered_posting_refs||[])){
+     if(item&&item.posting_number&&['FBO','FBS'].includes(item.fulfillment_type))fulfillmentByPosting[item.posting_number]=item.fulfillment_type;
+    }
+   }catch(_){reconciliationWarning=' Не удалось загрузить продажи для определения FBO/FBS: схема в таблице не подтверждена.';}
+   const types=data.accrual_types||{};tbody.replaceChildren();feeSummaryRows.replaceChildren();postingSummaryRows.replaceChildren();
+   for(const item of (data.posting_fee_summary||[])){
+    const tr=document.createElement('tr');const type=types[String(item.type_id)]||{};
+    cell(tr,fulfillmentByPosting[item.posting_number]||'Не сопоставлено');cell(tr,safe(item.posting_number));cell(tr,type.description||type.name||('Тип ID '+item.type_id));
+    cell(tr,String(item.type_id),'muted');cell(tr,safe(item.currency));cell(tr,safe(item.amount),'amount');
+    cell(tr,numberFormat(item.count));postingSummaryRows.appendChild(tr);
+   }
+   if(!(data.posting_fee_summary||[]).length){const tr=document.createElement('tr');cell(tr,'Нет начислений с явным номером отправления.');tr.firstChild.colSpan=7;postingSummaryRows.appendChild(tr)}
+   
+   for(const item of (data.fee_summary||[])){
+    const tr=document.createElement('tr');const type=types[String(item.type_id)]||{};
+    cell(tr,type.description||type.name||('Тип ID '+item.type_id));
+    cell(tr,String(item.type_id),'muted');cell(tr,safe(item.currency));
+    cell(tr,safe(item.amount),'amount');cell(tr,numberFormat(item.count));feeSummaryRows.appendChild(tr);
+   }
+   if(!(data.fee_summary||[]).length){const tr=document.createElement('tr');cell(tr,'Нет компонентов для сводки.');tr.firstChild.colSpan=5;feeSummaryRows.appendChild(tr)}
+
+   for(const record of (data.accruals||[])){
+    const tr=document.createElement('tr');
+    const found=inspectRecord(record);
+    const directType=record.operation_type_id??record.accrual_type_id??record.type_id??null;
+    if(directType!==null)found.typeIds.unshift(String(directType));
+    const uniqueTypeIds=[...new Set(found.typeIds)];
+    const typeLabels=uniqueTypeIds.map(id=>types[id]?.name||('ID '+id));
+    cell(tr,safe(record.date));
+    cell(tr,safe(record.accrued_category||record.category||'—'));
+    const typeCell=cell(tr,typeLabels.length?typeLabels.join(', '):safe(record.operation_type_name||record.operation_name||'—'));
+    if(uniqueTypeIds.some(id=>!types[id]?.name))typeCell.title='Часть типов отсутствует в справочнике Ozon: '+uniqueTypeIds.filter(id=>!types[id]?.name).join(', ');
+    cell(tr,components(record,types),'amount');
+    const detail=cell(tr,'');const details=document.createElement('details');const summaryEl=document.createElement('summary');summaryEl.textContent='Показать JSON';const pre=document.createElement('pre');pre.className='accrual-json';pre.textContent=JSON.stringify(record,null,2);details.append(summaryEl,pre);detail.appendChild(details);
+    tbody.appendChild(tr);
+   }
+   if(!(data.accruals||[]).length){const tr=document.createElement('tr');cell(tr,'За этот период начислений не найдено.');tr.firstChild.colSpan=5;tbody.appendChild(tr)}
+   summary.textContent='Записей: '+(data.record_count??(data.accruals||[]).length)+' · период: '+data.period.date_from+' — '+data.period.date_to+' · справочник типов: '+Object.keys(types).length;
+   status.textContent='Загружено из Ozon.'+reconciliationWarning;
+  }catch(error){status.textContent=error.message;status.classList.add('error')}
+  finally{button.disabled=false;button.textContent='Загрузить начисления'}
+ }
+ button.addEventListener('click',load);
+})();
+</script>
+
 </body></html>

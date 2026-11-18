@@ -1,0 +1,55 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { calculateProfit } = require('../dashboard/profit-calculator.js');
+const product={
+ sales_percent_fbo:12,sales_percent_fbs:15,acquiring:2,
+ delivery_to_customer:30,first_mile_min:10,first_mile_max:20,
+ transit_min:10,transit_max:20,return_flow:40,
+ fbo_delivery_to_customer:15,fbo_transit_min:5,fbo_transit_max:15,fbo_return_flow:50
+};
+
+test('FBO includes FBO delivery and transit, excludes FBS-only logistics',()=>{
+ const r=calculateProfit({fulfillmentType:'FBO',unitPrice:1000,product,expenses:{cost:500,pack:10,ads:20,transit:0,other:5,tax:6}});
+ assert.equal(r.ok,true);assert.equal(r.deductions.commission,120);
+ assert.equal(r.deductions.firstMile,0);assert.equal(r.deductions.delivery,15);
+ assert.equal(r.deductions.marketplaceTransit,10);assert.equal(r.deductions.additionalTransit,0);
+ assert.equal(r.deductions.tax,60);assert.equal(r.profit,258);
+ assert.equal(r.returnFlowTariff,50);assert.equal(r.returnFlowIncluded,false);
+});
+test('FBS includes first mile, delivery and average transit once',()=>{
+ const r=calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500,pack:10,ads:20,transit:7,other:5,tax:6}});
+ assert.equal(r.ok,true);assert.equal(r.deductions.commission,150);
+ assert.equal(r.deductions.firstMile,15);assert.equal(r.deductions.delivery,30);
+ assert.equal(r.deductions.marketplaceTransit,15);assert.equal(r.deductions.additionalTransit,7);
+ assert.equal(r.deductions.tax,60);assert.equal(r.profit,186);
+});
+test('negative profit remains negative',()=>{
+ const r=calculateProfit({fulfillmentType:'FBS',unitPrice:100,product,expenses:{cost:500}});
+ assert.equal(r.ok,true);assert.equal(r.profit,-477);assert.equal(r.marginPercent,-477);
+});
+test('zero and invalid prices are rejected',()=>{
+ assert.equal(calculateProfit({fulfillmentType:'FBO',unitPrice:0,product}).reason,'invalid_price');
+ assert.equal(calculateProfit({fulfillmentType:'FBO',unitPrice:NaN,product}).reason,'invalid_price');
+});
+test('missing FBS tariffs are rejected',()=>{
+ assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product:{...product,first_mile_max:null}}).reason,'missing_tariff');
+ assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product:{...product,transit_min:null}}).reason,'missing_tariff');
+});
+test('missing FBO tariff is rejected',()=>{
+ assert.equal(calculateProfit({fulfillmentType:'FBO',unitPrice:1000,product:{...product,fbo_delivery_to_customer:null}}).reason,'missing_tariff');
+});
+test('missing commission is rejected',()=>{
+ assert.equal(calculateProfit({fulfillmentType:'FBO',unitPrice:1000,product:{...product,sales_percent_fbo:null}}).reason,'missing_tariff');
+});
+test('negative or nonnumeric expenses are rejected instead of silently clamped',()=>{
+ assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:-10}}).reason,'invalid_expense');
+ assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{ads:'oops'}}).reason,'invalid_expense');
+ assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{tax:101}}).reason,'invalid_expense');
+});
+test('missing return tariff stays unknown and is never charged as zero',()=>{
+ const r=calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product:{...product,return_flow:null}});
+ assert.equal(r.ok,true);assert.equal(r.returnFlowTariff,null);assert.equal(r.returnFlowIncluded,false);
+});
+test('unknown fulfillment is rejected',()=>{
+ assert.equal(calculateProfit({fulfillmentType:'FBY',unitPrice:1000,product}).reason,'unknown_fulfillment');
+});

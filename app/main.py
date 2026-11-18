@@ -26,6 +26,7 @@ app = FastAPI(
 )
 
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
+PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 
 
 def _session_token(username: str, password: str, expires: int) -> str:
@@ -156,10 +157,13 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
     since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     delivered_postings = set()
+    delivered_posting_refs: dict[str, str] = {}
     units = 0
     gmv = Decimal("0")
     unpriced_units = 0
     counts = {"FBO": 0, "FBS": 0}
+    schema_units = {"FBO": 0, "FBS": 0}
+    schema_gmv = {"FBO": Decimal("0"), "FBS": Decimal("0")}
     sku_sales: dict[str, dict] = {}
     try:
         for schema, path in (("FBO", "/v3/posting/fbo/list"), ("FBS", "/v4/posting/fbs/list")):
@@ -183,6 +187,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                     if not number:
                         continue
                     delivered_postings.add(number)
+                    delivered_posting_refs[number] = schema
                     counts[schema] += 1
                     for product in posting.get("products", []):
                         if not isinstance(product, dict):
@@ -192,12 +197,15 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                         except (TypeError, ValueError):
                             quantity = 0
                         units += quantity
+                        schema_units[schema] += quantity
                         sku = str(product.get("sku") or "")
                         product_id = str(product.get("product_id") or "")
                         offer_id = str(product.get("offer_id") or "")
                         name = str(product.get("name") or offer_id or product_id or sku or "Товар без названия")
-                        key = sku or product_id or offer_id or name
+                        product_key = sku or product_id or offer_id or name
+                        key = f"{schema}:{product_key}"
                         row = sku_sales.setdefault(key, {
+                            "fulfillment_type": schema,
                             "sku": sku or None, "product_id": product_id or None,
                             "offer_id": offer_id or None, "name": name,
                             "units": 0, "sales_gmv": Decimal("0"), "unpriced_units": 0,
@@ -209,6 +217,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                                 raise InvalidOperation
                             line_gmv = price * quantity
                             gmv += line_gmv
+                            schema_gmv[schema] += line_gmv
                             row["sales_gmv"] += line_gmv
                         except (InvalidOperation, ValueError, TypeError):
                             unpriced_units += quantity
@@ -230,11 +239,213 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
         return {"status": "ok", "mode": "read-only", "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
                 "sales_gmv": float(gmv), "delivered_units": units, "delivered_postings": len(delivered_postings),
                 "fbo_postings": counts["FBO"], "fbs_postings": counts["FBS"], "unpriced_units": unpriced_units,
+                "fulfillment": {
+                    schema: {"delivered_units": schema_units[schema], "sales_gmv": float(schema_gmv[schema]),
+                             "delivered_postings": counts[schema]}
+                    for schema in ("FBO", "FBS")
+                },
                 "products": product_rows,
+                "delivered_posting_refs": [
+                    {"posting_number": number, "fulfillment_type": schema}
+                    for number, schema in sorted(delivered_posting_refs.items())
+                ],
                 "basis": "Delivered postings at current status; GMV is estimated from item price x quantity before returns and deductions."}
     except Exception as exc:
         logger.exception("Could not retrieve Ozon sales for selected period: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить продажи из Ozon. Проверьте логи сервера.") from None
+
+
+def _extract_fee_components(value: object) -> list[dict]:
+    """Keep each Ozon fee type_id paired with its own accrued money object."""
+    found: list[dict] = []
+
+    def walk(node: object, path: str = "") -> None:
+        if isinstance(node, list):
+            for index, child in enumerate(node):
+                walk(child, f"{path}[{index}]")
+            return
+        if not isinstance(node, dict):
+            return
+
+        accrued = node.get("accrued")
+        type_id = node.get("type_id")
+        if (
+            type_id is not None
+            and isinstance(accrued, dict)
+            and accrued.get("amount") is not None
+        ):
+            found.append({
+                "type_id": str(type_id),
+                "amount": accrued.get("amount"),
+                "currency": accrued.get("currency"),
+                "path": path,
+            })
+            return
+
+        for key, child in node.items():
+            walk(child, f"{path}.{key}" if path else key)
+
+    walk(value)
+    return found
+
+
+def _summarize_fee_components(rows: list[dict]) -> list[dict]:
+    """Aggregate only explicitly paired Ozon fee components; preserve currency and sign."""
+    totals: dict[tuple[str, str], dict] = {}
+    for row in rows:
+        for component in row.get("fee_components", []):
+            if not isinstance(component, dict):
+                continue
+            type_id = str(component.get("type_id") or "")
+            currency = str(component.get("currency") or "")
+            if not type_id or not currency or component.get("amount") is None:
+                continue
+            try:
+                amount = Decimal(str(component["amount"]))
+                if not amount.is_finite():
+                    continue
+            except (InvalidOperation, ValueError, TypeError):
+                continue
+            key = (type_id, currency)
+            item = totals.setdefault(key, {"type_id": type_id, "currency": currency, "amount": Decimal("0"), "count": 0})
+            item["amount"] += amount
+            item["count"] += 1
+    return [
+        {**item, "amount": str(item["amount"])}
+        for _, item in sorted(totals.items(), key=lambda pair: (pair[0][0], pair[0][1]))
+    ]
+
+
+def _summarize_posting_fee_components(rows: list[dict]) -> list[dict]:
+    """Group fee components only when Ozon explicitly supplies a posting number."""
+    totals: dict[tuple[str, str, str], dict] = {}
+    for row in rows:
+        posting = row.get("posting")
+        posting_number = row.get("posting_number")
+        if posting_number in (None, "") and isinstance(posting, dict):
+            posting_number = posting.get("posting_number")
+        if posting_number in (None, ""):
+            continue
+        for component in row.get("fee_components", []):
+            if not isinstance(component, dict):
+                continue
+            type_id = str(component.get("type_id") or "")
+            currency = str(component.get("currency") or "")
+            if not type_id or not currency or component.get("amount") is None:
+                continue
+            try:
+                amount = Decimal(str(component["amount"]))
+                if not amount.is_finite():
+                    continue
+            except (InvalidOperation, ValueError, TypeError):
+                continue
+            key = (str(posting_number), type_id, currency)
+            item = totals.setdefault(key, {
+                "posting_number": str(posting_number), "type_id": type_id,
+                "currency": currency, "amount": Decimal("0"), "count": 0,
+            })
+            item["amount"] += amount
+            item["count"] += 1
+    return [
+        {**item, "amount": str(item["amount"])}
+        for _, item in sorted(totals.items(), key=lambda pair: pair[0])
+    ]
+
+
+def _reconcile_posting_fees(posting_fee_summary: list[dict], delivered_posting_refs: list[dict]) -> list[dict]:
+    """Attach fulfillment only through an exact posting-number match."""
+    fulfillment_by_posting = {
+        str(item["posting_number"]): str(item["fulfillment_type"])
+        for item in delivered_posting_refs
+        if isinstance(item, dict)
+        and item.get("posting_number") not in (None, "")
+        and item.get("fulfillment_type") in ("FBO", "FBS")
+    }
+    return [
+        {
+            **fee,
+            "fulfillment_type": fulfillment_by_posting.get(str(fee.get("posting_number") or "")),
+            "reconciliation_status": "matched" if fulfillment_by_posting.get(str(fee.get("posting_number") or "")) else "unmatched",
+        }
+        for fee in posting_fee_summary
+    ]
+
+
+@app.get("/api/finance/accruals", tags=["dashboard"])
+async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
+    raw_from = request.query_params.get("date_from", "")
+    raw_to = request.query_params.get("date_to", "")
+    try:
+        date_from = date.fromisoformat(raw_from)
+        date_to = date.fromisoformat(raw_to)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
+    if date_to < date_from:
+        raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
+    if (date_to - date_from).days > 30:
+        raise HTTPException(status_code=400, detail="Максимальный период финансовых начислений — 31 день.")
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    try:
+        # Ozon requires sequential calls for this API family. Keep by-day pages
+        # sequential too; never infer totals from forecast tariffs.
+        type_response = await client.execute("finance_accrual_types", {})
+        types = type_response.get("accrual_types", [])
+        if not isinstance(types, list):
+            raise ValueError("Unexpected accrual types response.")
+        type_names = {
+            str(item.get("id")): {
+                "name": item.get("name"),
+                "description": item.get("description"),
+            }
+            for item in types if isinstance(item, dict) and item.get("id") is not None
+        }
+        rows = []
+        day = date_from
+        while day <= date_to:
+            last_id = ""
+            seen_ids = set()
+            for _ in range(200):
+                response = await client.execute(
+                    "finance_accrual_by_day", {"date": day.isoformat(), "last_id": last_id}
+                )
+                page = response.get("accruals", [])
+                if not isinstance(page, list):
+                    raise ValueError("Unexpected accruals response.")
+                for item in page:
+                    if not isinstance(item, dict):
+                        raise ValueError("Unexpected accrual record.")
+                    record = dict(item)
+                    record["date"] = day.isoformat()
+                    record["fee_components"] = _extract_fee_components(record)
+                    rows.append(record)
+                next_id = response.get("last_id") or ""
+                if not next_id:
+                    break
+                if not isinstance(next_id, str) or next_id == last_id or next_id in seen_ids:
+                    raise ValueError("Ozon returned an invalid accrual pagination cursor.")
+                seen_ids.add(next_id)
+                last_id = next_id
+            else:
+                raise ValueError("Accrual pagination safety limit reached.")
+            day += timedelta(days=1)
+        return {
+            "status": "ok",
+            "mode": "read-only",
+            "period": {"date_from": raw_from, "date_to": raw_to},
+            "record_count": len(rows),
+            "accrual_types": type_names,
+            "fee_summary": _summarize_fee_components(rows),
+            "posting_fee_summary": _summarize_posting_fee_components(rows),
+            "accruals": rows,
+            "basis": "Raw Ozon accrual records by calendar day. No forecast tariffs or estimated zero values are mixed into this report.",
+        }
+    except Exception as exc:
+        logger.exception("Could not retrieve Ozon accruals for selected period: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось получить финансовые начисления Ozon. Проверьте логи сервера.") from None
 
 
 @app.get("/health", tags=["system"])
@@ -245,6 +456,11 @@ async def health() -> dict[str, str]:
 @app.get("/dashboard", tags=["dashboard"], include_in_schema=False)
 async def dashboard(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(DASHBOARD_FILE, media_type="text/html")
+
+
+@app.get("/dashboard/profit-calculator.js", tags=["dashboard"], include_in_schema=False)
+async def profit_calculator_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(PROFIT_CALCULATOR_FILE, media_type="application/javascript")
 
 
 @app.get("/api/dashboard", tags=["dashboard"])
@@ -395,6 +611,10 @@ async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
                 "transit_min": commissions.get("fbs_direct_flow_trans_min_amount"),
                 "transit_max": commissions.get("fbs_direct_flow_trans_max_amount"),
                 "return_flow": commissions.get("fbs_return_flow_amount"),
+                "fbo_delivery_to_customer": commissions.get("fbo_deliv_to_customer_amount"),
+                "fbo_transit_min": commissions.get("fbo_direct_flow_trans_min_amount"),
+                "fbo_transit_max": commissions.get("fbo_direct_flow_trans_max_amount"),
+                "fbo_return_flow": commissions.get("fbo_return_flow_amount"),
                 "acquiring": price_record.get("acquiring"),
             })
 
