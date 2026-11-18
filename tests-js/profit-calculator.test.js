@@ -46,6 +46,10 @@ test('negative or nonnumeric expenses are rejected instead of silently clamped',
  assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{ads:'oops'}}).reason,'invalid_expense');
  assert.equal(calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{tax:101}}).reason,'invalid_expense');
 });
+test('missing return tariff stays unknown and is never charged as zero',()=>{
+ const r=calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product:{...product,return_flow:null}});
+ assert.equal(r.ok,true);assert.equal(r.returnFlowTariff,null);assert.equal(r.returnFlowIncluded,false);
+});
 test('unknown fulfillment is rejected',()=>{
  assert.equal(calculateProfit({fulfillmentType:'FBY',unitPrice:1000,product}).reason,'unknown_fulfillment');
 });
