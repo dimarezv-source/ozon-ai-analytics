@@ -26,7 +26,7 @@
    records.push([item.sku,item.schema,item.units,item.gmv,item.returns,...currencies.map(currency=>item.fees.has(currency)?item.fees.get(currency):''),item.feeRecords]);
   }
   const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
-  return '\\uFEFF'+records.map(record=>record.map(quote).join(';')).join('\\r\\n');
+  return String.fromCharCode(0xFEFF)+records.map(record=>record.map(quote).join(';')).join(String.fromCharCode(13,10));
  }
  function downloadCsv(matrix,period){
   const csv=toCsv(matrix,period),blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
