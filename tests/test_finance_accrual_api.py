@@ -49,6 +49,7 @@ def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -
     data = response.json()
     assert data["record_count"] == 2
     assert data["accrual_types"]["7"]["description"] == "Доставка"
+    assert data["fee_summary"] == [{"type_id": "7", "currency": "RUB", "amount": "-10.00", "count": 1}]
     assert [row["date"] for row in data["accruals"]] == ["2026-11-17", "2026-11-17"]
     assert calls == [
         ("finance_accrual_types", {}),
@@ -129,4 +130,28 @@ def test_extract_fee_components_does_not_guess_missing_type_or_amount() -> None:
 
     assert _extract_fee_components(record) == [
         {"type_id": "32", "amount": "-2", "currency": "RUB", "path": "fees[0]"}
+    ]
+
+
+def test_summarize_fee_components_preserves_sign_currency_and_exact_decimal_totals() -> None:
+    from app.main import _summarize_fee_components
+
+    rows = [
+        {"fee_components": [
+            {"type_id": "7", "amount": "-10.10", "currency": "RUB"},
+            {"type_id": "7", "amount": "0.20", "currency": "RUB"},
+            {"type_id": "7", "amount": "-2", "currency": "KZT"},
+        ]},
+        {"fee_components": [
+            {"type_id": "7", "amount": "-0.10", "currency": "RUB"},
+            {"type_id": "8", "amount": "4", "currency": "RUB"},
+            {"type_id": "9", "amount": "NaN", "currency": "RUB"},
+            {"type_id": "10", "amount": "5", "currency": ""},
+        ]},
+    ]
+
+    assert _summarize_fee_components(rows) == [
+        {"type_id": "7", "currency": "KZT", "amount": "-2", "count": 1},
+        {"type_id": "7", "currency": "RUB", "amount": "-10.00", "count": 3},
+        {"type_id": "8", "currency": "RUB", "amount": "4", "count": 1},
     ]
