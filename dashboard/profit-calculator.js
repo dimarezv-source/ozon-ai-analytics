@@ -35,13 +35,14 @@
       additionalTransit:normalized.transit,other:normalized.other,tax
     };
     const total=Object.values(deductions).reduce((sum,value)=>sum+value,0);
+    const profit=Math.round((price-total)*100)/100;
     const returnFlowRaw=type==='FBO'?product.fbo_return_flow:product.return_flow;
     const returnFlow=returnFlowRaw===null||returnFlowRaw===undefined||returnFlowRaw===''?null:Number(returnFlowRaw);
     return {
       ok:true,fulfillmentType:type,unitPrice:price,deductions,
       returnFlowTariff:returnFlow!==null&&Number.isFinite(returnFlow)?returnFlow:null,
       returnFlowIncluded:false,
-      profit:price-total,marginPercent:(price-total)/price*100
+      profit,marginPercent:Math.round(profit/price*10000)/100
     };
   }
   root.OzonProfitCalculator={calculateProfit};
