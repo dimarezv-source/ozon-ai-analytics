@@ -8,12 +8,12 @@
   for(const row of (sales&&sales.products)||[]){if(!row||row.sku==null||row.sku==='')continue;const item=get(row.fulfillment_type,row.sku);item.units+=Math.max(0,Number(row.units)||0);item.gmv+=Math.max(0,Number(row.sales_gmv)||0)}
   for(const row of (finance&&finance.returns_summary)||[]){if(!row||row.sku==null||row.sku==='')continue;const item=get(row.fulfillment_type,row.sku);item.returns+=Math.max(0,Number(row.quantity)||0)}
   let unmatchedFinance=0;
-  for(const row of (finance&&finance.product_fee_summary)||[]){
+  for(const row of (finance&&finance.posting_product_summary)||[]){
    if(!row||!row.sku)continue;
    if(row.fulfillment_type!=='FBO'&&row.fulfillment_type!=='FBS'){unmatchedFinance++;continue}
    const item=get(row.fulfillment_type,row.sku),currency=String(row.currency||'Валюта не указана');
    const amount=Number(row.amount);if(!Number.isFinite(amount))continue;
-   item.fees.set(currency,(item.fees.get(currency)||0)+amount);item.feeRecords+=Number(row.components)||0;
+   item.fees.set(currency,(item.fees.get(currency)||0)+amount);item.feeRecords+=Number(row.records)||0;
   }
   const rows=[...map.values()].sort((a,b)=>a.schema.localeCompare(b.schema)||a.sku.localeCompare(b.sku,undefined,{numeric:true}));
   return {rows,unmatchedFinance};
