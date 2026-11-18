@@ -29,6 +29,7 @@ READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {
         http_method="POST",
     ),
     "product_info_list": ReadOperation(path="/v3/product/info/list", http_method="POST"),
+    "product_info_prices": ReadOperation(path="/v5/product/info/prices", http_method="POST"),
     "finance_accrual_types": ReadOperation(path="/v1/finance/accrual/types", http_method="POST"),
     "finance_accrual_by_day": ReadOperation(path="/v1/finance/accrual/by-day", http_method="POST"),
     "finance_accrual_postings": ReadOperation(path="/v1/finance/accrual/postings", http_method="POST"),
