@@ -82,13 +82,14 @@
 .accrual-caveat{font-size:11px;color:var(--muted);line-height:1.55;margin-top:12px}
 @media(max-width:650px){.accrual-status{width:100%;margin:0}}
 
+.intelligence-panel{margin:0 0 18px}.intel-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.intel-kpi{background:#f7f8fc;border:1px solid var(--line);border-radius:12px;padding:13px}.intel-kpi small{display:block;color:var(--muted);font-size:10px;margin-bottom:7px}.intel-kpi strong{font-size:clamp(17px,2vw,24px);font-weight:850;font-variant-numeric:tabular-nums}.intel-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.intel-table{width:100%;border-collapse:collapse;min-width:760px;font-size:12px}.intel-table th,.intel-table td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}.intel-table th{font-size:10px;letter-spacing:.45px;text-transform:uppercase;color:var(--muted);background:#f8f9fc}.intel-table tr:last-child td{border-bottom:0}.intel-table .num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:750}.intel-table .loss{color:#c2413b}.intel-table .gain{color:#167b58}.intel-footnote{font-size:11px;line-height:1.55;color:var(--muted);margin-top:10px}@media(max-width:760px){.intel-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <div class="shell">
 <aside class="side">
  <div><div class="brand"><div class="mark">O</div><div>OZON AI<br>ANALYTICS</div></div><div class="subbrand">SELLER INTELLIGENCE</div></div>
- <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a></div>
+ <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#intelligence"><span>✦</span>Ozon Intelligence</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a></div>
  <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
 </aside>
 <main class="main">
@@ -122,6 +123,14 @@
   <div class="profit-period-note" id="periodProfitNote">Прибыль появится после загрузки продаж и каталога. Для расчёта используются расходы из карточек юнит-экономики.</div>
  </section>
  
+<section class="card intelligence-panel" id="intelligence">
+ <div class="sectionhead" style="margin:0"><div><h2>Ozon Intelligence · центр прибыли</h2><p>Рейтинг товаров за выбранный период · FBO и FBS отдельно</p></div><span class="tag">SMART RANKING</span></div>
+ <div class="intel-kpis"><div class="intel-kpi"><small>Расчётная прибыль товаров</small><strong id="intelProfit">—</strong></div><div class="intel-kpi"><small>Товаров в рейтинге</small><strong id="intelProducts">—</strong></div><div class="intel-kpi"><small>Покрытие продаж</small><strong id="intelCoverage">—</strong></div><div class="intel-kpi"><small>Убыточных позиций</small><strong id="intelLosses">—</strong></div></div>
+ <div class="hint" id="intelStatus">Загрузи продажи за период и укажи себестоимость товаров, чтобы построить рейтинг.</div>
+ <div class="intel-table-wrap" style="margin-top:12px"><table class="intel-table"><thead><tr><th>Товар</th><th>Схема</th><th>Шт.</th><th>Оборот</th><th>Расчётная прибыль</th><th>Маржа</th><th>Рекомендация</th></tr></thead><tbody id="intelRows"><tr><td colspan="7" class="hint">Ожидаем данные за период.</td></tr></tbody></table></div>
+ <p class="intel-footnote">Оценка по доставленным продажам, тарифам Seller API и введённым расходам. Товары без себестоимости или полных тарифов исключаются из рейтинга, а не считаются прибыльными с нулевыми затратами. Фактические начисления, возвраты и выплаты Ozon пока не смешиваются с этой оценкой.</p>
+</section>
+
 <section class="card accrual-panel" id="financeAccrualPanel">
  <div class="sectionhead" style="margin:0">
   <div><h2>Фактические начисления Ozon</h2><p>Данные финансового API · без смешивания с прогнозными тарифами</p></div>
@@ -184,6 +193,7 @@
  <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
 </main></div>
 <script src="/dashboard/profit-calculator.js"></script>
+<script src="/dashboard/intelligence.js"></script>
 <script>
 (function(){
  const grid=document.getElementById('productGrid'),status=document.querySelector('.status'),notice=document.getElementById('liveNotice');
@@ -208,6 +218,7 @@
    set('periodProfitMargin','—');set('periodProfitRevenue',money(0));set('periodProfitCoverage','0 из 0 шт.');
    set('periodProfitFbo','—');set('periodProfitFbs','—');set('periodRevenueSplit','—');
    set('periodProfitNote','Когда появятся доставленные заказы, здесь рассчитаем прибыль отдельно для FBO и FBS.');
+   renderIntelligence();
    return;
   }
   const catalogById=new Map();
@@ -216,7 +227,7 @@
   }
   const saved=loadCosts();
   const totals={FBO:{profit:0,revenue:0,units:0},FBS:{profit:0,revenue:0,units:0}};
-  let unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
+  let unmatchedUnits=0,missingCostUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
   for(const sale of rows){
    const units=Math.max(0,Number(sale.units)||0),salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
    if(!units)continue;
@@ -231,6 +242,8 @@
    const required=type==='FBO'?['sales_percent_fbo','acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
    if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
    const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
+   const costKnown=values.costConfigured===true||(values.cost!==null&&values.cost!==undefined&&values.cost!==''&&Number(values.cost)>0);
+   if(!costKnown){missingCostUnits+=units;continue;}
    const cost=values.cost??0,pack=values.pack??0;
    const ads=values.ads??0,transit=values.transit??0;
    const other=values.other??0,taxRate=values.tax??0;
@@ -254,16 +267,40 @@
   set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
   let note='FBO: комиссия FBO + эквайринг + доставка клиенту + транзит (среднее диапазона). FBS: комиссия FBS + эквайринг + первая миля + доставка клиенту + транзит (среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и налог берутся из карточек товара.';
   note+=' Для FBO отдельные услуги фулфилмента и хранения не включены, если их нет в доступных тарифах API. Возвраты и фактические начисления не учтены.';
-  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
-  if(excluded)note+=' Исключено: '+excluded+' шт. — без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
+  const excluded=unmatchedUnits+missingCostUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
+  if(excluded)note+=' Исключено: '+excluded+' шт. — без себестоимости: '+missingCostUnits+', без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
   set('periodProfitNote',note);
+  renderIntelligence();
+ }
+  function renderIntelligence(){
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  const rows=document.getElementById('intelRows');if(!rows)return;
+  if(!periodSales||!window.OzonIntelligence||!window.OzonProfitCalculator){
+   set('intelProfit','—');set('intelProducts','—');set('intelCoverage','—');set('intelLosses','—');
+   rows.innerHTML='<tr><td colspan="7" class="hint">Загрузи продажи за выбранный период.</td></tr>';return;
+  }
+  const ranking=window.OzonIntelligence.buildProductRanking(periodSales,products,loadCosts(),window.OzonProfitCalculator);
+  set('intelProfit',ranking.includedUnits?((ranking.estimatedProfit>0?'+':'')+money(ranking.estimatedProfit)):'—');
+  set('intelProducts',String(ranking.items.length));
+  set('intelCoverage',ranking.coveragePercent.toLocaleString('ru-RU',{maximumFractionDigits:1})+'%');
+  set('intelLosses',String(ranking.items.filter(item=>item.profit<0).length));
+  rows.replaceChildren();
+  for(const item of ranking.items){
+   const tr=document.createElement('tr');
+   const values=[item.name+' · SKU '+(item.sku??'—'),item.fulfillmentType,String(item.units),money(item.revenue),(item.profit>0?'+':'')+money(item.profit),(item.marginPercent>0?'+':'')+item.marginPercent.toFixed(1).replace('.',',')+'%',item.recommendation];
+   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===4)td.className='num '+(item.profit<0?'loss':'gain');if(index===2||index===3)td.classList.add('num');tr.appendChild(td)});
+   rows.appendChild(tr);
+  }
+  if(!ranking.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.className='hint';td.textContent='Пока нет товаров с полными тарифами и заполненной себестоимостью.';tr.appendChild(td);rows.appendChild(tr)}
+  const ex=ranking.excluded;
+  set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;
   const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
-  const card=document.createElement('article');card.className='card product';card.dataset.key=key;
+  const card=document.createElement('article');card.className='card product';card.dataset.key=key;card.dataset.costConfigured=(costs.costConfigured===true||(costs.cost!==null&&costs.cost!==undefined&&Number(costs.cost)>0))?'true':'false';
   const fboCommission=Number(p.sales_percent_fbo)||0;
   const metrics=[['Комиссия FBS · '+pct(commission),money(price*commission/100)],['Комиссия FBO · '+pct(fboCommission),p.sales_percent_fbo==null?'—':money(price*fboCommission/100)],['Эквайринг',p.acquiring==null?'—':money(acq)],['Доставка клиенту',p.delivery_to_customer==null?'—':money(delivery)]];
   card.innerHTML='<div class="producttop"><div><div class="sku">SKU '+esc(p.sku??'—')+' · ID '+esc(p.product_id??'—')+'</div><h3>'+esc(p.name||p.offer_id||'Товар без названия')+'</h3><div class="productmeta">Offer ID: '+esc(p.offer_id??'—')+'</div></div><div class="price">'+(price?money(price):'Цена не указана')+'</div></div>'+
@@ -272,7 +309,7 @@
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
    '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · FBS транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · FBS возврат '+(p.return_flow==null?'—':money(p.return_flow))+' · FBO доставка '+(p.fbo_delivery_to_customer==null?'—':money(p.fbo_delivery_to_customer))+' · FBO транзит '+(p.fbo_transit_min==null?'—':money(p.fbo_transit_min)+'–'+money(p.fbo_transit_max))+' · FBO возврат '+(p.fbo_return_flow==null?'—':money(p.fbo_return_flow))+'</div></div>';
   function calc(){
-   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));
+   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));vals.costConfigured=card.dataset.costConfigured==='true';
    const fulfillmentType=card.querySelector('[data-fulfillment]').value;const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType,unitPrice:price,product:p,expenses:vals});
    const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
@@ -281,7 +318,7 @@
    card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    updatePeriodProfit();
   }
-  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
+  card.querySelectorAll('input').forEach(i=>{i.addEventListener('input',()=>{if(i.dataset.key==='cost')card.dataset.costConfigured='true';calc()});if(i.dataset.key==='cost')i.addEventListener('focus',()=>{card.dataset.costConfigured='true';calc()})});card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
  }
  function render(){
   const q=(document.getElementById('productSearch').value||'').toLowerCase().trim();
