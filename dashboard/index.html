@@ -94,6 +94,11 @@
    <div class="profit-stat"><small>Оборот в расчёте</small><b id="periodProfitRevenue">—</b></div>
    <div class="profit-stat"><small>Учтено товаров</small><b id="periodProfitCoverage">—</b></div>
   </div>
+  <div class="profit-period-stats split-profit">
+   <div class="profit-stat"><small>Прибыль FBO</small><b id="periodProfitFbo">—</b></div>
+   <div class="profit-stat"><small>Прибыль FBS</small><b id="periodProfitFbs">—</b></div>
+   <div class="profit-stat"><small>Оборот FBO / FBS</small><b id="periodRevenueSplit">—</b></div>
+  </div>
   <div class="profit-period-note" id="periodProfitNote">Прибыль появится после загрузки продаж и каталога. Для расчёта используются расходы из карточек юнит-экономики.</div>
  </section>
  <div class="alert" id="liveNotice" style="margin:0 0 18px"><b>Подключаем данные</b>Получаем актуальный каталог и тарифы из Ozon. Расходы, которые ты введёшь, сохраняются в этом браузере.</div>
@@ -143,75 +148,64 @@
  function updatePeriodProfit(){
   const box=document.getElementById('periodProfit');
   if(!box||!periodSales)return;
-  const fmt=n=>money(n);
   const totalUnits=Number(periodSales.delivered_units)||0;
   const rows=Array.isArray(periodSales.products)?periodSales.products:[];
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
   if(!totalUnits){
    box.classList.remove('positive','negative');
-   document.getElementById('periodProfitValue').textContent='—';
-   document.getElementById('periodProfitCaption').textContent='За выбранный период доставленных продаж нет';
-   document.getElementById('periodProfitMargin').textContent='—';
-   document.getElementById('periodProfitRevenue').textContent=fmt(0);
-   document.getElementById('periodProfitCoverage').textContent='0 из 0 шт.';
-   document.getElementById('periodProfitNote').textContent='Когда появятся доставленные заказы, здесь рассчитаем прибыль за выбранный период.';
+   set('periodProfitValue','—');set('periodProfitCaption','За выбранный период доставленных продаж нет');
+   set('periodProfitMargin','—');set('periodProfitRevenue',money(0));set('periodProfitCoverage','0 из 0 шт.');
+   set('periodProfitFbo','—');set('periodProfitFbs','—');set('periodRevenueSplit','—');
+   set('periodProfitNote','Когда появятся доставленные заказы, здесь рассчитаем прибыль отдельно для FBO и FBS.');
    return;
   }
   const catalogById=new Map();
-  for(const p of products){
-   for(const field of ['sku','product_id','offer_id']){
-    const value=p[field];
-    if(value!==null&&value!==undefined&&String(value)!=='')catalogById.set(field+':'+String(value),p);
-   }
+  for(const p of products)for(const field of ['sku','product_id','offer_id']){
+   const value=p[field];if(value!==null&&value!==undefined&&String(value)!=='')catalogById.set(field+':'+String(value),p);
   }
   const saved=loadCosts();
-  let profit=0,revenue=0,includedUnits=0,unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0;
+  const totals={FBO:{profit:0,revenue:0,units:0},FBS:{profit:0,revenue:0,units:0}};
+  let unmatchedUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
   for(const sale of rows){
-   const units=Math.max(0,Number(sale.units)||0);
-   const salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
+   const units=Math.max(0,Number(sale.units)||0),salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
    if(!units)continue;
+   const type=String(sale.fulfillment_type||'').toUpperCase();
+   if(!totals[type]){unknownTypeUnits+=units;continue;}
    if(!salesGmv){unpricedUnits+=units;continue;}
    let product=null;
    for(const field of ['sku','product_id','offer_id']){
-    const value=sale[field];
-    if(value!==null&&value!==undefined&&String(value)!==''){
-     product=catalogById.get(field+':'+String(value));
-     if(product)break;
-    }
+    const value=sale[field];if(value!==null&&value!==undefined&&String(value)!==''){product=catalogById.get(field+':'+String(value));if(product)break;}
    }
    if(!product){unmatchedUnits+=units;continue;}
-   const required=['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max'];
-   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){
-    missingTariffUnits+=units;continue;
-   }
-   const unitPrice=salesGmv/units;
-   const values=saved[safeKey(product)]||{};
-   const cost=Math.max(0,Number(values.cost)||0);
-   const pack=Math.max(0,Number(values.pack)||0);
-   const ads=Math.max(0,Number(values.ads)||0);
-   const transit=Math.max(0,Number(values.transit)||0);
-   const other=Math.max(0,Number(values.other)||0);
-   const taxRate=Math.max(0,Number(values.tax)||0);
-   const commission=unitPrice*Number(product.sales_percent_fbs)/100;
-   const firstMile=(Number(product.first_mile_min)+Number(product.first_mile_max))/2;
+   const required=type==='FBO'?['sales_percent_fbo','acquiring']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max'];
+   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
+   const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
+   const cost=Math.max(0,Number(values.cost)||0),pack=Math.max(0,Number(values.pack)||0);
+   const ads=Math.max(0,Number(values.ads)||0),transit=Math.max(0,Number(values.transit)||0);
+   const other=Math.max(0,Number(values.other)||0),taxRate=Math.max(0,Number(values.tax)||0);
+   const commissionRate=Number(type==='FBO'?product.sales_percent_fbo:product.sales_percent_fbs);
+   const commission=unitPrice*commissionRate/100,acquiring=Number(product.acquiring)||0;
+   const logistics=type==='FBS'?Number(product.delivery_to_customer)+((Number(product.first_mile_min)+Number(product.first_mile_max))/2)+transit:0;
    const tax=unitPrice*taxRate/100;
-   const unitProfit=unitPrice-commission-Number(product.acquiring)-Number(product.delivery_to_customer)-firstMile-cost-pack-ads-transit-other-tax;
-   profit+=unitProfit*units;
-   revenue+=salesGmv;
-   includedUnits+=units;
+   const unitProfit=unitPrice-commission-acquiring-logistics-cost-pack-ads-other-tax;
+   totals[type].profit+=unitProfit*units;totals[type].revenue+=salesGmv;totals[type].units+=units;
   }
-  const margin=revenue?profit/revenue*100:0;
-  box.classList.toggle('positive',profit>0);
-  box.classList.toggle('negative',profit<0);
-  document.getElementById('periodProfitValue').textContent=includedUnits?((profit>0?'+':'')+fmt(profit)):'—';
-  document.getElementById('periodProfitCaption').textContent=includedUnits?'За '+periodSales.period.date_from+' — '+periodSales.period.date_to+' · UTC':'Недостаточно данных для расчёта прибыли';
-  document.getElementById('periodProfitMargin').textContent=includedUnits?(margin.toFixed(1).replace('.',',')+'%'):'—';
-  document.getElementById('periodProfitRevenue').textContent=fmt(revenue);
-  document.getElementById('periodProfitCoverage').textContent=includedUnits+' из '+totalUnits+' шт. ('+(includedUnits/totalUnits*100).toFixed(0)+'%)';
-  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits;
-  let note='В расчёте: закупка, упаковка, реклама, транзит, прочие расходы, налог и текущие тарифы Seller API. Незаполненные расходы считаются равными 0 ₽.';
-  note+=' Это предварительная оценка: для FBO/FBS применяются текущие тарифы FBS, первая миля усредняется по диапазону; возвраты и фактические начисления не учтены.';
-  if(excluded)note+=' Исключено из расчёта: '+excluded+' шт. — без цены: '+unpricedUnits+', не найден товар в каталоге: '+unmatchedUnits+', нет тарифов: '+missingTariffUnits+'.';
-  document.getElementById('periodProfitNote').textContent=note;
+  const profit=totals.FBO.profit+totals.FBS.profit,revenue=totals.FBO.revenue+totals.FBS.revenue;
+  const includedUnits=totals.FBO.units+totals.FBS.units,margin=revenue?profit/revenue*100:0;
+  box.classList.toggle('positive',profit>0);box.classList.toggle('negative',profit<0);
+  set('periodProfitValue',includedUnits?((profit>0?'+':'')+money(profit)):'—');
+  set('periodProfitCaption',includedUnits?'За '+periodSales.period.date_from+' — '+periodSales.period.date_to+' · UTC':'Недостаточно данных для расчёта прибыли');
+  set('periodProfitMargin',includedUnits?margin.toFixed(1).replace('.',',')+'%':'—');
+  set('periodProfitRevenue',money(revenue));
+  set('periodProfitCoverage',includedUnits+' из '+totalUnits+' шт. ('+(includedUnits/totalUnits*100).toFixed(0)+'%)');
+  set('periodProfitFbo',totals.FBO.units?((totals.FBO.profit>0?'+':'')+money(totals.FBO.profit)):'Нет данных');
+  set('periodProfitFbs',totals.FBS.units?((totals.FBS.profit>0?'+':'')+money(totals.FBS.profit)):'Нет данных');
+  set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
+  let note='FBO: комиссия FBO + эквайринг; FBS: комиссия FBS + эквайринг + первая миля (среднее диапазона) + доставка клиенту. Себестоимость, упаковка, реклама, прочие расходы и налог берутся из карточек товара.';
+  note+=' Для FBO отдельные услуги фулфилмента и хранения не включены, если их нет в доступных тарифах API. Возвраты и фактические начисления не учтены.';
+  const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
+  if(excluded)note+=' Исключено: '+excluded+' шт. — без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
+  set('periodProfitNote',note);
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
