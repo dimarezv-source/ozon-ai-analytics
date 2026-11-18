@@ -249,6 +249,40 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
         raise HTTPException(status_code=502, detail="Не удалось получить продажи из Ozon. Проверьте логи сервера.") from None
 
 
+def _extract_fee_components(value: object) -> list[dict]:
+    """Keep each Ozon fee type_id paired with its own accrued money object."""
+    found: list[dict] = []
+
+    def walk(node: object, path: str = "") -> None:
+        if isinstance(node, list):
+            for index, child in enumerate(node):
+                walk(child, f"{path}[{index}]")
+            return
+        if not isinstance(node, dict):
+            return
+
+        accrued = node.get("accrued")
+        type_id = node.get("type_id")
+        if (
+            type_id is not None
+            and isinstance(accrued, dict)
+            and accrued.get("amount") is not None
+        ):
+            found.append({
+                "type_id": str(type_id),
+                "amount": accrued.get("amount"),
+                "currency": accrued.get("currency"),
+                "path": path,
+            })
+            return
+
+        for key, child in node.items():
+            walk(child, f"{path}.{key}" if path else key)
+
+    walk(value)
+    return found
+
+
 @app.get("/api/finance/accruals", tags=["dashboard"])
 async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
@@ -298,6 +332,7 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
                         raise ValueError("Unexpected accrual record.")
                     record = dict(item)
                     record["date"] = day.isoformat()
+                    record["fee_components"] = _extract_fee_components(record)
                     rows.append(record)
                 next_id = response.get("last_id") or ""
                 if not next_id or not page:
