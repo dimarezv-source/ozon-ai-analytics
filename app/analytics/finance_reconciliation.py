@@ -75,6 +75,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     product_fee_totals = {}
     matched_by_currency = {}
     known_by_currency = {}
+    unknown_by_currency = {}
     total_by_currency = {}
     currencies = set()
 
@@ -102,6 +103,8 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             total_by_currency[currency_bucket] = total_by_currency.get(currency_bucket, Decimal("0")) + amount
             if label:
                 known_by_currency[currency_bucket] = known_by_currency.get(currency_bucket, Decimal("0")) + amount
+            else:
+                unknown_by_currency[currency_bucket] = unknown_by_currency.get(currency_bucket, Decimal("0")) + amount
             if fulfillment:
                 item["matched_records"] += 1
                 matched_by_currency[currency_bucket] = matched_by_currency.get(currency_bucket, Decimal("0")) + amount
@@ -165,6 +168,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             "total_component_amount": str(sum(total_by_currency.values(), Decimal("0"))) if single_currency else None,
             "matched_amount_by_currency": amounts(matched_by_currency),
             "known_type_amount_by_currency": amounts(known_by_currency),
+            "unknown_type_amount_by_currency": amounts(unknown_by_currency),
             "total_component_amount_by_currency": amounts(total_by_currency),
             "currencies": sorted(currencies),
         },
