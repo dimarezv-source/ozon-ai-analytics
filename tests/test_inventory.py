@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from app.analytics.inventory import fetch_inventory, normalize_stock_items
@@ -27,8 +29,7 @@ def test_normalize_stock_items_handles_invalid_and_negative_quantities():
     }
 
 
-@pytest.mark.asyncio
-async def test_fetch_inventory_paginates():
+def test_fetch_inventory_paginates():
     class FakeClient:
         def __init__(self):
             self.calls = []
@@ -39,7 +40,7 @@ async def test_fetch_inventory_paginates():
             return {"items": [{"product_id": 2, "stocks": [{"type": "fbs", "present": 4, "reserved": 0}]}], "cursor": ""}
 
     client = FakeClient()
-    result = await fetch_inventory(client)
+    result = asyncio.run(fetch_inventory(client))
     assert len(client.calls) == 2
     assert all(call[0] == "product_info_stocks" for call in client.calls)
     assert client.calls[0][1]["filter"]["visibility"] == "ALL"
@@ -47,11 +48,10 @@ async def test_fetch_inventory_paginates():
     assert result["summary"]["FBS"]["available"] == 4
 
 
-@pytest.mark.asyncio
-async def test_fetch_inventory_rejects_repeated_cursor():
+def test_fetch_inventory_rejects_repeated_cursor():
     class FakeClient:
         async def execute(self, operation, payload):
             return {"items": [{"product_id": 1}], "cursor": "same"}
 
     with pytest.raises(ValueError, match="invalid stock pagination cursor"):
-        await fetch_inventory(FakeClient())
+        asyncio.run(fetch_inventory(FakeClient()))
