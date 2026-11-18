@@ -58,17 +58,8 @@ def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
         "FBO": {"delivered_units": 2, "sales_gmv": 201.0, "delivered_postings": 1},
         "FBS": {"delivered_units": 3, "sales_gmv": 301.5, "delivered_postings": 1},
     }
+    # Product rows are sorted by GMV descending, so FBS precedes FBO here.
     assert data["products"] == [
-        {
-            "fulfillment_type": "FBO",
-            "sku": "123",
-            "product_id": "456",
-            "offer_id": "offer-1",
-            "name": "Test product",
-            "units": 2,
-            "sales_gmv": 201.0,
-            "unpriced_units": 0,
-        },
         {
             "fulfillment_type": "FBS",
             "sku": "123",
@@ -77,6 +68,16 @@ def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
             "name": "Test product",
             "units": 3,
             "sales_gmv": 301.5,
+            "unpriced_units": 0,
+        },
+        {
+            "fulfillment_type": "FBO",
+            "sku": "123",
+            "product_id": "456",
+            "offer_id": "offer-1",
+            "name": "Test product",
+            "units": 2,
+            "sales_gmv": 201.0,
             "unpriced_units": 0,
         },
     ]
