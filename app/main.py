@@ -15,6 +15,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import get_settings
 from app.ozon.client import OzonReadOnlyClient
+from app.analytics.inventory import fetch_inventory
 
 logger = logging.getLogger(__name__)
 security = HTTPBasic(auto_error=False)
@@ -29,6 +30,7 @@ DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
 LOSS_ALERTS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "loss-alerts.js"
+INVENTORY_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "inventory.js"
 
 
 def _session_token(username: str, password: str, expires: int) -> str:
@@ -662,6 +664,26 @@ async def intelligence_script(_: None = Depends(require_dashboard_auth)) -> File
 @app.get("/dashboard/loss-alerts.js", tags=["dashboard"], include_in_schema=False)
 async def loss_alerts_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(LOSS_ALERTS_FILE, media_type="application/javascript")
+
+
+
+@app.get("/api/stocks", tags=["dashboard"])
+async def stock_data(_: None = Depends(require_dashboard_auth)) -> dict:
+    """Fetch current FBO/FBS stock quantities from Ozon without changing inventory."""
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured on this server.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    try:
+        return await fetch_inventory(client)
+    except Exception as exc:
+        logger.exception("Could not retrieve Ozon stock levels: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось получить остатки Ozon. Проверьте доступ ключа к информационному методу остатков.") from None
+
+
+@app.get("/dashboard/inventory.js", tags=["dashboard"], include_in_schema=False)
+async def inventory_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(INVENTORY_FILE, media_type="application/javascript")
 
 
 @app.get("/api/dashboard", tags=["dashboard"])
