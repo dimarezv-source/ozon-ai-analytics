@@ -50,3 +50,26 @@ test('accepts explicitly configured zero cost without inventing a purchase budge
  assert.equal(result.missingCostItems,0);
  assert.equal(result.knownUnits,5);
 });
+
+test('flags stock with no sales in the selected period without inventing days since last sale',()=>{
+ const result=window.OzonInventoryPlanner.calculateFrozenStock([
+  {name:'No sales',type:'FBO',available:8,sold:0,periodDays:30,costKey:'a'},
+  {name:'Moving',type:'FBS',available:5,sold:30,periodDays:30,costKey:'b'}
+ ],{a:{cost:100},b:{cost:50}},60);
+ assert.equal(result.items.length,1);assert.equal(result.items[0].reason,'Нет продаж за выбранный период');
+ assert.equal(result.items[0].coverage,null);assert.equal(result.frozenUnits,8);assert.equal(result.frozenValue,800);assert.equal(result.FBO,800);
+});
+test('flags excessive stock coverage and excludes unknown costs from money total',()=>{
+ const result=window.OzonInventoryPlanner.calculateFrozenStock([
+  {name:'Slow seller',type:'FBS',available:40,sold:10,periodDays:30,costKey:'a'},
+  {name:'Unknown cost',type:'FBO',available:12,sold:0,periodDays:30,costKey:'b'}
+ ],{a:{cost:75}},60);
+ assert.equal(result.items.length,2);assert.equal(result.items[0].coverage,120);assert.equal(result.frozenValue,3000);
+ assert.equal(result.missingCostItems,1);assert.equal(result.frozenUnits,52);
+});
+test('does not classify stock as frozen when coverage is at or below threshold',()=>{
+ const result=window.OzonInventoryPlanner.calculateFrozenStock([
+  {name:'Healthy',type:'FBO',available:20,sold:20,periodDays:30,costKey:'a'}
+ ],{a:{cost:10}},60);
+ assert.equal(result.items.length,0);assert.equal(result.frozenValue,0);
+});

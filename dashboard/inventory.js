@@ -3,10 +3,27 @@
  const el=id=>document.getElementById(id);
  const number=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value)||0);
  const fmtDays=value=>Number.isFinite(value)?(value<1?'< 1 дня':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(value)+' дн.'):'—';
- const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0,replenishmentItems:[]};
+ const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0,frozenThresholdDays:60,replenishmentItems:[]};
  const SETTINGS_KEY='ozonInventoryReplenishmentSettings';
  const COSTS_KEY='ozon-ai-analytics-costs-v1';
  const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(Number(value)||0))+' ₽';
+ function calculateFrozenStock(items,costs,thresholdDays){
+  const result={items:[],frozenUnits:0,frozenValue:0,knownValueItems:0,missingCostItems:0,FBO:0,FBS:0};
+  const threshold=Math.max(1,Number(thresholdDays)||60);
+  for(const item of items||[]){
+   const available=Math.max(0,Number(item.available)||0);if(!available)continue;
+   const sold=Math.max(0,Number(item.sold)||0),days=Math.max(0,Number(item.periodDays)||0);
+   const noSales=days>0&&sold===0,coverage=days>0&&sold>0?available/(sold/days):null;
+   if(!noSales&&!(coverage!==null&&coverage>threshold))continue;
+   const saved=(costs||{})[item.costKey]||{},raw=saved.cost,known=saved.costConfigured===true||(raw!==null&&raw!==undefined&&raw!==''&&Number(raw)>0),cost=Number(raw);
+   const costKnown=known&&Number.isFinite(cost)&&cost>=0,value=costKnown?available*cost:null;
+   result.items.push({...item,available,sold,coverage,costKnown,unitCost:costKnown?cost:null,frozenValue:value,reason:noSales?'Нет продаж за выбранный период':'Покрытие больше '+threshold+' дн.'});
+   result.frozenUnits+=available;
+   if(costKnown){result.frozenValue+=value;result.knownValueItems++;if(item.type==='FBO'||item.type==='FBS')result[item.type]+=value}else result.missingCostItems++;
+  }
+  result.items.sort((a,b)=>(b.frozenValue??-1)-(a.frozenValue??-1)||b.available-a.available||a.name.localeCompare(b.name,'ru'));
+  return result;
+ }
  function calculateProcurementBudget(items,costs){
   const result={knownBudget:0,missingCostItems:0,knownUnits:0,unknownUnits:0,FBO:0,FBS:0};
   for(const item of items||[]){
@@ -20,7 +37,7 @@
   }
   return result;
  }
- root.OzonInventoryPlanner={calculateReplenishment,calculateProcurementBudget};
+ root.OzonInventoryPlanner={calculateReplenishment,calculateProcurementBudget,calculateFrozenStock};
  function matches(a,b){
   for(const field of ['sku','product_id','offer_id']){
    const x=a&&a[field],y=b&&b[field];
@@ -45,16 +62,17 @@
   const recommended=Math.max(0,Math.ceil(dailySales*targetDays-available));
   return {ok:true,available,dailySales,daysCover,targetDays,recommended,priority:available===0?'critical':daysCover<=leadDays?'urgent':daysCover<=targetDays?'soon':'normal'};
  }
- root.OzonInventoryPlanner={calculateReplenishment,calculateProcurementBudget};
+ root.OzonInventoryPlanner={calculateReplenishment,calculateProcurementBudget,calculateFrozenStock};
  function loadSettings(){
-  try{const v=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');state.leadDays=Math.max(0,Number(v.leadDays)||0);state.safetyDays=Math.max(0,Number(v.safetyDays)||0)}catch(_){}
-  const lead=el('replenishmentLeadDays'),safety=el('replenishmentSafetyDays');
-  if(lead)lead.value=String(state.leadDays);if(safety)safety.value=String(state.safetyDays);
+  try{const v=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');state.leadDays=Math.max(0,Number(v.leadDays)||0);state.safetyDays=Math.max(0,Number(v.safetyDays)||0);state.frozenThresholdDays=Math.min(3650,Math.max(1,Number(v.frozenThresholdDays)||60))}catch(_){}
+  const lead=el('replenishmentLeadDays'),safety=el('replenishmentSafetyDays'),threshold=el('frozenThresholdDays');
+  if(lead)lead.value=String(state.leadDays);if(safety)safety.value=String(state.safetyDays);if(threshold)threshold.value=String(state.frozenThresholdDays);
  }
  function saveSettings(){
   const lead=el('replenishmentLeadDays'),safety=el('replenishmentSafetyDays');
   state.leadDays=Math.max(0,Number(lead&&lead.value)||0);state.safetyDays=Math.max(0,Number(safety&&safety.value)||0);
-  try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({leadDays:state.leadDays,safetyDays:state.safetyDays}))}catch(_){}
+  const threshold=el('frozenThresholdDays');state.frozenThresholdDays=Math.min(3650,Math.max(1,Number(threshold&&threshold.value)||60));
+  try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({leadDays:state.leadDays,safetyDays:state.safetyDays,frozenThresholdDays:state.frozenThresholdDays}))}catch(_){}
   render();
  }
  function renderReplenishment(products){
@@ -102,6 +120,7 @@
    td.textContent=!days?'Сначала выбери период и загрузи продажи — расчёт пополнения появится здесь.':'Нет позиций FBO/FBS для расчёта.';
    td.className='hint';tr.appendChild(td);body.appendChild(tr);
   }
+  renderFrozenStock(products,days);
   const summary=el('replenishmentSummary');
   if(summary)summary.textContent=days?'Расчёт по '+days+' дн. продаж · срок поставки: '+number(state.leadDays)+' дн. · страховой запас: '+number(state.safetyDays)+' дн.':'Ожидаем данные продаж за выбранный период.';
  }
@@ -115,6 +134,32 @@
   const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='ozon-plan-popolneniya-'+(period.date_from||'period')+'-'+(period.date_to||'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ }
+ function renderFrozenStock(products,days){
+  const body=el('frozenStockRows');if(!body)return;body.replaceChildren();
+  if(!days){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.textContent='Выбери период и загрузи продажи — тогда можно оценить залежавшийся остаток.';td.className='hint';tr.appendChild(td);body.appendChild(tr);return}
+  let savedCosts={};try{savedCosts=JSON.parse(localStorage.getItem(COSTS_KEY)||'{}')}catch(_){}
+  const rows=[];
+  for(const product of products||[]){
+   const catalog=state.products.find(item=>matches(product,item));
+   const name=(catalog&&catalog.name)||product.name||product.offer_id||('Товар '+(product.product_id??''));
+   const costKey=String(product.product_id||product.sku||product.offer_id||'unknown');
+   for(const stock of product.stocks||[]){
+    const type=String(stock.type||'').toUpperCase();if(type!=='FBO'&&type!=='FBS')continue;
+    const present=Math.max(0,Number(stock.present)||0),reserved=Math.max(0,Number(stock.reserved)||0),available=Math.max(0,present-reserved);
+    rows.push({name,type,available,sold:unitsSold(product,type),periodDays:days,costKey,sku:product.sku||'',offer:product.offer_id||''});
+   }
+  }
+  const result=calculateFrozenStock(rows,savedCosts,state.frozenThresholdDays);
+  [['frozenValue',money(result.frozenValue)],['frozenUnits',number(result.frozenUnits)],['frozenPositions',number(result.items.length)],['frozenMissingCosts',number(result.missingCostItems)],['frozenFboValue',money(result.FBO)],['frozenFbsValue',money(result.FBS)]].forEach(([id,value])=>{const node=el(id);if(node)node.textContent=value});
+  for(const item of result.items){
+   const tr=document.createElement('tr'),label=item.name+' · '+(item.sku?'SKU '+item.sku:item.offer);
+   const values=[label,item.type,number(item.available),number(item.sold),item.coverage===null?'Нет продаж':fmtDays(item.coverage),item.costKnown?money(item.unitCost):'Не указана',item.costKnown?money(item.frozenValue):'Не рассчитано',item.reason];
+   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.className='num';if(index===6&&item.costKnown)td.classList.add('frozen-value');tr.appendChild(td)});
+   body.appendChild(tr);
+  }
+  if(!result.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.textContent='По выбранному порогу залежавшихся остатков не найдено.';td.className='hint';tr.appendChild(td);body.appendChild(tr)}
+  const note=el('frozenStockNote');if(note)note.textContent='Проверка по '+days+' дн. продаж. Залежавшимся считается остаток без продаж за выбранный период или с покрытием более '+state.frozenThresholdDays+' дн. Сумма учитывает только заполненную себестоимость; резерв вычтен.';
  }
  function render(){
   if(!state.stock)return;
@@ -173,9 +218,10 @@
   finally{state.loading=false;if(button){button.disabled=false;button.textContent='Обновить остатки'}}
  }
  loadSettings();
- ['replenishmentLeadDays','replenishmentSafetyDays'].forEach(id=>{const input=el(id);if(input)input.addEventListener('change',saveSettings)});
+ ['replenishmentLeadDays','replenishmentSafetyDays','frozenThresholdDays'].forEach(id=>{const input=el(id);if(input)input.addEventListener('change',saveSettings)});
  root.addEventListener('ozon:catalog-loaded',event=>{state.products=Array.isArray(event.detail)?event.detail:[];if(!state.stock)load();else render()});
  root.addEventListener('ozon:sales-loaded',event=>{state.sales=event.detail||null;render()});
+ root.addEventListener('ozon:costs-updated',()=>render());
  const button=el('inventoryRefresh');if(button)button.addEventListener('click',load);
  const exportButton=el('replenishmentExport');if(exportButton)exportButton.addEventListener('click',exportReplenishment);
 })(window);
