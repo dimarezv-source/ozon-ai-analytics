@@ -451,6 +451,47 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
 
 
 
+
+async def _fetch_delivered_posting_refs(client: OzonReadOnlyClient, date_from: date, date_to: date) -> list[dict]:
+    """Fetch exact delivered posting IDs for conservative FBO/FBS fee attribution."""
+    since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    refs = []
+    for schema, operation in (("FBO", "posting_fbo_list"), ("FBS", "posting_fbs_list")):
+        cursor, seen = "", set()
+        for _page in range(5000):
+            payload = {
+                "filter": {"since": since, "to": to},
+                "limit": 100,
+                "cursor": cursor,
+                "sort_dir": "ASC",
+                "with": {"analytics_data": False, "financial_data": False, "legal_info": False},
+            }
+            if schema == "FBS":
+                payload["with"]["barcodes"] = False
+                payload["with"]["translit"] = False
+            response = await client.execute(operation, payload)
+            body = response.get("result", response)
+            if not isinstance(body, dict) or not isinstance(body.get("postings"), list):
+                raise ValueError(f"Unexpected {schema} postings response.")
+            for posting in body["postings"]:
+                if not isinstance(posting, dict) or str(posting.get("status") or "").lower() != "delivered":
+                    continue
+                number = posting.get("posting_number")
+                if number not in (None, ""):
+                    refs.append({"posting_number": str(number), "fulfillment_type": schema})
+            has_next = body.get("has_next", False)
+            next_cursor = body.get("cursor") or ""
+            if not has_next:
+                break
+            if not next_cursor or next_cursor == cursor or next_cursor in seen:
+                raise ValueError(f"{schema}: invalid posting pagination cursor.")
+            seen.add(next_cursor)
+            cursor = next_cursor
+        else:
+            raise ValueError(f"{schema}: posting pagination safety limit reached.")
+    return refs
+
 @app.get("/api/finance/reconciliation", tags=["dashboard"])
 async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Return conservative normalized reconciliation totals, with unknowns exposed."""
@@ -487,10 +528,12 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
                 seen.add(nxt); cursor = nxt
             else: raise ValueError("Pagination safety limit reached")
             day += timedelta(days=1)
-        normalized = normalize_accrual_records(records, dictionary)
+        delivered_postings = await _fetch_delivered_posting_refs(client, date_from, date_to)
+        normalized = normalize_accrual_records(records, dictionary, delivered_postings)
         return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
-                "source_records":len(records), "dictionary":dictionary, **normalized,
-                "notice":"This is classified source accrual data, not net payout or verified product profit. Posting match coverage is not yet connected in this endpoint."}
+                "source_records":len(records), "delivered_posting_count":len(delivered_postings),
+                "dictionary":dictionary, **normalized,
+                "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated."}
     except Exception as exc:
         logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
