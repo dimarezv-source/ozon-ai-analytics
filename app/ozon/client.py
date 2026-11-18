@@ -74,7 +74,7 @@ class OzonReadOnlyClient:
         async with httpx.AsyncClient(
             base_url=self._base_url,
             headers=self._headers,
-            timeout=httpx.Timeout(30.0),
+            timeout=httpx.Timeout(15.0),
         ) as client:
             response = await client.request(
                 operation.http_method,
