@@ -166,6 +166,14 @@
 @media(max-width:650px){.module-manager-head{padding:19px 17px 13px}.module-manager-list{padding:12px 17px}.module-manager-footer{padding:12px 17px 17px}.module-option{padding:11px}.module-manager-head h2{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.module-manager-trigger,.module-option{transition:none}}
 
+
+/* Accessible motion layer: low-amplitude, viewport-triggered reveals */
+.motion-item{opacity:0;transform:translateY(10px);transition:opacity .42s ease,transform .42s cubic-bezier(.2,.7,.2,1);transition-delay:var(--motion-delay,0ms)}
+.motion-item.motion-visible{opacity:1;transform:translateY(0)}
+button,.nav a,.tag{transition:filter .16s ease,transform .16s ease}
+button:hover{filter:brightness(1.04)}
+button:active{transform:translateY(1px)}
+@media(prefers-reduced-motion:reduce){.motion-item{opacity:1;transform:none;transition:none}button,.nav a,.tag{transition:none}}
 </style>
 </head>
 <body>
@@ -359,6 +367,7 @@
  </section>
  <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
 </main></div>
+<script src="/dashboard/motion.js"></script>
 <script src="/dashboard/module-manager.js"></script>
 <script src="/dashboard/profit-calculator.js"></script>
 <script src="/dashboard/intelligence.js"></script>
