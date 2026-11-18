@@ -26,6 +26,10 @@ The API key must have read access to the relevant catalog, finance, FBO posting,
 
 The export reads product IDs from `/v3/product/list`, then enriches them through `/v3/product/info/list` in batches.
 
+## Price and commission export (FBS)
+
+The catalog workflow also requests `/v5/product/info/prices` for the seller's current products. It exports the raw price and commission fields returned by Ozon, including FBS-specific commission fields when available. The workflow is read-only and does not change prices or stocks. If Ozon rejects the method because of API-key role permissions, check that the key has access to this informational method; do not grant write permissions.
+
 ## Finance export
 
 1. Open **Actions → Ozon read-only finance export → Run workflow**.
