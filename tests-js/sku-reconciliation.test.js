@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {buildMatrix}=require('../dashboard/sku-reconciliation.js');
+const {buildMatrix,toCsv}=require('../dashboard/sku-reconciliation.js');
 
 test('joins sales, returns and posting accruals by exact SKU and fulfillment scheme',()=>{
  const result=buildMatrix({products:[
