@@ -411,11 +411,15 @@
   try{
    const response=await fetch('/api/finance/accruals?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
    const data=await response.json();if(!response.ok)throw new Error(data.detail||'Не удалось получить начисления.');
-   let fulfillmentByPosting={};
+   let fulfillmentByPosting={},reconciliationWarning='';
    try{
     const salesResponse=await fetch('/api/sales?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
-    if(salesResponse.ok){const salesData=await salesResponse.json();for(const item of (salesData.delivered_posting_refs||[]))fulfillmentByPosting[item.posting_number]=item.fulfillment_type;}
-   }catch(_){}
+    if(!salesResponse.ok)throw new Error('HTTP '+salesResponse.status);
+    const salesData=await salesResponse.json();
+    for(const item of (salesData.delivered_posting_refs||[])){
+     if(item&&item.posting_number&&['FBO','FBS'].includes(item.fulfillment_type))fulfillmentByPosting[item.posting_number]=item.fulfillment_type;
+    }
+   }catch(_){reconciliationWarning=' Не удалось загрузить продажи для определения FBO/FBS: схема в таблице не подтверждена.';}
    const types=data.accrual_types||{};tbody.replaceChildren();feeSummaryRows.replaceChildren();postingSummaryRows.replaceChildren();
    for(const item of (data.posting_fee_summary||[])){
     const tr=document.createElement('tr');const type=types[String(item.type_id)]||{};
@@ -450,7 +454,7 @@
    }
    if(!(data.accruals||[]).length){const tr=document.createElement('tr');cell(tr,'За этот период начислений не найдено.');tr.firstChild.colSpan=5;tbody.appendChild(tr)}
    summary.textContent='Записей: '+(data.record_count??(data.accruals||[]).length)+' · период: '+data.period.date_from+' — '+data.period.date_to+' · справочник типов: '+Object.keys(types).length;
-   status.textContent='Загружено из Ozon';
+   status.textContent='Загружено из Ozon.'+reconciliationWarning;
   }catch(error){status.textContent=error.message;status.classList.add('error')}
   finally{button.disabled=false;button.textContent='Загрузить начисления'}
  }
