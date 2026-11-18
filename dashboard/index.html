@@ -211,7 +211,7 @@
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
-   const missingTariffs=!price||p.sales_percent_fbs==null||p.acquiring==null||p.delivery_to_customer==null||p.first_mile_min==null||p.first_mile_max==null;
+   const missingTariffs=!price||p.sales_percent_fbs==null||p.acquiring==null||p.delivery_to_customer==null||p.first_mile_min==null||p.first_mile_max==null||p.transit_min==null||p.transit_max==null;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0,first=(firstMin+firstMax)/2;
   const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
   const card=document.createElement('article');card.className='card product';card.dataset.key=key;
