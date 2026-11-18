@@ -157,6 +157,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
     since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     delivered_postings = set()
+    delivered_posting_refs: dict[str, str] = {}
     units = 0
     gmv = Decimal("0")
     unpriced_units = 0
@@ -186,6 +187,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                     if not number:
                         continue
                     delivered_postings.add(number)
+                    delivered_posting_refs[number] = schema
                     counts[schema] += 1
                     for product in posting.get("products", []):
                         if not isinstance(product, dict):
@@ -243,6 +245,10 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                     for schema in ("FBO", "FBS")
                 },
                 "products": product_rows,
+                "delivered_posting_refs": [
+                    {"posting_number": number, "fulfillment_type": schema}
+                    for number, schema in sorted(delivered_posting_refs.items())
+                ],
                 "basis": "Delivered postings at current status; GMV is estimated from item price x quantity before returns and deductions."}
     except Exception as exc:
         logger.exception("Could not retrieve Ozon sales for selected period: %s", type(exc).__name__)
