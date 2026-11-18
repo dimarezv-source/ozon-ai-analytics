@@ -217,13 +217,13 @@
   const fboCommission=Number(p.sales_percent_fbo)||0;
   const metrics=[['Комиссия FBS · '+pct(commission),money(price*commission/100)],['Комиссия FBO · '+pct(fboCommission),p.sales_percent_fbo==null?'—':money(price*fboCommission/100)],['Эквайринг',p.acquiring==null?'—':money(acq)],['Доставка клиенту',p.delivery_to_customer==null?'—':money(delivery)]];
   card.innerHTML='<div class="producttop"><div><div class="sku">SKU '+esc(p.sku??'—')+' · ID '+esc(p.product_id??'—')+'</div><h3>'+esc(p.name||p.offer_id||'Товар без названия')+'</h3><div class="productmeta">Offer ID: '+esc(p.offer_id??'—')+'</div></div><div class="price">'+(price?money(price):'Цена не указана')+'</div></div>'+
-   '<div class="productbody"><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
+   '<div class="productbody"><div class="field"><label>Схема продаж для расчёта</label><select data-fulfillment><option value="FBS">FBS · со своего склада</option><option value="FBO">FBO · со склада Ozon</option></select></div><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
    '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Доп. логистика сверх тарифов Ozon, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
    '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · FBS транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · FBS возврат '+(p.return_flow==null?'—':money(p.return_flow))+' · FBO доставка '+(p.fbo_delivery_to_customer==null?'—':money(p.fbo_delivery_to_customer))+' · FBO транзит '+(p.fbo_transit_min==null?'—':money(p.fbo_transit_min)+'–'+money(p.fbo_transit_max))+' · FBO возврат '+(p.fbo_return_flow==null?'—':money(p.fbo_return_flow))+'</div></div>';
   function calc(){
    const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));
-   const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType:'FBS',unitPrice:price,product:p,expenses:vals});
+   const fulfillmentType=card.querySelector('[data-fulfillment]').value;const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType,unitPrice:price,product:p,expenses:vals});
    const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
    const out=card.querySelector('[data-out=margin]');out.textContent=!valid?'Неполные данные':(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%';out.style.color=!valid?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
@@ -231,7 +231,7 @@
    card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    updatePeriodProfit();
   }
-  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));calc();return card;
+  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
  }
  function render(){
   const q=(document.getElementById('productSearch').value||'').toLowerCase().trim();
@@ -261,8 +261,8 @@
  document.getElementById('refreshCatalog').addEventListener('click',refresh);
  document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров в этом браузере?'))return;localStorage.removeItem(storageKey);render()});
  document.getElementById('exportEconomics').addEventListener('click',()=>{
-  const rows=[['Товар','SKU','Product ID','Offer ID','Цена','Комиссия %','Себестоимость','Упаковка','Реклама','Транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
-  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,p.price,p.sales_percent_fbs,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
+  const rows=[['Товар','SKU','Product ID','Offer ID','Схема','Цена','Комиссия FBS %','Комиссия FBO %','Себестоимость','Упаковка','Реклама','Доп. транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
+  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,card.querySelector('[data-fulfillment]').value,p.price,p.sales_percent_fbs,p.sales_percent_fbo,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
   const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ozon-unit-economics.csv';a.click();URL.revokeObjectURL(url);
  });
