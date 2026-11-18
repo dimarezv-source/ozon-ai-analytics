@@ -139,10 +139,10 @@
       .action-item.critical .action-mark{background:#d65363}.action-item.warning .action-mark{background:#e3a23c}
       .action-item b{display:block;font-size:12px;line-height:1.4}.action-item p{margin:4px 0 0;color:#687087;font-size:11px;line-height:1.5}
       .action-link{color:#5961a7;text-decoration:none;font-size:11px;font-weight:800;white-space:nowrap;padding:5px 0}
-      .action-link:hover{text-decoration:underline}
+      .action-link:hover{text-decoration:underline}\n      .action-meta{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.action-impact{display:inline-block;align-self:center;padding:5px 8px;border-radius:8px;background:#eef8f5;color:#16785d;font-size:10px;font-weight:850;white-space:nowrap}\n      .action-impact.loss{background:#fff0f0;color:#b42335}
       .action-empty{padding:15px;border:1px dashed #d8dce8;border-radius:11px;color:var(--muted);font-size:12px;background:#ffffffa8}
       .action-foot{margin:10px 0 0;color:var(--muted);font-size:10px;line-height:1.5}
-      @media(max-width:760px){.action-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.action-item{grid-template-columns:8px minmax(0,1fr)}.action-link{grid-column:2}}
+      @media(max-width:760px){.action-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.action-item{grid-template-columns:8px minmax(0,1fr)}.action-meta{grid-column:2;justify-content:flex-start}}
     `;
     document.head.appendChild(style);
     const panel=document.createElement('section');panel.className='card action-center';panel.id='actionCenter';
@@ -161,15 +161,21 @@
     const actions=[];
     for(const item of ranked){
       const margin=Number(item.marginPercent),profit=Number(item.profit);
-      if(Number.isFinite(profit)&&profit<0)actions.push({level:'critical',title:'Остановить утечку: '+(item.name||'убыточный товар'),detail:'SKU '+(item.sku??'—')+' · '+item.fulfillmentType+' · расчётный минус '+money(profit)+'. Проверь себестоимость, расходы и целевую цену.',href:'#unit',link:'Открыть юнит-экономику'});
-      else if(Number.isFinite(margin)&&margin<15)actions.push({level:'warning',title:'Поднять маржу: '+(item.name||'товар'),detail:'SKU '+(item.sku??'—')+' · маржа '+number(margin)+'%. Сверь закупку, рекламу, упаковку и цену.',href:'#unit',link:'Проверить расходы'});
+      if(Number.isFinite(profit)&&profit<0){
+        const lift=Number(item.scenarioProfitLift),hasLift=Number.isFinite(lift)&&lift>0;
+        actions.push({level:'critical',impact:hasLift?lift:Math.abs(profit),impactLabel:hasLift?'Потенциал +'+money(lift):'Убыток '+money(Math.abs(profit)),impactKind:hasLift?'upside':'loss',title:'Остановить утечку: '+(item.name||'убыточный товар'),detail:'SKU '+(item.sku??'—')+' · '+item.fulfillmentType+' · расчётный минус '+money(profit)+'. '+(hasLift?'Сценарный эффект за период: +'+money(lift)+' при тех же продажах. ':'')+'Проверь себестоимость, расходы и целевую цену.',href:'#unit',link:'Открыть юнит-экономику'});
+      }
+      else if(Number.isFinite(margin)&&margin<15){
+        const lift=Number(item.scenarioProfitLift),hasLift=Number.isFinite(lift)&&lift>0;
+        actions.push({level:'warning',impact:hasLift?lift:0,impactLabel:hasLift?'Потенциал +'+money(lift):'',impactKind:'upside',title:'Поднять маржу: '+(item.name||'товар'),detail:'SKU '+(item.sku??'—')+' · маржа '+number(margin)+'%. '+(hasLift?'Сценарный эффект за период: +'+money(lift)+' при тех же продажах. ':'')+'Сверь закупку, рекламу, упаковку и цену.',href:'#unit',link:'Проверить расходы'});
+      }
     }
     for(const item of stock){
-      if(item.level==='critical')actions.push({level:'critical',title:'Нет доступного остатка · '+item.name,detail:item.type+' · '+(item.sku?'SKU '+item.sku:'товар')+'. Проверь пополнение или доступность товара.',href:'#inventory',link:'Открыть остатки'});
-      else if(item.level==='warning')actions.push({level:'warning',title:'Запас скоро закончится · '+item.name,detail:item.type+' · доступно '+number(item.available)+' шт. · ориентир '+daysText(item.coverage)+'.',href:'#inventory',link:'Проверить остатки'});
+      if(item.level==='critical')actions.push({level:'critical',impact:0,title:'Нет доступного остатка · '+item.name,detail:item.type+' · '+(item.sku?'SKU '+item.sku:'товар')+'. Проверь пополнение или доступность товара.',href:'#inventory',link:'Открыть остатки'});
+      else if(item.level==='warning')actions.push({level:'warning',impact:0,title:'Запас скоро закончится · '+item.name,detail:item.type+' · доступно '+number(item.available)+' шт. · ориентир '+daysText(item.coverage)+'.',href:'#inventory',link:'Проверить остатки'});
     }
     for(const item of fees){
-      if(item.severity==='critical'||item.severity==='warning')actions.push({level:item.severity,title:item.title,detail:item.detail,href:'#reconciliationPanel',link:'Открыть сверку'});
+      if(item.severity==='critical'||item.severity==='warning')actions.push({level:item.severity,impact:0,title:item.title,detail:item.detail,href:'#reconciliationPanel',link:'Открыть сверку'});
     }
     const critical=actions.filter(x=>x.level==='critical').length,warnings=actions.filter(x=>x.level==='warning').length;
     const set=(id,value)=>{const node=el(id);if(node)node.textContent=value};
@@ -179,21 +185,23 @@
     const level=el('actionLevel');
     if(level){level.dataset.level=critical?'high':warnings?'medium':latestRanking?'low':'unknown';level.textContent=critical?'Нужны действия':warnings?'Есть задачи':latestRanking?'Критичных сигналов нет':'Ожидаем данные'}
     list.replaceChildren();
-    actions.sort((a,b)=>(a.level==='critical'?0:1)-(b.level==='critical'?0:1));
-    for(const item of actions.slice(0,8)){
+    const ordered=root.OzonActionPrioritizer?root.OzonActionPrioritizer.prioritizeActions(actions):actions;
+    for(const item of ordered.slice(0,8)){
       const article=document.createElement('article');article.className='action-item '+item.level;
       const mark=document.createElement('i');mark.className='action-mark';
       const content=document.createElement('div'),heading=document.createElement('b'),copy=document.createElement('p');
       heading.textContent=item.title;copy.textContent=item.detail;content.append(heading,copy);
-      const link=document.createElement('a');link.className='action-link';link.href=item.href;link.textContent=item.link;
-      article.append(mark,content,link);list.appendChild(article);
+      const meta=document.createElement('div');meta.className='action-meta';
+      if(item.impactLabel){const impact=document.createElement('span');impact.className='action-impact'+(item.impactKind==='loss'?' loss':'');impact.textContent=item.impactLabel;meta.appendChild(impact)}
+      const link=document.createElement('a');link.className='action-link';link.href=item.href;link.textContent=item.link;meta.appendChild(link);
+      article.append(mark,content,meta);list.appendChild(article);
     }
     if(!actions.length){
       const empty=document.createElement('div');empty.className='action-empty';
       empty.textContent=latestRanking?'По загруженным данным срочных проблем не найдено. Проверь полноту себестоимости и обнови остатки.':'Для рекомендаций нужны продажи, каталог и заполненная себестоимость.';
       list.appendChild(empty);
     }
-    if(actions.length>8){const more=document.createElement('div');more.className='action-foot';more.textContent='Ещё сигналов: '+(actions.length-8)+'. Полный список смотри в разделах ниже.';list.appendChild(more)}
+    if(ordered.length>8){const more=document.createElement('div');more.className='action-foot';more.textContent='Ещё сигналов: '+(ordered.length-8)+'. Полный список смотри в разделах ниже.';list.appendChild(more)}
   }
 
   root.OzonRiskDashboard={render};
