@@ -310,6 +310,42 @@ def _summarize_fee_components(rows: list[dict]) -> list[dict]:
     ]
 
 
+def _summarize_posting_fee_components(rows: list[dict]) -> list[dict]:
+    """Group fee components only when Ozon explicitly supplies a posting number."""
+    totals: dict[tuple[str, str, str], dict] = {}
+    for row in rows:
+        posting = row.get("posting")
+        posting_number = row.get("posting_number")
+        if posting_number in (None, "") and isinstance(posting, dict):
+            posting_number = posting.get("posting_number")
+        if posting_number in (None, ""):
+            continue
+        for component in row.get("fee_components", []):
+            if not isinstance(component, dict):
+                continue
+            type_id = str(component.get("type_id") or "")
+            currency = str(component.get("currency") or "")
+            if not type_id or not currency or component.get("amount") is None:
+                continue
+            try:
+                amount = Decimal(str(component["amount"]))
+                if not amount.is_finite():
+                    continue
+            except (InvalidOperation, ValueError, TypeError):
+                continue
+            key = (str(posting_number), type_id, currency)
+            item = totals.setdefault(key, {
+                "posting_number": str(posting_number), "type_id": type_id,
+                "currency": currency, "amount": Decimal("0"), "count": 0,
+            })
+            item["amount"] += amount
+            item["count"] += 1
+    return [
+        {**item, "amount": str(item["amount"])}
+        for _, item in sorted(totals.items(), key=lambda pair: pair[0])
+    ]
+
+
 @app.get("/api/finance/accruals", tags=["dashboard"])
 async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
@@ -378,6 +414,7 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
             "record_count": len(rows),
             "accrual_types": type_names,
             "fee_summary": _summarize_fee_components(rows),
+            "posting_fee_summary": _summarize_posting_fee_components(rows),
             "accruals": rows,
             "basis": "Raw Ozon accrual records by calendar day. No forecast tariffs or estimated zero values are mixed into this report.",
         }
