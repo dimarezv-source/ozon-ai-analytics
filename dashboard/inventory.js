@@ -88,7 +88,7 @@
   const rows=[['Товар','SKU','Offer ID','Схема','Доступно, шт.','Продажи в день, шт.','Покрытие, дней','Срок поставки, дней','Страховой запас, дней','Рекомендуемый заказ, шт.','Приоритет']];
   const priority={critical:'Критично',urgent:'Срочно',soon:'Подготовить',normal:'Запас достаточный'};
   items.forEach(item=>rows.push([item.name,item.sku,item.offer,item.type,item.available,Number(item.result.dailySales.toFixed(2)),Number(item.result.daysCover.toFixed(1)),state.leadDays,state.safetyDays,item.result.recommended,priority[item.result.priority]||'']));
-  const csv='\\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+  const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='ozon-plan-popolneniya-'+(period.date_from||'period')+'-'+(period.date_to||'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  }
