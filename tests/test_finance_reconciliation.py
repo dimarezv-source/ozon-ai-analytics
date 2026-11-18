@@ -81,3 +81,35 @@ def test_allows_single_currency_legacy_totals():
     ], {}, [{"posting_number": "FBO-1", "fulfillment_type": "FBO"}])
     assert result["metrics"]["total_component_amount"] == "-5"
     assert result["metrics"]["matched_amount"] == "-5"
+
+
+def test_collects_only_explicit_sku_context_for_product_fee_allocation():
+    record = {
+        "posting_number": "FBS-22",
+        "item_fees": {
+            "sku": 123456,
+            "fees": [
+                {"type_id": 7, "accrued": {"amount": "-12.50", "currency": "RUB"}},
+                {"type_id": 8, "accrued": {"amount": "-2.00", "currency": "RUB"}},
+            ],
+        },
+        "non_item_fee": {
+            "type_id": 9, "accrued": {"amount": "-5.00", "currency": "RUB"}
+        },
+    }
+    result = normalize_accrual_records(
+        [record], {"7": {"name": "Delivery"}, "8": {"name": "Commission"}},
+        [{"posting_number": "FBS-22", "fulfillment_type": "FBS"}],
+    )
+    assert [(row["sku"], row["type_id"], row["amount"]) for row in result["components"]] == [
+        ("123456", "7", Decimal("-12.50")),
+        ("123456", "8", Decimal("-2.00")),
+        (None, "9", Decimal("-5.00")),
+    ]
+    assert [(row["sku"], row["fulfillment_type"], row["type_id"], row["amount"])
+            for row in result["product_fee_summary"]] == [
+        ("123456", "FBS", "7", "-12.50"),
+        ("123456", "FBS", "8", "-2.00"),
+    ]
+    assert result["metrics"]["sku_attributed_count"] == 2
+    assert result["metrics"]["sku_unattributed_count"] == 1
