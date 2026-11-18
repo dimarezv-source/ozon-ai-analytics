@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {buildMatrix}=require('../dashboard/sku-reconciliation.js');
+const {buildMatrix,toCsv}=require('../dashboard/sku-reconciliation.js');
 
 test('joins sales, returns and posting accruals by exact SKU and fulfillment scheme',()=>{
  const result=buildMatrix({products:[
@@ -35,4 +35,22 @@ test('does not guess SKU from product name or include rows without explicit SKU'
  const result=buildMatrix({products:[{name:'same name',units:5,sales_gmv:500,fulfillment_type:'FBO'}]},
   {returns_summary:[{name:'same name',quantity:2,fulfillment_type:'FBO'}]});
  assert.equal(result.rows.length,0);
+});
+
+
+test('exports Excel-compatible UTF-8 CSV with separate currency columns',()=>{
+ const matrix={rows:[
+  {sku:'55',schema:'FBO',units:4,gmv:1250.5,returns:1,fees:new Map([['RUB',-12.5],['KZT',30]]),feeRecords:3},
+  {sku:'56',schema:'FBS',units:2,gmv:500,returns:0,fees:new Map([['RUB',5]]),feeRecords:1}
+ ]};
+ const csv=toCsv(matrix,{date_from:'2026-11-01',date_to:'2026-11-07'});
+ assert.ok(csv.startsWith(String.fromCharCode(0xFEFF)));
+ assert.ok(csv.includes('"Начисления KZT";"Начисления RUB"'));
+ assert.ok(csv.includes('"55";"FBO";"4";"1250.5";"1";"30";"-12.5";"3"'));
+ assert.ok(csv.includes('"56";"FBS";"2";"500";"0";"";"5";"1"'));
+});
+
+test('CSV escaping protects quotes, delimiters and line breaks',()=>{
+ const csv=toCsv({rows:[{sku:'sku;"x"'+String.fromCharCode(10)+'next',schema:'FBO',units:1,gmv:2,returns:0,fees:new Map(),feeRecords:0}]});
+ assert.ok(csv.includes('"sku;""x""'+String.fromCharCode(10)+'next"'));
 });

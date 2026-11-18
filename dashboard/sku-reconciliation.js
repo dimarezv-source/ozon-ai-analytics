@@ -18,6 +18,23 @@
   const rows=[...map.values()].sort((a,b)=>a.schema.localeCompare(b.schema)||a.sku.localeCompare(b.sku,undefined,{numeric:true}));
   return {rows,unmatchedFinance};
  }
+ function toCsv(matrix,period){
+  const currencies=[...new Set((matrix.rows||[]).flatMap(item=>[...item.fees.keys()]))].sort((a,b)=>a.localeCompare(b));
+  const header=['SKU','Схема','Продано, шт.','GMV, оценка','Возвраты, шт.',...currencies.map(currency=>'Начисления '+currency),'Финансовых строк'];
+  const records=[header];
+  for(const item of matrix.rows||[]){
+   records.push([item.sku,item.schema,item.units,item.gmv,item.returns,...currencies.map(currency=>item.fees.has(currency)?item.fees.get(currency):''),item.feeRecords]);
+  }
+  const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  return String.fromCharCode(0xFEFF)+records.map(record=>record.map(quote).join(';')).join(String.fromCharCode(13,10));
+ }
+ function downloadCsv(matrix,period){
+  const csv=toCsv(matrix,period),blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  const from=(period&&period.date_from)||'period',to=(period&&period.date_to)||'period';
+  link.href=url;link.download='ozon-sku-reconciliation-'+from+'_'+to+'.csv';
+  document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
  function render(matrix){
   const body=el('skuMatrixRows');if(!body)return;body.replaceChildren();
   for(const item of matrix.rows){
@@ -29,24 +46,28 @@
   }
   if(!matrix.rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='Нет общих строк по SKU. Проверь выбранный период и наличие SKU в ответах Ozon.';tr.appendChild(td);body.appendChild(tr)}
  }
+ let lastMatrix=null,lastPeriod=null;
  async function load(){
   const from=el('reconFrom'),to=el('reconTo'),button=el('skuMatrixLoad'),status=el('skuMatrixStatus');
   if(!from||!to||!from.value||!to.value||to.value<from.value){status.textContent='Проверь даты периода выше.';status.classList.add('error');return}
   const days=(Date.parse(to.value+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z'))/86400000;
   if(days>30){status.textContent='Для финансовой сверки выбери период не более 31 дня.';status.classList.add('error');return}
-  button.disabled=true;button.textContent='Собираю…';status.classList.remove('error');status.textContent='Загружаю продажи и финансовую сверку…';
+  lastMatrix=null;lastPeriod=null;const exportButton=el('skuMatrixExport');if(exportButton)exportButton.disabled=true;button.disabled=true;button.textContent='Собираю…';status.classList.remove('error');status.textContent='Загружаю продажи и финансовую сверку…';
   try{
    const query='?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value);
    const responses=await Promise.all([fetch('/api/sales'+query,{headers:{Accept:'application/json'}}),fetch('/api/finance/reconciliation'+query,{headers:{Accept:'application/json'}})]);
    const data=await Promise.all(responses.map(async response=>{const body=await response.json();if(!response.ok)throw new Error(body.detail||'Ошибка загрузки данных Ozon');return body}));
-   const matrix=buildMatrix(data[0],data[1]);render(matrix);
+   const matrix=buildMatrix(data[0],data[1]);lastMatrix=matrix;lastPeriod={date_from:from.value,date_to:to.value};render(matrix);if(exportButton)exportButton.disabled=!matrix.rows.length;
    const matched=matrix.rows.filter(row=>row.feeRecords>0).length;
    status.textContent='Готово · SKU в матрице: '+matrix.rows.length+' · SKU с финансовыми строками: '+matched+' · групп начислений без точного FBO/FBS совпадения: '+matrix.unmatchedFinance+'. GMV — оценка по цене товара; начисления показаны отдельно по валютам.';
   }catch(error){status.textContent=String(error.message||'Не удалось собрать сверку');status.classList.add('error')}
   finally{button.disabled=false;button.textContent='Собрать матрицу SKU'}
  }
- const api={buildMatrix};
+ const api={buildMatrix,toCsv};
  root.OzonSkuReconciliation=api;
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  const button=typeof document!=='undefined'?el('skuMatrixLoad'):null;if(button)button.addEventListener('click',load);
+ const exportButton=typeof document!=='undefined'?el('skuMatrixExport'):null;
+ if(exportButton)exportButton.addEventListener('click',()=>{if(!lastMatrix||!lastMatrix.rows.length)return;downloadCsv(lastMatrix,lastPeriod)});
+ ['reconFrom','reconTo'].forEach(id=>{const field=typeof document!=='undefined'?el(id):null;if(field)field.addEventListener('change',()=>{if(exportButton)exportButton.disabled=true;lastMatrix=null;lastPeriod=null})});
 })(typeof window!=='undefined'?window:globalThis);
