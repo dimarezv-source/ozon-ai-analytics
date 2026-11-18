@@ -139,7 +139,7 @@
       .action-item.critical .action-mark{background:#d65363}.action-item.warning .action-mark{background:#e3a23c}
       .action-item b{display:block;font-size:12px;line-height:1.4}.action-item p{margin:4px 0 0;color:#687087;font-size:11px;line-height:1.5}
       .action-link{color:#5961a7;text-decoration:none;font-size:11px;font-weight:800;white-space:nowrap;padding:5px 0}
-      .action-link:hover{text-decoration:underline}\n      .action-meta{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.action-impact{display:inline-block;align-self:center;padding:5px 8px;border-radius:8px;background:#eef8f5;color:#16785d;font-size:10px;font-weight:850;white-space:nowrap}\n      .action-impact.loss{background:#fff0f0;color:#b42335}
+      .action-link:hover{text-decoration:underline}\n      .action-meta{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.action-impact{display:inline-block;align-self:center;padding:5px 8px;border-radius:8px;background:#eef8f5;color:#16785d;font-size:10px;font-weight:850;white-space:nowrap}\n      .action-impact.loss{background:#fff0f0;color:#b42335}.action-impact.tied{background:#f0edff;color:#6253a5}
       .action-empty{padding:15px;border:1px dashed #d8dce8;border-radius:11px;color:var(--muted);font-size:12px;background:#ffffffa8}
       .action-foot{margin:10px 0 0;color:var(--muted);font-size:10px;line-height:1.5}
       @media(max-width:760px){.action-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.action-item{grid-template-columns:8px minmax(0,1fr)}.action-meta{grid-column:2;justify-content:flex-start}}
@@ -192,7 +192,7 @@
       const content=document.createElement('div'),heading=document.createElement('b'),copy=document.createElement('p');
       heading.textContent=item.title;copy.textContent=item.detail;content.append(heading,copy);
       const meta=document.createElement('div');meta.className='action-meta';
-      if(item.impactLabel){const impact=document.createElement('span');impact.className='action-impact'+(item.impactKind==='loss'?' loss':'');impact.textContent=item.impactLabel;meta.appendChild(impact)}
+      if(item.impactLabel){const impact=document.createElement('span');impact.className='action-impact'+(item.impactKind==='loss'?' loss':item.impactKind==='tied'?' tied':'');impact.textContent=item.impactLabel;meta.appendChild(impact)}
       const link=document.createElement('a');link.className='action-link';link.href=item.href;link.textContent=item.link;meta.appendChild(link);
       article.append(mark,content,meta);list.appendChild(article);
     }
