@@ -1,6 +1,35 @@
 (function setupReconciliation(){
  const from=document.getElementById('reconFrom'),to=document.getElementById('reconTo'),btn=document.getElementById('reconLoad'),status=document.getElementById('reconStatus'),rows=document.getElementById('reconRows');
  if(!from||!to||!btn)return;
+ const exportBtn=document.getElementById('reconExport');let lastData=null;
+ function csvCell(value){return '"'+String(value??'').replace(/"/g,'""')+'"'}
+ function buildCsv(data){
+  const lines=[['Раздел','Поле 1','Поле 2','Поле 3','Поле 4','Поле 5','Поле 6','Поле 7','Поле 8']];
+  const add=(section,values)=>lines.push([section,...values].concat(Array(Math.max(0,8-values.length)).fill('')));
+  add('Период',[data.period?.date_from,data.period?.date_to]);
+  const m=data.metrics||{};
+  add('Показатели',['Компонентов',m.component_count,'Известных типов',m.known_type_count,'Неизвестных типов',m.unknown_type_count,'Совпадение, %',m.posting_match_percent]);
+  add('Показатели',['Совпало компонентов',m.posting_match_count,'Без совпадения',m.posting_unmatched_count,'С явным SKU',m.sku_attributed_count,'Без SKU',m.sku_unattributed_count]);
+  const groups=[
+   ['Сводка по типам',data.summary||[],r=>[r.label,r.type_id,r.currency,r.amount,r.records,r.matched_records,r.unmatched_records]],
+   ['По схеме FBO/FBS',data.fulfillment_summary||[],r=>[r.fulfillment_type,r.label,r.type_id,r.currency,r.amount,r.components]],
+   ['Без распределения',data.unmatched_summary||[],r=>[r.label,r.type_id,r.currency,r.amount,r.components]],
+   ['Комиссии с SKU',data.product_fee_summary||[],r=>[r.fulfillment_type,r.sku,r.offer_id,r.label,r.type_id,r.currency,r.amount,r.components]],
+   ['Начисления по отправлениям',data.posting_product_summary||[],r=>[r.fulfillment_type,r.sku,r.label,r.type_id,r.currency,r.amount,r.records,r.reported_quantity]],
+   ['Возвраты',data.returns_summary||[],r=>[r.name,r.fulfillment_type,r.sku,r.return_type,r.quantity,r.currency,r.returned_value,r.priced_quantity]],
+   ['Исходные компоненты',data.components||[],r=>[r.posting_number,r.fulfillment_type,r.sku,r.label,r.type_id,r.currency,r.amount,r.posting_match]]
+  ];
+  for(const [section,items,project] of groups){add(section,['','','']);for(const item of items)add(section,project(item))}
+  return String.fromCharCode(65279)+lines.map(row=>row.map(csvCell).join(';')).join(String.fromCharCode(13,10));
+ }
+ function exportCsv(){
+  if(!lastData)return;
+  const blob=new Blob([buildCsv(lastData)],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='ozon-finance-reconciliation-'+(lastData.period?.date_from||'from')+'_'+(lastData.period?.date_to||'to')+'.csv';
+  document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
+ if(exportBtn)exportBtn.addEventListener('click',exportCsv);
+
  const today=new Date(),end=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate())),start=new Date(end);start.setUTCDate(start.getUTCDate()-6);
  from.value=start.toISOString().slice(0,10);to.value=end.toISOString().slice(0,10);
  const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)||0);
@@ -8,10 +37,10 @@
  async function load(){
   if(!from.value||!to.value||to.value<from.value){status.textContent='Проверь даты.';status.classList.add('error');return}
   const days=(Date.parse(to.value+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z'))/86400000;if(days>30){status.textContent='Период не должен превышать 31 день.';status.classList.add('error');return}
-  btn.disabled=true;btn.textContent='Сверяю…';status.classList.remove('error');status.textContent='Последовательно запрашиваю финансовый API Ozon…';
+  lastData=null;if(exportBtn)exportBtn.disabled=true;btn.disabled=true;btn.textContent='Сверяю…';status.classList.remove('error');status.textContent='Последовательно запрашиваю финансовый API Ozon…';
   try{
    const r=await fetch('/api/finance/reconciliation?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}}),d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка финансового API');
-   rows.replaceChildren();
+   lastData=d;if(exportBtn)exportBtn.disabled=false;\n   rows.replaceChildren();
    for(const item of (d.summary||[])){const tr=document.createElement('tr');cell(tr,item.label||'Неизвестный тип');cell(tr,item.type_id,'muted');cell(tr,item.currency||'Неизвестна');cell(tr,fmt(item.amount),'amount');cell(tr,item.records);rows.appendChild(tr)}
    if(!d.summary?.length){const tr=document.createElement('tr');cell(tr,'Компоненты за период не найдены.');tr.firstChild.colSpan=5;rows.appendChild(tr)}
    const fboRows=document.getElementById('reconFulfillmentRows'),unmatchedRows=document.getElementById('reconUnmatchedRows');fboRows.replaceChildren();unmatchedRows.replaceChildren();
