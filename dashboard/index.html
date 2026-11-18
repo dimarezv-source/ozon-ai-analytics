@@ -368,8 +368,9 @@
    if(!value||typeof value!=='object')return;
    const formatted=money(value);
    if(formatted){amounts.push(path+': '+formatted);return}
+   const hasTypedAccrued=value.type_id!==undefined&&value.accrued&&typeof value.accrued==='object'&&'amount'in value.accrued;
    for(const [key,child] of Object.entries(value)){
-    if(key==='fee_components')continue;
+    if(key==='fee_components'||(hasTypedAccrued&&key==='accrued'))continue;
     if(key==='type_id'&&child!==null&&child!==undefined)typeIds.add(String(child));
     walk(child,path?path+'.'+key:key);
    }
@@ -379,13 +380,14 @@
  }
  function components(record,types){
   const paired=Array.isArray(record.fee_components)?record.fee_components:[];
-  if(paired.length)return paired.map(item=>{
+  const found=inspectRecord(record);
+  const feeLines=paired.map(item=>{
    const type=types[String(item.type_id)]||{};
    const label=type.description||type.name||('Тип ID '+item.type_id);
    return label+': '+safe(item.amount)+' '+safe(item.currency);
-  }).join('\n');
-  const found=inspectRecord(record);
-  return found.amounts.length?found.amounts.join('\n'):'Суммы не распознаны — смотри исходную запись';
+  });
+  const lines=[...feeLines,...found.amounts];
+  return lines.length?lines.join('\n'):'Суммы не распознаны — смотри исходную запись';
  }
  function cell(tr,value,className){const td=document.createElement('td');td.textContent=value;if(className)td.className=className;tr.appendChild(td);return td}
  async function load(){
