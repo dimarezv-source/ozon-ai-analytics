@@ -127,7 +127,7 @@ document.querySelectorAll('.product').forEach(card=>{const c=config[card.dataset
     if (!data || data.status !== 'ok' || !Array.isArray(data.products)) throw new Error('invalid snapshot');
     status.innerHTML = '<i class="dot"></i>Каталог и тарифы: онлайн';
     if (warning) {
-      warning.innerHTML = '<b>Продажи пока не подключены к live-обновлению</b>Каталог и тарифы загружаются напрямую из Ozon при открытии страницы. Блок продаж и возвратов пока показывает последнюю подтверждённую сверку; начисления не считаются прибылью.';
+      warning.innerHTML = '<b>Продажи загружаются по выбранному периоду</b>Показатель считает стоимость доставленных отправлений FBO и FBS до вычета возвратов и удержаний. Это оценка оборота, а не выплата или чистая прибыль.';
     }
     const fmt = n => n == null ? '—' : new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)) + ' ₽';
     for (const p of data.products) {
