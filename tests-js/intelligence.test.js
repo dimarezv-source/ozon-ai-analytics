@@ -70,3 +70,27 @@ test('does not treat an unconfirmed default zero as known product cost',()=>{
  assert.equal(result.includedUnits,0);
  assert.equal(result.excluded.missingCost,3);
 });
+
+test('calculates a break-even price for a loss-making SKU and shows a same-volume scenario',()=>{
+ const highCost={'101':{cost:500,costConfigured:true}};
+ const result=buildProductRanking({products:[{sku:'9001',units:1,sales_gmv:100,fulfillment_type:'FBS'}]},[product],highCost,{calculateProfit});
+ const item=result.items[0];
+ assert.ok(item.profit<0);
+ assert.ok(item.targetPrice>item.unitPrice);
+ assert.equal(item.targetMarginPercent,0);
+ assert.ok(Math.abs(item.scenarioProfit)<0.02);
+ assert.ok(item.scenarioProfitLift>0);
+ assert.match(item.recommendation,/безубыточная цена/);
+ assert.equal(item.scenarioAssumption,'same_units_no_demand_response');
+});
+
+test('suggests a target price for 15 percent margin without promising demand will remain unchanged',()=>{
+ const lowMargin={'101':{cost:60,costConfigured:true,pack:2,ads:3,transit:0,other:0,tax:0}};
+ const result=buildProductRanking({products:[{sku:'9001',units:2,sales_gmv:200,fulfillment_type:'FBS'}]},[product],lowMargin,{calculateProfit});
+ const item=result.items[0];
+ assert.ok(item.marginPercent<15);
+ assert.equal(item.targetMarginPercent,15);
+ assert.ok(item.targetPrice>item.unitPrice);
+ assert.ok(item.scenarioProfitLift>0);
+ assert.match(item.recommendation,/Цена для маржи 15%/);
+});
