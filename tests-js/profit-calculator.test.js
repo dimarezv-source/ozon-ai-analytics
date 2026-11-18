@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculateProfit } = require('./profit-calculator.js');
+const { calculateProfit } = require('../dashboard/profit-calculator.js');
 const product={sales_percent_fbo:12,sales_percent_fbs:15,acquiring:2,delivery_to_customer:30,first_mile_min:10,first_mile_max:20};
 
 test('FBO excludes FBS logistics and transit',()=>{
