@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../dashboard/inventory.js'),'utf8');
-const window={};
+const window={addEventListener:()=>{},dispatchEvent:()=>{}};
 vm.runInNewContext(source,{window,document:{getElementById:()=>null},localStorage:{getItem:()=>null},Intl,Number,Date,Math,JSON,CustomEvent:function(){},fetch:()=>{},console});
 const calculate=window.OzonInventoryPlanner.calculateReplenishment;
 test('calculates reorder quantity from daily sales, lead time and safety stock',()=>{
