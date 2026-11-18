@@ -7,6 +7,7 @@ def test_allowlist_contains_only_reviewed_read_only_operations() -> None:
     expected_paths = {
         "product_list": "/v3/product/list",
         "product_info_list": "/v3/product/info/list",
+        "product_info_prices": "/v5/product/info/prices",
         "finance_accrual_types": "/v1/finance/accrual/types",
         "finance_accrual_by_day": "/v1/finance/accrual/by-day",
         "finance_accrual_postings": "/v1/finance/accrual/postings",
