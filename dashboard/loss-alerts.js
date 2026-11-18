@@ -2,6 +2,7 @@
   'use strict';
   const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(value)||0)+' ₽';
   const number=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(Number(value)||0);
+  const currencyMoney=(value,currency)=>{const code=String(currency||'').toUpperCase();try{return new Intl.NumberFormat('ru-RU',{style:'currency',currency:code,maximumFractionDigits:2}).format(Number(value));}catch(_){return number(value)+' '+(code||'ед.');}};
   const el=id=>document.getElementById(id);
   let latestRanking=null, latestSales=null, feeRequestKey='';
   function row(title,detail,severity){
@@ -87,13 +88,13 @@
         const label=item.label||types[String(item.type_id)]?.name||types[String(item.type_id)]?.description;
         if(!label){
           root.__ozonFeeAlerts.push({severity:'warning',title:'Неизвестное удержание · ID '+item.type_id,
-            detail:'Сумма '+money(amount)+' '+item.currency+'. Смысл типа не предполагается — проверь справочник начислений Ozon.'});
+            detail:'Сумма '+currencyMoney(amount,item.currency)+'. Смысл типа не предполагается — проверь справочник начислений Ozon.'});
         }
         if(prior&&Number.isFinite(amount)&&Number.isFinite(before)&&before!==0){
           const delta=amount-before,change=Math.abs(delta)/Math.abs(before)*100;
           if(change>=50&&Math.abs(delta)>=100){
             root.__ozonFeeAlerts.push({severity:'warning',title:'Заметно изменилось удержание · '+(label||('ID '+item.type_id)),
-              detail:'Было '+money(before)+' '+item.currency+', стало '+money(amount)+' '+item.currency+'; изменение '+(delta>0?'+':'')+money(delta)+' ('+number(change)+'%). Проверь детализацию и сопоставимость периодов.'});
+              detail:'Было '+currencyMoney(before,item.currency)+', стало '+currencyMoney(amount,item.currency)+'; изменение '+(delta>0?'+':'')+currencyMoney(delta,item.currency)+' ('+number(change)+'%). Проверь детализацию и сопоставимость периодов.'});
           }
         }
       }
