@@ -480,7 +480,9 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
                     raise ValueError("Unexpected accruals page")
                 records.extend(i for i in page if isinstance(i, dict))
                 nxt = response.get("last_id") or ""
-                if not nxt: break
+                # Empty pages are terminal even if Ozon returns a cursor; avoids
+                # repeated empty pages and safely handles documented edge cases.
+                if not page or not nxt: break
                 if not isinstance(nxt, str) or nxt == cursor or nxt in seen: raise ValueError("Invalid pagination cursor")
                 seen.add(nxt); cursor = nxt
             else: raise ValueError("Pagination safety limit reached")
