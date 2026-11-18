@@ -449,6 +449,195 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
         raise HTTPException(status_code=502, detail="Не удалось получить финансовые начисления Ozon. Проверьте логи сервера.") from None
 
 
+
+
+
+async def _fetch_delivered_posting_refs(client: OzonReadOnlyClient, date_from: date, date_to: date) -> list[dict]:
+    """Fetch exact delivered posting IDs for conservative FBO/FBS fee attribution."""
+    since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    refs = []
+    for schema, operation in (("FBO", "posting_fbo_list"), ("FBS", "posting_fbs_list")):
+        cursor, seen = "", set()
+        for _page in range(5000):
+            payload = {
+                "filter": {"since": since, "to": to},
+                "limit": 100,
+                "cursor": cursor,
+                "sort_dir": "ASC",
+                "with": {"analytics_data": False, "financial_data": False, "legal_info": False},
+            }
+            if schema == "FBS":
+                payload["with"]["barcodes"] = False
+                payload["with"]["translit"] = False
+            response = await client.execute(operation, payload)
+            body = response.get("result", response)
+            if not isinstance(body, dict) or not isinstance(body.get("postings"), list):
+                raise ValueError(f"Unexpected {schema} postings response.")
+            for posting in body["postings"]:
+                if not isinstance(posting, dict) or str(posting.get("status") or "").lower() != "delivered":
+                    continue
+                number = posting.get("posting_number")
+                if number not in (None, ""):
+                    refs.append({"posting_number": str(number), "fulfillment_type": schema})
+            has_next = body.get("has_next", False)
+            next_cursor = body.get("cursor") or ""
+            if not has_next:
+                break
+            if not next_cursor or next_cursor == cursor or next_cursor in seen:
+                raise ValueError(f"{schema}: invalid posting pagination cursor.")
+            seen.add(next_cursor)
+            cursor = next_cursor
+        else:
+            raise ValueError(f"{schema}: posting pagination safety limit reached.")
+    return refs
+
+
+async def _fetch_returns(client: OzonReadOnlyClient, date_from: date, date_to: date) -> list[dict]:
+    """Read return records by logistic return date; never mutate return state."""
+    since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    rows, last_id, seen = [], 0, set()
+    for _page in range(5000):
+        response = await client.execute("returns_list", {
+            "filter": {"logistic_return_date": {"time_from": since, "time_to": to}},
+            "limit": 500,
+            "last_id": last_id,
+        })
+        page = response.get("returns", [])
+        if not isinstance(page, list):
+            raise ValueError("Unexpected Ozon returns response.")
+        rows.extend(item for item in page if isinstance(item, dict))
+        if not response.get("has_next", False):
+            break
+        if not page or page[-1].get("id") in (None, ""):
+            raise ValueError("Ozon returns pagination has no next return ID.")
+        next_id = int(page[-1]["id"])
+        if next_id == last_id or next_id in seen:
+            raise ValueError("Ozon returned a repeated returns pagination ID.")
+        seen.add(next_id)
+        last_id = next_id
+    else:
+        raise ValueError("Returns pagination safety limit reached.")
+    return rows
+
+
+def _summarize_returns(rows: list[dict]) -> list[dict]:
+    """Summarize explicit returned SKU quantities and source product prices."""
+    totals = {}
+    for row in rows:
+        product = row.get("product") if isinstance(row.get("product"), dict) else {}
+        sku = product.get("sku")
+        if sku in (None, ""):
+            continue
+        schema = str(row.get("schema") or "UNKNOWN").upper()
+        if schema not in ("FBO", "FBS"):
+            schema = "UNKNOWN"
+        price_obj = product.get("price") if isinstance(product.get("price"), dict) else {}
+        currency = str(price_obj.get("currency_code") or "")
+        quantity_value = product.get("quantity")
+        try:
+            quantity = max(0, int(quantity_value))
+        except (TypeError, ValueError):
+            quantity = 0
+        if not quantity:
+            continue
+        try:
+            price = Decimal(str(price_obj.get("price")))
+            if not price.is_finite() or price < 0:
+                raise InvalidOperation
+        except (InvalidOperation, ValueError, TypeError):
+            price = None
+        key = (schema, str(sku), currency, str(row.get("type") or "UNKNOWN"))
+        item = totals.setdefault(key, {
+            "fulfillment_type": schema, "sku": str(sku),
+            "offer_id": str(product.get("offer_id") or ""),
+            "name": str(product.get("name") or ""),
+            "currency": currency, "return_type": str(row.get("type") or "UNKNOWN"),
+            "quantity": 0, "returned_value": Decimal("0"),
+            "priced_quantity": 0, "return_records": 0,
+        })
+        item["quantity"] += quantity
+        item["return_records"] += 1
+        if price is not None:
+            item["returned_value"] += price * quantity
+            item["priced_quantity"] += quantity
+    return [
+        {**item, "returned_value": str(item["returned_value"])}
+        for _, item in sorted(totals.items(), key=lambda pair: pair[0])
+    ]
+
+async def _fetch_posting_accruals(client: OzonReadOnlyClient, records: list[dict]) -> list[dict]:
+    """Fetch explicit SKU accruals for posting numbers already present in by-day records."""
+    numbers, seen = [], set()
+    for record in records:
+        posting = record.get("posting") if isinstance(record.get("posting"), dict) else {}
+        number = record.get("posting_number") or posting.get("posting_number")
+        if number not in (None, "") and str(number) not in seen:
+            seen.add(str(number))
+            numbers.append(str(number))
+    rows = []
+    # Ozon documents batches of up to 200 posting numbers per request.
+    for start in range(0, len(numbers), 200):
+        response = await client.execute("finance_accrual_postings", {"posting_numbers": numbers[start:start + 200]})
+        page = response.get("posting_accruals", [])
+        if not isinstance(page, list):
+            raise ValueError("Unexpected posting accruals response")
+        rows.extend(item for item in page if isinstance(item, dict))
+    return rows
+
+
+@app.get("/api/finance/reconciliation", tags=["dashboard"])
+async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Return conservative normalized reconciliation totals, with unknowns exposed."""
+    from app.analytics.finance_reconciliation import normalize_accrual_records
+    raw_from, raw_to = request.query_params.get("date_from", ""), request.query_params.get("date_to", "")
+    try:
+        date_from, date_to = date.fromisoformat(raw_from), date.fromisoformat(raw_to)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
+    if date_to < date_from or (date_to - date_from).days > 30:
+        raise HTTPException(status_code=400, detail="Период должен быть корректным и не превышать 31 день.")
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    try:
+        type_response = await client.execute("finance_accrual_types", {})
+        dictionary = {str(i.get("id")): {"name": i.get("name"), "description": i.get("description")}
+                      for i in type_response.get("accrual_types", []) if isinstance(i, dict) and i.get("id") is not None}
+        records, day = [], date_from
+        while day <= date_to:
+            cursor, seen = "", set()
+            for _page in range(200):
+                response = await client.execute("finance_accrual_by_day", {"date": day.isoformat(), "last_id": cursor})
+                page = response.get("accruals", [])
+                if not isinstance(page, list):
+                    raise ValueError("Unexpected accruals page")
+                records.extend(i for i in page if isinstance(i, dict))
+                nxt = response.get("last_id") or ""
+                # Empty pages are terminal even if Ozon returns a cursor; avoids
+                # repeated empty pages and safely handles documented edge cases.
+                if not page or not nxt: break
+                if not isinstance(nxt, str) or nxt == cursor or nxt in seen: raise ValueError("Invalid pagination cursor")
+                seen.add(nxt); cursor = nxt
+            else: raise ValueError("Pagination safety limit reached")
+            day += timedelta(days=1)
+        delivered_postings = await _fetch_delivered_posting_refs(client, date_from, date_to)
+        posting_accrual_rows = await _fetch_posting_accruals(client, records)
+        from app.analytics.finance_posting_attribution import normalize_posting_accruals
+        product_attribution = normalize_posting_accruals(posting_accrual_rows, dictionary, delivered_postings)
+        return_records = await _fetch_returns(client, date_from, date_to)
+        normalized = normalize_accrual_records(records, dictionary, delivered_postings)
+        return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
+                "source_records":len(records), "delivered_posting_count":len(delivered_postings),
+                "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
+                **product_attribution, "dictionary":dictionary, **normalized,
+                "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated. Returns are summarized separately by logistic return date and are not subtracted from profit automatically."}
+    except Exception as exc:
+        logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
+
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
     return {"status": "ok", "mode": "read-only"}

@@ -198,3 +198,89 @@ def test_reconcile_posting_fees_uses_only_exact_delivered_posting_matches() -> N
         {**fees[1], "fulfillment_type": "FBS", "reconciliation_status": "matched"},
         {**fees[2], "fulfillment_type": None, "reconciliation_status": "unmatched"},
     ]
+
+
+def test_finance_reconciliation_matches_delivered_fbo_fbs_postings(monkeypatch) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
+    monkeypatch.setenv("OZON_CLIENT_ID", "client")
+    monkeypatch.setenv("OZON_API_KEY", "read-only-key")
+    calls = []
+
+    class FakeOzonClient:
+        def __init__(self, client_id, api_key, base_url):
+            pass
+
+        async def execute(self, operation, payload):
+            calls.append((operation, payload))
+            if operation == "finance_accrual_types":
+                return {"accrual_types": [{"id": 7, "name": "Delivery"}]}
+            if operation == "finance_accrual_by_day":
+                return {"accruals": [
+                    {"posting_number": "FBO-1", "fee": {"type_id": 7, "accrued": {"amount": "-12", "currency": "RUB"}}},
+                    {"posting": {"posting_number": "FBS-1"}, "fee": {"type_id": 7, "accrued": {"amount": "-8", "currency": "RUB"}}},
+                    {"posting_number": "UNMATCHED", "fee": {"type_id": 7, "accrued": {"amount": "-4", "currency": "RUB"}}},
+                ], "last_id": ""}
+            if operation == "posting_fbo_list":
+                return {"result": {"postings": [
+                    {"posting_number": "FBO-1", "status": "delivered"},
+                    {"posting_number": "FBO-PENDING", "status": "awaiting_deliver"},
+                ], "has_next": False, "cursor": ""}}
+            if operation == "posting_fbs_list":
+                return {"result": {"postings": [
+                    {"posting_number": "FBS-1", "status": "delivered"},
+                ], "has_next": False, "cursor": ""}}
+            if operation == "finance_accrual_postings":
+                assert payload["posting_numbers"] == ["FBO-1", "FBS-1", "UNMATCHED"]
+                return {"posting_accruals": [
+                    {"posting_number": "FBO-1", "accruals": [
+                        {"sku": 123, "type_id": 7, "accrued": {"amount": "-2.50", "currency": "RUB"}, "quantity": 1}
+                    ]},
+                    {"posting_number": "UNMATCHED", "accruals": [
+                        {"sku": 456, "type_id": 7, "accrued": {"amount": "-1", "currency": "RUB"}, "quantity": 2}
+                    ]},
+                ]}
+            if operation == "returns_list" and payload["last_id"] == 0:
+                return {"returns": [{
+                    "id": 101, "schema": "Fbs", "type": "FullReturn",
+                    "product": {"sku": 123, "offer_id": "A-1", "name": "Товар A",
+                                "price": {"currency_code": "RUB", "price": "100"}, "quantity": 1},
+                }], "has_next": True}
+            if operation == "returns_list" and payload["last_id"] == 101:
+                return {"returns": [{
+                    "id": 102, "schema": "Fbo", "type": "PartialReturn",
+                    "product": {"sku": 123, "offer_id": "A-1", "name": "Товар A",
+                                "price": {"currency_code": "RUB", "price": "80"}, "quantity": 2},
+                }], "has_next": False}
+            raise AssertionError(f"Unexpected operation: {operation}")
+
+    monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
+    response = TestClient(app).get(
+        "/api/finance/reconciliation?date_from=2026-11-17&date_to=2026-11-17",
+        auth=("owner", "test-password"),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["delivered_posting_count"] == 2
+    assert [(row["fulfillment_type"], row["amount"]) for row in data["fulfillment_summary"]] == [
+        ("FBO", "-12"),
+        ("FBS", "-8"),
+    ]
+    assert data["metrics"]["posting_match_count"] == 2
+    assert data["metrics"]["posting_unmatched_count"] == 1
+    assert data["unmatched_summary"][0]["amount"] == "-4"
+    assert data["posting_accrual_metrics"] == {
+        "posting_count": 2, "sku_record_count": 2, "unmatched_posting_count": 1,
+    }
+    assert [(row["sku"], row["fulfillment_type"], row["amount"]) for row in data["posting_product_summary"]] == [
+        ("123", "FBO", "-2.50"), ("456", "UNMATCHED", "-1"),
+    ]
+    assert data["return_record_count"] == 2
+    assert [(row["fulfillment_type"], row["quantity"], row["returned_value"]) for row in data["returns_summary"]] == [
+        ("FBO", 2, "160"), ("FBS", 1, "100"),
+    ]
+    assert [call[0] for call in calls] == [
+        "finance_accrual_types", "finance_accrual_by_day",
+        "posting_fbo_list", "posting_fbs_list", "finance_accrual_postings",
+        "returns_list", "returns_list",
+    ]

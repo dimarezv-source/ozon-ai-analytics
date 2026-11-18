@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main, feature/fbo-fbs-profit-split, feature/ozon-intelligence-profit-center]
+    branches: [main, feature/fbo-fbs-profit-split, feature/ozon-intelligence-profit-center, feature/ozon-intelligence-finance-reconciliation]
   pull_request:
     branches: [main]
 
