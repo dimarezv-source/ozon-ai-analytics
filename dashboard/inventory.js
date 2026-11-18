@@ -5,6 +5,22 @@
  const fmtDays=value=>Number.isFinite(value)?(value<1?'< 1 дня':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(value)+' дн.'):'—';
  const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0,replenishmentItems:[]};
  const SETTINGS_KEY='ozonInventoryReplenishmentSettings';
+ const COSTS_KEY='ozon-ai-analytics-costs-v1';
+ const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(Number(value)||0))+' ₽';
+ function calculateProcurementBudget(items,costs){
+  const result={knownBudget:0,missingCostItems:0,knownUnits:0,unknownUnits:0,FBO:0,FBS:0};
+  for(const item of items||[]){
+   const units=Math.max(0,Number(item.result&&item.result.recommended)||0);if(!units)continue;
+   const saved=(costs||{})[item.costKey]||{};
+   const raw=saved.cost,known=saved.costConfigured===true||(raw!==null&&raw!==undefined&&raw!==''&&Number(raw)>0);
+   const cost=Number(raw);
+   if(!known||!Number.isFinite(cost)||cost<0){result.missingCostItems++;result.unknownUnits+=units;continue;}
+   const amount=cost*units;result.knownBudget+=amount;result.knownUnits+=units;
+   if(item.type==='FBO'||item.type==='FBS')result[item.type]+=amount;
+  }
+  return result;
+ }
+ root.OzonInventoryPlanner={calculateReplenishment,calculateProcurementBudget};
  function matches(a,b){
   for(const field of ['sku','product_id','offer_id']){
    const x=a&&a[field],y=b&&b[field];
@@ -53,7 +69,7 @@
      const present=Math.max(0,Number(stock.present)||0),reserved=Math.max(0,Number(stock.reserved)||0),available=Math.max(0,present-reserved);
      const sold=unitsSold(product,type),daily=sold/days;
      const result=calculateReplenishment({available,dailySales:daily,leadDays:state.leadDays,safetyDays:state.safetyDays});
-     items.push({name,type,available,result,sku:product.sku||'',offer:product.offer_id||''});
+     items.push({name,type,available,result,sku:product.sku||'',offer:product.offer_id||'',costKey:String(product.product_id||product.sku||product.offer_id||'unknown')});
     }
    }
   }
@@ -67,7 +83,9 @@
   const fboUnits=state.replenishmentItems.filter(item=>item.type==='FBO').reduce((sum,item)=>sum+item.result.recommended,0);
   const fbsUnits=state.replenishmentItems.filter(item=>item.type==='FBS').reduce((sum,item)=>sum+item.result.recommended,0);
   const urgentCount=state.replenishmentItems.filter(item=>item.result.priority==='critical'||item.result.priority==='urgent').length;
-  [['replenishmentSkuCount',state.replenishmentItems.length],['replenishmentUnitCount',totalUnits],['replenishmentFboCount',fboUnits],['replenishmentFbsCount',fbsUnits],['replenishmentUrgentCount',urgentCount]].forEach(([id,value])=>{const node=el(id);if(node)node.textContent=number(value)});
+  let savedCosts={};try{savedCosts=JSON.parse(localStorage.getItem(COSTS_KEY)||'{}')}catch(_){}
+  const budget=calculateProcurementBudget(state.replenishmentItems,savedCosts);
+  [['replenishmentSkuCount',state.replenishmentItems.length],['replenishmentUnitCount',totalUnits],['replenishmentFboCount',fboUnits],['replenishmentFbsCount',fbsUnits],['replenishmentUrgentCount',urgentCount],['replenishmentBudgetValue',money(budget.knownBudget)],['replenishmentBudgetMissing',budget.missingCostItems+' поз. без себестоимости']].forEach(([id,value])=>{const node=el(id);if(node)node.textContent=value});
   const exportButton=el('replenishmentExport');if(exportButton)exportButton.disabled=state.replenishmentItems.length===0;
   for(const item of items){
    const tr=document.createElement('tr');
@@ -90,9 +108,10 @@
  function exportReplenishment(){
   const items=state.replenishmentItems;if(!items.length)return;
   const period=state.sales&&state.sales.period||{};
-  const rows=[['Товар','SKU','Offer ID','Схема','Доступно, шт.','Продажи в день, шт.','Покрытие, дней','Срок поставки, дней','Страховой запас, дней','Рекомендуемый заказ, шт.','Приоритет']];
+  let savedCosts={};try{savedCosts=JSON.parse(localStorage.getItem(COSTS_KEY)||'{}')}catch(_){}
+  const rows=[['Товар','SKU','Offer ID','Схема','Доступно, шт.','Продажи в день, шт.','Покрытие, дней','Срок поставки, дней','Страховой запас, дней','Рекомендуемый заказ, шт.','Себестоимость за единицу, ₽','Бюджет закупки, ₽','Приоритет']];
   const priority={critical:'Критично',urgent:'Срочно',soon:'Подготовить',normal:'Запас достаточный'};
-  items.forEach(item=>rows.push([item.name,item.sku,item.offer,item.type,item.available,Number(item.result.dailySales.toFixed(2)),Number(item.result.daysCover.toFixed(1)),state.leadDays,state.safetyDays,item.result.recommended,priority[item.result.priority]||'']));
+  items.forEach(item=>{const saved=savedCosts[item.costKey]||{},raw=saved.cost,known=saved.costConfigured===true||(raw!==null&&raw!==undefined&&raw!==''&&Number(raw)>0),cost=Number(raw);const valid=known&&Number.isFinite(cost)&&cost>=0;rows.push([item.name,item.sku,item.offer,item.type,item.available,Number(item.result.dailySales.toFixed(2)),Number(item.result.daysCover.toFixed(1)),state.leadDays,state.safetyDays,item.result.recommended,valid?cost:'',valid?Math.round(cost*item.result.recommended):'',priority[item.result.priority]||''])});
   const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='ozon-plan-popolneniya-'+(period.date_from||'period')+'-'+(period.date_to||'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
