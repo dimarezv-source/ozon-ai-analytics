@@ -36,6 +36,8 @@
 .track{background:#edf0f7;box-shadow:inset 0 1px 2px #1d29400b}
 .alert b{letter-spacing:.1px}
 @media(prefers-reduced-motion:reduce){.kpis .card,.product,.metric,.field input{transition:none}}
+
+.periodbar{display:grid;grid-template-columns:minmax(150px,.7fr) auto minmax(180px,1fr);align-items:center;gap:14px;background:linear-gradient(110deg,#fff 0%,#fff8f3 58%,#f0fbfc 100%);border:1px solid #e7eaf2;border-radius:16px;padding:14px 17px;margin:0 0 15px;box-shadow:0 7px 22px #202b500c}.periodbar b{display:block;font-size:13px}.periodbar small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.periodfields{display:flex;align-items:end;gap:8px}.periodfields label{display:grid;gap:4px;color:var(--muted);font-size:10px}.periodfields input{width:145px;max-width:100%;border:1px solid #dfe4ee;border-radius:8px;padding:8px 9px;background:#fff;color:var(--ink);font:inherit;font-size:12px}.periodfields input:focus{outline:0;border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da22}.periodfields button{border:0;border-radius:9px;padding:9px 14px;background:linear-gradient(110deg,var(--orange),var(--orange2));color:#241c25;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}.periodfields button:disabled{opacity:.6;cursor:wait}.periodmessage{font-size:11px;color:var(--muted);text-align:right}.periodmessage.error{color:#bd4657}@media(max-width:1050px){.periodbar{grid-template-columns:1fr auto}.periodmessage{grid-column:1/-1;text-align:left}}@media(max-width:650px){.periodbar{grid-template-columns:1fr;padding:13px;gap:10px}.periodfields{flex-wrap:wrap}.periodfields label{flex:1;min-width:110px}.periodfields input{width:100%}.periodfields button{flex:1}.periodmessage{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -47,9 +49,14 @@
 </aside>
 <main class="main">
  <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Предварительный расчёт</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>Снимок выгрузки · ручное обновление</div></header>
+ <div class="periodbar">
+  <div><b>Период продаж</b><small>Выбери любые даты · данные Ozon в UTC</small></div>
+  <div class="periodfields"><label>С <input id="salesFrom" type="date"></label><label>По <input id="salesTo" type="date"></label><button id="salesLoad" type="button">Показать</button></div>
+  <div class="periodmessage" id="salesMessage" role="status">Выбери период и нажми «Показать».</div>
+ </div>
  <section class="grid kpis">
-  <div class="card"><div class="klabel">Продажи за период <span>↗</span></div><div class="kvalue">0 ₽</div><div class="hint">Последняя сверка: заказов не было</div></div>
-  <div class="card"><div class="klabel">Продано, шт.</div><div class="kvalue">0</div><div class="hint">По сверке заказов и возвратов</div></div>
+  <div class="card"><div class="klabel">Продажи за период <span>↗</span></div><div class="kvalue" data-sales-total>—</div><div class="hint" data-sales-hint>Оборот доставленных заказов до возвратов</div></div>
+  <div class="card"><div class="klabel">Продано, шт.</div><div class="kvalue" data-sales-units>—</div><div class="hint" data-sales-units-hint>Количество в доставленных заказах</div></div>
   <div class="card"><div class="klabel">Товаров в каталоге</div><div class="kvalue">2</div><div class="hint">Получено из Seller API</div></div>
   <div class="card"><div class="klabel">Комиссия FBS</div><div class="kvalue accent">47%</div><div class="hint">Текущий тариф для обоих SKU</div></div>
  </section>
@@ -152,6 +159,34 @@ document.querySelectorAll('.product').forEach(card=>{const c=config[card.dataset
   } catch (_) {
     status.innerHTML = '<i class="dot" style="background:#c58b2b"></i>Снимок выгрузки · API недоступен';
   }
+})();
+</script>
+<script>
+(function setupSalesPeriod(){
+ const from=document.getElementById('salesFrom'),to=document.getElementById('salesTo'),button=document.getElementById('salesLoad'),message=document.getElementById('salesMessage');
+ if(!from||!to||!button)return;
+ const today=new Date();const iso=d=>{const y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,'0'),day=String(d.getUTCDate()).padStart(2,'0');return y+'-'+m+'-'+day;};
+ const end=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()));const start=new Date(end);start.setUTCDate(start.getUTCDate()-30);from.value=iso(start);to.value=iso(end);
+ const money=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' ₽';
+ const number=n=>new Intl.NumberFormat('ru-RU').format(n);
+ async function load(){
+  if(!from.value||!to.value){message.textContent='Укажи обе даты.';message.classList.add('error');return;}
+  if(to.value<from.value){message.textContent='Дата окончания раньше даты начала.';message.classList.add('error');return;}
+  const days=(Date.parse(to.value+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z'))/86400000;
+  if(days>364){message.textContent='Максимальный период — 365 дней.';message.classList.add('error');return;}
+  button.disabled=true;button.textContent='Загрузка…';message.classList.remove('error');message.textContent='Запрашиваю доставленные заказы в Ozon…';
+  try{
+   const response=await fetch('/api/sales?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{'Accept':'application/json'}});
+   const data=await response.json();if(!response.ok)throw new Error(data.detail||'Не удалось загрузить продажи.');
+   document.querySelector('[data-sales-total]').textContent=money(data.sales_gmv);
+   document.querySelector('[data-sales-units]').textContent=number(data.delivered_units);
+   document.querySelector('[data-sales-hint]').textContent='Оборот доставленных заказов до возвратов';
+   document.querySelector('[data-sales-units-hint]').textContent=number(data.delivered_postings)+' доставленных отправлений';
+   message.textContent='Обновлено: '+data.period.date_from+' — '+data.period.date_to+' UTC · FBO: '+data.fbo_postings+', FBS: '+data.fbs_postings+(data.unpriced_units?' · без цены: '+data.unpriced_units+' шт.':'');
+  }catch(error){message.textContent=error.message;message.classList.add('error');}
+  finally{button.disabled=false;button.textContent='Показать';}
+ }
+ button.addEventListener('click',load);
 })();
 </script>
 </body></html>
