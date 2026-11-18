@@ -35,7 +35,7 @@ def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -
             if payload["date"] == "2026-11-17":
                 return {"accruals": [
                     {"accrued_category": "POSTING", "posting": {"products": []}},
-                    {"accrued_category": "NON_ITEM", "non_item_fee": {"type_id": 7, "accrued": {"amount": "-10.00", "currency": "RUB"}}},
+                    {"accrued_category": "NON_ITEM", "posting_number": "PN-2", "non_item_fee": {"type_id": 7, "accrued": {"amount": "-10.00", "currency": "RUB"}}},
                 ], "last_id": ""}
             return {"accruals": [], "last_id": ""}
 
@@ -50,6 +50,7 @@ def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -
     assert data["record_count"] == 2
     assert data["accrual_types"]["7"]["description"] == "Доставка"
     assert data["fee_summary"] == [{"type_id": "7", "currency": "RUB", "amount": "-10.00", "count": 1}]
+    assert data["posting_fee_summary"] == [{"posting_number": "PN-2", "type_id": "7", "currency": "RUB", "amount": "-10.00", "count": 1}]
     assert [row["date"] for row in data["accruals"]] == ["2026-11-17", "2026-11-17"]
     assert calls == [
         ("finance_accrual_types", {}),
