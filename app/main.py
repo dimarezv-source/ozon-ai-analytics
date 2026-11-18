@@ -412,6 +412,10 @@ async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
                 "transit_min": commissions.get("fbs_direct_flow_trans_min_amount"),
                 "transit_max": commissions.get("fbs_direct_flow_trans_max_amount"),
                 "return_flow": commissions.get("fbs_return_flow_amount"),
+                "fbo_delivery_to_customer": commissions.get("fbo_deliv_to_customer_amount"),
+                "fbo_transit_min": commissions.get("fbo_direct_flow_trans_min_amount"),
+                "fbo_transit_max": commissions.get("fbo_direct_flow_trans_max_amount"),
+                "fbo_return_flow": commissions.get("fbo_return_flow_amount"),
                 "acquiring": price_record.get("acquiring"),
             })
 
