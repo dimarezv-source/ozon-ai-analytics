@@ -187,7 +187,8 @@
    const commission=unitPrice*commissionRate/100,acquiring=Number(product.acquiring)||0;
    const logistics=type==='FBS'?Number(product.delivery_to_customer)+((Number(product.first_mile_min)+Number(product.first_mile_max))/2)+transit:0;
    const tax=unitPrice*taxRate/100;
-   const unitProfit=unitPrice-commission-acquiring-logistics-cost-pack-ads-other-tax;
+   const transitCost=type==='FBS'?transit:0;
+   const unitProfit=unitPrice-commission-acquiring-logistics-cost-pack-ads-other-transitCost-tax;
    totals[type].profit+=unitProfit*units;totals[type].revenue+=salesGmv;totals[type].units+=units;
   }
   const profit=totals.FBO.profit+totals.FBS.profit,revenue=totals.FBO.revenue+totals.FBS.revenue;
