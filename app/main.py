@@ -449,6 +449,50 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
         raise HTTPException(status_code=502, detail="Не удалось получить финансовые начисления Ozon. Проверьте логи сервера.") from None
 
 
+
+
+@app.get("/api/finance/reconciliation", tags=["dashboard"])
+async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Return conservative normalized reconciliation totals, with unknowns exposed."""
+    from app.analytics.finance_reconciliation import normalize_accrual_records
+    raw_from, raw_to = request.query_params.get("date_from", ""), request.query_params.get("date_to", "")
+    try:
+        date_from, date_to = date.fromisoformat(raw_from), date.fromisoformat(raw_to)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
+    if date_to < date_from or (date_to - date_from).days > 30:
+        raise HTTPException(status_code=400, detail="Период должен быть корректным и не превышать 31 день.")
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    try:
+        type_response = await client.execute("finance_accrual_types", {})
+        dictionary = {str(i.get("id")): {"name": i.get("name"), "description": i.get("description")}
+                      for i in type_response.get("accrual_types", []) if isinstance(i, dict) and i.get("id") is not None}
+        records, day = [], date_from
+        while day <= date_to:
+            cursor, seen = "", set()
+            for _page in range(200):
+                response = await client.execute("finance_accrual_by_day", {"date": day.isoformat(), "last_id": cursor})
+                page = response.get("accruals", [])
+                if not isinstance(page, list):
+                    raise ValueError("Unexpected accruals page")
+                records.extend(i for i in page if isinstance(i, dict))
+                nxt = response.get("last_id") or ""
+                if not nxt: break
+                if not isinstance(nxt, str) or nxt == cursor or nxt in seen: raise ValueError("Invalid pagination cursor")
+                seen.add(nxt); cursor = nxt
+            else: raise ValueError("Pagination safety limit reached")
+            day += timedelta(days=1)
+        normalized = normalize_accrual_records(records, dictionary)
+        return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
+                "source_records":len(records), "dictionary":dictionary, **normalized,
+                "notice":"This is classified source accrual data, not net payout or verified product profit. Posting match coverage is not yet connected in this endpoint."}
+    except Exception as exc:
+        logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
+
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
     return {"status": "ok", "mode": "read-only"}
