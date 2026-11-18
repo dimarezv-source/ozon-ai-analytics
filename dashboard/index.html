@@ -143,7 +143,7 @@
  async function refresh(){
   status.innerHTML='<i class="dot" style="background:#d39a37"></i>Обновление данных…';
   try{
-   const r=await fetch('/api/dashboard',{headers:{Accept:'application/json'}});
+   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),75000);\n   let r;try{r=await fetch('/api/dashboard',{headers:{Accept:'application/json'},signal:controller.signal})}finally{clearTimeout(timer)}
    const data=await r.json();if(!r.ok)throw new Error(data.detail||'Не удалось загрузить каталог');
    if(data.status!=='ok'||!Array.isArray(data.products))throw new Error('Некорректный ответ Seller API');
    products=data.products;render();
@@ -152,7 +152,7 @@
    document.querySelector('[data-commission-average]').textContent=commissions.length?pct(commissions.reduce((a,b)=>a+b,0)/commissions.length):'—';
    status.innerHTML='<i class="dot"></i>Ozon API · данные обновлены';
    notice.innerHTML='<b>Каталог и тарифы получены из Ozon</b>Расходы и себестоимость хранятся локально в этом браузере. Расчёт прибыли предварительный: первая миля усредняется по диапазону, транзит, возвраты и фактические начисления требуют отдельной сверки.';
-  }catch(e){status.innerHTML='<i class="dot" style="background:#c58b2b"></i>API недоступен';notice.innerHTML='<b>Не удалось обновить каталог</b>'+esc(e.message)+' · проверь соединение и доступ к Ozon API.';grid.innerHTML='<div class="empty">Нет актуальных данных. Обнови страницу позже.</div>'}
+  }catch(e){if(e.name==='AbortError')e=new Error('Ozon не ответил за 75 секунд. Проверь статус Render и доступ API.');status.innerHTML='<i class="dot" style="background:#c58b2b"></i>API недоступен';notice.innerHTML='<b>Не удалось обновить каталог</b>'+esc(e.message)+' · проверь соединение и доступ к Ozon API.';grid.innerHTML='<div class="empty">Нет актуальных данных. Обнови страницу позже.</div>'}
  }
  document.getElementById('productSearch').addEventListener('input',render);\n document.getElementById('refreshCatalog').addEventListener('click',refresh);
  document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров в этом браузере?'))return;localStorage.removeItem(storageKey);render()});
