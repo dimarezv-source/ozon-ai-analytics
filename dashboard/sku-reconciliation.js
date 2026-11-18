@@ -48,5 +48,5 @@
  const api={buildMatrix};
  root.OzonSkuReconciliation=api;
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
- const button=el('skuMatrixLoad');if(button)button.addEventListener('click',load);
+ const button=typeof document!=='undefined'?el('skuMatrixLoad'):null;if(button)button.addEventListener('click',load);
 })(typeof window!=='undefined'?window:globalThis);
