@@ -555,6 +555,14 @@
 })();
 </script>
 
+
+<section class="panel" id="skuMatrixPanel">
+ <div class="section-heading"><div><h2>Сверка продаж и начислений по SKU</h2><p class="hint">Сопоставление только по точному SKU и схеме FBO/FBS. Валюты не смешиваются.</p></div><button id="skuMatrixLoad" type="button">Собрать матрицу SKU</button></div>
+ <p id="skuMatrixStatus" class="hint" aria-live="polite">Выбери период в блоке финансовой сверки выше и нажми «Собрать матрицу SKU».</p>
+ <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Схема</th><th>Продано, шт.</th><th>GMV, оценка</th><th>Возвраты, шт.</th><th>Начисления Ozon по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
+ <p class="hint">Важно: GMV рассчитан по цене товара и количеству, возвраты показаны отдельно, а финансовые начисления — только по строкам с явным SKU и точным совпадением отправления. Это не чистая прибыль и не сумма к выплате.</p>
+</section>
+
 <script>
 (function setupReconciliation(){
  const from=document.getElementById('reconFrom'),to=document.getElementById('reconTo'),btn=document.getElementById('reconLoad'),status=document.getElementById('reconStatus'),rows=document.getElementById('reconRows');
@@ -596,4 +604,5 @@
 })();
 </script>
 <script src="/dashboard/inventory.js"></script>
+<script src="/dashboard/sku-reconciliation.js"></script>
 </body></html>

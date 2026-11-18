@@ -686,6 +686,11 @@ async def inventory_script(_: None = Depends(require_dashboard_auth)) -> FileRes
     return FileResponse(INVENTORY_FILE, media_type="application/javascript")
 
 
+@app.get("/dashboard/sku-reconciliation.js", tags=["dashboard"], include_in_schema=False)
+async def sku_reconciliation_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(Path(__file__).resolve().parents[1] / "dashboard" / "sku-reconciliation.js", media_type="application/javascript")
+
+
 @app.get("/api/dashboard", tags=["dashboard"])
 async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
     """Fetch a fresh read-only catalog and current FBS price/commission data."""
