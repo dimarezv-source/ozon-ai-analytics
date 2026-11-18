@@ -3,7 +3,7 @@
  const el=id=>document.getElementById(id);
  const number=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value)||0);
  const fmtDays=value=>Number.isFinite(value)?(value<1?'< 1 дня':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(value)+' дн.'):'—';
- const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0};
+ const state={products:[],sales:null,stock:null,loading:false,leadDays:0,safetyDays:0,replenishmentItems:[]};
  const SETTINGS_KEY='ozonInventoryReplenishmentSettings';
  function matches(a,b){
   for(const field of ['sku','product_id','offer_id']){
@@ -62,6 +62,8 @@
    const ar=a.result.ok?rank[a.result.priority]:4,br=b.result.ok?rank[b.result.priority]:4;
    return ar-br||(a.result.daysCover??Infinity)-(b.result.daysCover??Infinity)||a.name.localeCompare(b.name,'ru');
   });
+  state.replenishmentItems=items.filter(item=>item.result.ok&&item.result.recommended>0);
+  const exportButton=el('replenishmentExport');if(exportButton)exportButton.disabled=state.replenishmentItems.length===0;
   for(const item of items){
    const tr=document.createElement('tr');
    const label=item.name+' · '+(item.sku?'SKU '+item.sku:item.offer);
@@ -79,6 +81,16 @@
   }
   const summary=el('replenishmentSummary');
   if(summary)summary.textContent=days?'Расчёт по '+days+' дн. продаж · срок поставки: '+number(state.leadDays)+' дн. · страховой запас: '+number(state.safetyDays)+' дн.':'Ожидаем данные продаж за выбранный период.';
+ }
+ function exportReplenishment(){
+  const items=state.replenishmentItems;if(!items.length)return;
+  const period=state.sales&&state.sales.period||{};
+  const rows=[['Товар','SKU','Offer ID','Схема','Доступно, шт.','Продажи в день, шт.','Покрытие, дней','Срок поставки, дней','Страховой запас, дней','Рекомендуемый заказ, шт.','Приоритет']];
+  const priority={critical:'Критично',urgent:'Срочно',soon:'Подготовить',normal:'Запас достаточный'};
+  items.forEach(item=>rows.push([item.name,item.sku,item.offer,item.type,item.available,Number(item.result.dailySales.toFixed(2)),Number(item.result.daysCover.toFixed(1)),state.leadDays,state.safetyDays,item.result.recommended,priority[item.result.priority]||'']));
+  const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='ozon-plan-popolneniya-'+(period.date_from||'period')+'-'+(period.date_to||'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  }
  function render(){
   if(!state.stock)return;
@@ -141,4 +153,5 @@
  root.addEventListener('ozon:catalog-loaded',event=>{state.products=Array.isArray(event.detail)?event.detail:[];if(!state.stock)load();else render()});
  root.addEventListener('ozon:sales-loaded',event=>{state.sales=event.detail||null;render()});
  const button=el('inventoryRefresh');if(button)button.addEventListener('click',load);
+ const exportButton=el('replenishmentExport');if(exportButton)exportButton.addEventListener('click',exportReplenishment);
 })(window);
