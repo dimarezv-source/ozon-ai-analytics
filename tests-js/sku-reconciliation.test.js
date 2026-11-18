@@ -8,8 +8,8 @@ test('joins sales, returns and posting accruals by exact SKU and fulfillment sch
   {sku:'100',fulfillment_type:'FBS',units:2,sales_gmv:180}
  ]},{returns_summary:[
   {sku:'100',fulfillment_type:'FBO',quantity:1}
- ],product_fee_summary:[
-  {sku:'100',fulfillment_type:'FBO',currency:'RUB',amount:'-20',components:2}
+ ],posting_product_summary:[
+  {sku:'100',fulfillment_type:'FBO',currency:'RUB',amount:'-20',records:2}
  ]});
  assert.equal(result.rows.length,2);
  const fbo=result.rows.find(row=>row.schema==='FBO');
@@ -21,7 +21,7 @@ test('joins sales, returns and posting accruals by exact SKU and fulfillment sch
 
 test('keeps financial currencies separate and does not allocate unmatched rows',()=>{
  const result=buildMatrix({products:[]},{posting_product_summary:[
-  {sku:'55',fulfillment_type:'FBO',currency:'RUB',amount:'10',components:1},
+  {sku:'55',fulfillment_type:'FBO',currency:'RUB',amount:'10',records:1},
   {sku:'55',fulfillment_type:'FBO',currency:'KZT',amount:'20',records:1},
   {sku:'55',fulfillment_type:'UNMATCHED',currency:'RUB',amount:'999',records:1}
  ]});
