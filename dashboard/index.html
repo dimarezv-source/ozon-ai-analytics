@@ -369,6 +369,7 @@
    const formatted=money(value);
    if(formatted){amounts.push(path+': '+formatted);return}
    for(const [key,child] of Object.entries(value)){
+    if(key==='fee_components')continue;
     if(key==='type_id'&&child!==null&&child!==undefined)typeIds.add(String(child));
     walk(child,path?path+'.'+key:key);
    }
@@ -376,7 +377,13 @@
   walk(record,'');
   return {amounts,typeIds:[...typeIds]};
  }
- function components(record){
+ function components(record,types){
+  const paired=Array.isArray(record.fee_components)?record.fee_components:[];
+  if(paired.length)return paired.map(item=>{
+   const type=types[String(item.type_id)]||{};
+   const label=type.description||type.name||('Тип ID '+item.type_id);
+   return label+': '+safe(item.amount)+' '+safe(item.currency);
+  }).join('\n');
   const found=inspectRecord(record);
   return found.amounts.length?found.amounts.join('\n'):'Суммы не распознаны — смотри исходную запись';
  }
@@ -401,7 +408,7 @@
     cell(tr,safe(record.accrued_category||record.category||'—'));
     const typeCell=cell(tr,typeLabels.length?typeLabels.join(', '):safe(record.operation_type_name||record.operation_name||'—'));
     if(uniqueTypeIds.some(id=>!types[id]?.name))typeCell.title='Часть типов отсутствует в справочнике Ozon: '+uniqueTypeIds.filter(id=>!types[id]?.name).join(', ');
-    cell(tr,components(record),'amount');
+    cell(tr,components(record,types),'amount');
     const detail=cell(tr,'');const details=document.createElement('details');const summaryEl=document.createElement('summary');summaryEl.textContent='Показать JSON';const pre=document.createElement('pre');pre.className='accrual-json';pre.textContent=JSON.stringify(record,null,2);details.append(summaryEl,pre);detail.appendChild(details);
     tbody.appendChild(tr);
    }
