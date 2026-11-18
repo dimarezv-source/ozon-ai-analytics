@@ -388,6 +388,7 @@ async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
                 "price": price.get("price", item.get("price")),
                 "old_price": price.get("old_price", item.get("old_price")),
                 "sales_percent_fbs": commissions.get("sales_percent_fbs"),
+                "sales_percent_fbo": commissions.get("sales_percent_fbo"),
                 "first_mile_min": commissions.get("fbs_first_mile_min_amount"),
                 "first_mile_max": commissions.get("fbs_first_mile_max_amount"),
                 "delivery_to_customer": commissions.get("fbs_deliv_to_customer_amount"),
