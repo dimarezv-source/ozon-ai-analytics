@@ -52,7 +52,7 @@ def collect_components(record):
     walk(record)
     return found
 
-def _serialize_totals(totals, keys):
+def _serialize_totals(totals):
     return [
         {**item, "amount": str(item["amount"])}
         for _, item in sorted(totals.items(), key=lambda pair: pair[0])
@@ -89,7 +89,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
         for component in components:
             type_id = component["type_id"]
             meta = types.get(type_id, {}) if isinstance(types, dict) else {}
-            label = meta.get("name") if isinstance(meta, dict) else None
+            label = (meta.get("name") or meta.get("description")) if isinstance(meta, dict) else None
             amount = component["amount"]
             currency = component["currency"]
             key = (type_id, currency)
@@ -135,7 +135,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
                 "classification": "known_type" if label else "unknown_type"})
             currencies.add(currency_bucket)
 
-    serialized = _serialize_totals(summary, ())
+    serialized = _serialize_totals(summary)
     for row in serialized:
         row["amount"] = str(row["amount"])
     def amounts(values):
@@ -148,9 +148,9 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     return {
         "components": output,
         "summary": serialized,
-        "fulfillment_summary": _serialize_totals(fulfillment_totals, ()),
-        "unmatched_summary": _serialize_totals(unmatched_totals, ()),
-        "product_fee_summary": _serialize_totals(product_fee_totals, ()),
+        "fulfillment_summary": _serialize_totals(fulfillment_totals),
+        "unmatched_summary": _serialize_totals(unmatched_totals),
+        "product_fee_summary": _serialize_totals(product_fee_totals),
         "metrics": {
             "component_count": len(output),
             "posting_match_count": matched_count,
