@@ -67,32 +67,14 @@
  </section>
  <div class="alert" id="liveNotice" style="margin:0 0 18px"><b>Подключаем данные</b>Получаем актуальный каталог и тарифы из Ozon. Расходы, которые ты введёшь, сохраняются в этом браузере.</div>
  <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
- <section class="grid products">
-  <article class="card product" data-product="hunter">
-   <div class="producttop"><div><div class="sku">SKU 6320918122 · ХАНТЕР</div><h3>Зеркала заднего вида УАЗ-31519</h3></div><div class="price">2 561 ₽</div></div>
-   <div class="productbody"><div class="metrics"><div class="metric"><small>Комиссия 47%</small><b>1 203,67 ₽</b></div><div class="metric"><small>Эквайринг</small><b>25,61 ₽</b></div><div class="metric"><small>Доставка клиенту</small><b>25 ₽</b></div></div>
-    <div class="costgrid">
-     <div class="field"><label>Закупка / себестоимость, ₽</label><input data-key="cost" type="number" min="0" value="0"></div>
-     <div class="field"><label>Упаковка, ₽</label><input data-key="pack" type="number" min="0" value="0"></div>
-     <div class="field"><label>Реклама на 1 заказ, ₽</label><input data-key="ads" type="number" min="0" value="0"></div>
-     <div class="field"><label>Транзит / логистика, ₽</label><input data-key="transit" type="number" min="0" value="0" placeholder="введите сумму"></div>
-     <div class="field wide"><label>Прочие расходы, ₽</label><input data-key="other" type="number" min="0" value="0"></div>
-    </div><div class="result"><div><small>Остаток до транзита и налога*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">Без транзита</div></div>
-   </div>
-  </article>
-  <article class="card product" data-product="bukhanka">
-   <div class="producttop"><div><div class="sku">SKU 6363848329 · БУХАНКА</div><h3>Зеркала заднего вида УАЗ-452</h3></div><div class="price">2 254 ₽</div></div>
-   <div class="productbody"><div class="metrics"><div class="metric"><small>Комиссия 47%</small><b>1 059,38 ₽</b></div><div class="metric"><small>Эквайринг</small><b>22,54 ₽</b></div><div class="metric"><small>Доставка клиенту</small><b>25 ₽</b></div></div>
-    <div class="costgrid">
-     <div class="field"><label>Закупка / себестоимость, ₽</label><input data-key="cost" type="number" min="0" value="0"></div>
-     <div class="field"><label>Упаковка, ₽</label><input data-key="pack" type="number" min="0" value="0"></div>
-     <div class="field"><label>Реклама на 1 заказ, ₽</label><input data-key="ads" type="number" min="0" value="0"></div>
-     <div class="field"><label>Транзит / логистика, ₽</label><input data-key="transit" type="number" min="0" value="0" placeholder="введите сумму"></div>
-     <div class="field wide"><label>Прочие расходы, ₽</label><input data-key="other" type="number" min="0" value="0"></div>
-    </div><div class="result"><div><small>Остаток с единицы до налога*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">Укажите расходы</div></div>
-   </div>
-  </article>
- </section>
+ <div class="catalogtools">
+  <input id="productSearch" type="search" placeholder="Поиск по названию, SKU или offer ID" aria-label="Поиск товара">
+  <span class="toolhint" id="catalogCountHint">Загружаем каталог…</span>
+  <button id="refreshCatalog" type="button">Обновить каталог</button>
+  <button id="exportEconomics" class="secondary" type="button">Экспорт CSV</button>
+  <button id="clearCosts" class="secondary" type="button">Сбросить расходы</button>
+ </div>
+ <section class="grid products" id="productGrid"></section>
  <section class="grid bottom">
   <div class="card" id="fees"><div class="sectionhead" style="margin:0"><div><h2>Структура известных удержаний</h2><p>Расчёт от текущей цены; транзит показан диапазоном.</p></div></div>
    <div class="barlist">
@@ -128,6 +110,7 @@
  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
+   const missingTariffs=!price||p.sales_percent_fbs==null||p.acquiring==null||p.delivery_to_customer==null||p.first_mile_min==null||p.first_mile_max==null;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0,first=(firstMin+firstMax)/2;
   const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
   const card=document.createElement('article');card.className='card product';card.dataset.key=key;
