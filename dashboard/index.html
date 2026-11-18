@@ -80,4 +80,50 @@ const config={hunter:{price:2561,commission:.47,acquiring:25.61,firstMile:5,deli
 const rub=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' ₽';
 document.querySelectorAll('.product').forEach(card=>{const c=config[card.dataset.product];const inputs=[...card.querySelectorAll('input')];function calc(){const v={};inputs.forEach(i=>v[i.dataset.key]=Math.max(0,Number(i.value)||0));const fees=c.price*c.commission+c.acquiring+c.firstMile+c.delivery;const profit=c.price-fees-v.cost-v.pack-v.ads-v.transit-v.other;card.querySelector('[data-out=profit]').textContent=rub(profit);const margin=profit/c.price*100;const out=card.querySelector('[data-out=margin]');out.textContent=(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'% от цены';out.style.color=profit>=0?'#ff9a68':'#ff7770';}inputs.forEach(i=>i.addEventListener('input',calc));calc();});
 </script>
+
+<script>
+(async function loadLiveSnapshot(){
+  const status = document.querySelector('.status');
+  const warning = document.querySelector('.alert');
+  try {
+    const response = await fetch('/api/dashboard', {headers:{'Accept':'application/json'}});
+    if (!response.ok) throw new Error('live data unavailable');
+    const data = await response.json();
+    if (!data || data.status !== 'ok' || !Array.isArray(data.products)) throw new Error('invalid snapshot');
+    status.innerHTML = '<i class="dot"></i>Каталог и тарифы: онлайн';
+    if (warning) {
+      warning.innerHTML = '<b>Продажи пока не подключены к live-обновлению</b>Каталог и тарифы загружаются напрямую из Ozon при открытии страницы. Блок продаж и возвратов пока показывает последнюю подтверждённую сверку; начисления не считаются прибылью.';
+    }
+    const fmt = n => n == null ? '—' : new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)) + ' ₽';
+    for (const p of data.products) {
+      const card = [...document.querySelectorAll('.product')].find(el => {
+        const sku = el.querySelector('.sku')?.textContent || '';
+        return (p.sku != null && sku.includes(String(p.sku))) ||
+          (p.product_id != null && sku.includes(String(p.product_id)));
+      });
+      if (!card) continue;
+      if (p.name) card.querySelector('h3').textContent = p.name;
+      if (p.price != null) card.querySelector('.price').textContent = fmt(p.price);
+      const metrics = card.querySelectorAll('.metric b');
+      if (p.sales_percent_fbs != null) metrics[0].textContent = Number(p.price || 0) * Number(p.sales_percent_fbs) / 100 >= 0
+        ? fmt(Number(p.price || 0) * Number(p.sales_percent_fbs) / 100) + ' (' + p.sales_percent_fbs + '%)' : '—';
+      if (p.acquiring != null) metrics[1].textContent = fmt(p.acquiring);
+      if (p.delivery_to_customer != null) metrics[2].textContent = fmt(p.delivery_to_customer);
+      const c = config[card.dataset.product];
+      if (c) {
+        if (p.price != null) c.price = Number(p.price);
+        if (p.sales_percent_fbs != null) c.commission = Number(p.sales_percent_fbs)/100;
+        if (p.acquiring != null) c.acquiring = Number(p.acquiring);
+        if (p.first_mile_min != null && p.first_mile_max != null) c.firstMile = (Number(p.first_mile_min)+Number(p.first_mile_max))/2;
+        if (p.delivery_to_customer != null) c.delivery = Number(p.delivery_to_customer);
+        card.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event('input')));
+      }
+    }
+    const count = document.querySelectorAll('.kpis .card')[2]?.querySelector('.kvalue');
+    if (count) count.textContent = String(data.products_count);
+  } catch (_) {
+    status.innerHTML = '<i class="dot" style="background:#c58b2b"></i>Снимок выгрузки · API недоступен';
+  }
+})();
+</script>
 </body></html>
