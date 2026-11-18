@@ -27,3 +27,26 @@ test('zero lead and safety days do not create an artificial order',()=>{
  const result=calculate({available:0,dailySales:4,leadDays:0,safetyDays:0});
  assert.equal(result.recommended,0);
 });
+
+test('calculates procurement budget only from configured unit costs',()=>{
+ const result=window.OzonInventoryPlanner.calculateProcurementBudget([
+  {type:'FBO',costKey:'a',result:{recommended:4}},
+  {type:'FBS',costKey:'b',result:{recommended:3}},
+  {type:'FBO',costKey:'c',result:{recommended:2}}
+ ],{
+  a:{cost:125},b:{cost:80,costConfigured:true},c:{}
+ });
+ assert.equal(result.knownBudget,740);
+ assert.equal(result.FBO,500);
+ assert.equal(result.FBS,240);
+ assert.equal(result.missingCostItems,1);
+ assert.equal(result.unknownUnits,2);
+});
+test('accepts explicitly configured zero cost without inventing a purchase budget',()=>{
+ const result=window.OzonInventoryPlanner.calculateProcurementBudget([
+  {type:'FBO',costKey:'free',result:{recommended:5}}
+ ],{free:{cost:0,costConfigured:true}});
+ assert.equal(result.knownBudget,0);
+ assert.equal(result.missingCostItems,0);
+ assert.equal(result.knownUnits,5);
+});
