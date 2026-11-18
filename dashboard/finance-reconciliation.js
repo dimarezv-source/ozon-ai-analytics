@@ -20,7 +20,7 @@
    ['Исходные компоненты',data.components||[],r=>[r.posting_number,r.fulfillment_type,r.sku,r.label,r.type_id,r.currency,r.amount,r.posting_match]]
   ];
   for(const [section,items,project] of groups){add(section,['','','']);for(const item of items)add(section,project(item))}
-  return '\\ufeff'+lines.map(row=>row.map(csvCell).join(';')).join('\\r\\n');
+  return String.fromCharCode(65279)+lines.map(row=>row.map(csvCell).join(';')).join(String.fromCharCode(13,10));
  }
  function exportCsv(){
   if(!lastData)return;
