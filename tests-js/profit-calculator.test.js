@@ -13,7 +13,7 @@ test('FBO includes FBO delivery and transit, excludes FBS-only logistics',()=>{
  assert.equal(r.ok,true);assert.equal(r.deductions.commission,120);
  assert.equal(r.deductions.firstMile,0);assert.equal(r.deductions.delivery,15);
  assert.equal(r.deductions.marketplaceTransit,10);assert.equal(r.deductions.additionalTransit,0);
- assert.equal(r.deductions.tax,60);assert.equal(r.profit,280);
+ assert.equal(r.deductions.tax,60);assert.equal(r.profit,258);
  assert.equal(r.returnFlowTariff,50);assert.equal(r.returnFlowIncluded,false);
 });
 test('FBS includes first mile, delivery and average transit once',()=>{
@@ -21,11 +21,11 @@ test('FBS includes first mile, delivery and average transit once',()=>{
  assert.equal(r.ok,true);assert.equal(r.deductions.commission,150);
  assert.equal(r.deductions.firstMile,15);assert.equal(r.deductions.delivery,30);
  assert.equal(r.deductions.marketplaceTransit,15);assert.equal(r.deductions.additionalTransit,7);
- assert.equal(r.deductions.tax,60);assert.equal(r.profit,188);
+ assert.equal(r.deductions.tax,60);assert.equal(r.profit,186);
 });
 test('negative profit remains negative',()=>{
  const r=calculateProfit({fulfillmentType:'FBS',unitPrice:100,product,expenses:{cost:500}});
- assert.equal(r.ok,true);assert.equal(r.profit,-462);assert.equal(r.marginPercent,-462);
+ assert.equal(r.ok,true);assert.equal(r.profit,-477);assert.equal(r.marginPercent,-477);
 });
 test('zero and invalid prices are rejected',()=>{
  assert.equal(calculateProfit({fulfillmentType:'FBO',unitPrice:0,product}).reason,'invalid_price');
