@@ -161,9 +161,11 @@
   const result=calculateFrozenStock(rows,savedCosts,state.frozenThresholdDays);
   const clearance=calculateClearanceRanking(result.items);state.clearanceItems=clearance;
   [['frozenValue',money(result.frozenValue)],['frozenUnits',number(result.frozenUnits)],['frozenPositions',number(result.items.length)],['frozenMissingCosts',number(result.missingCostItems)],['frozenFboValue',money(result.FBO)],['frozenFbsValue',money(result.FBS)]].forEach(([id,value])=>{const node=el(id);if(node)node.textContent=value});
-  const clearanceBody=el('clearanceRows');if(clearanceBody){clearanceBody.replaceChildren();for(const item of clearance){\n   const tr=document.createElement('tr');const values=[item.rank,item.name+' · '+(item.sku?'SKU '+item.sku:item.offer),item.type,number(item.available),item.coverage===null?'Нет продаж':fmtDays(item.coverage),item.costKnown?money(item.unitCost):'Не указана',item.costKnown?money(item.frozenValue):'Не рассчитано',item.costKnown?'Приоритет распродажи':'Уточнить себестоимость'];
+  const clearanceBody=el('clearanceRows');if(clearanceBody){clearanceBody.replaceChildren();for(const item of clearance){
+   const tr=document.createElement('tr');const values=[item.rank,item.name+' · '+(item.sku?'SKU '+item.sku:item.offer),item.type,number(item.available),item.coverage===null?'Нет продаж':fmtDays(item.coverage),item.costKnown?money(item.unitCost):'Не указана',item.costKnown?money(item.frozenValue):'Не рассчитано',item.costKnown?'Приоритет распродажи':'Уточнить себестоимость'];
    values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===0||index>=3&&index<=6)td.className='num';if(index===7&&!item.costKnown)td.className='hint';tr.appendChild(td)});clearanceBody.appendChild(tr);
-  }if(!clearance.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.textContent='Нет товаров для приоритетной распродажи по выбранному порогу.';td.className='hint';tr.appendChild(td);clearanceBody.appendChild(tr)}}\n  const clearanceExport=el('clearanceExport');if(clearanceExport)clearanceExport.disabled=!clearance.length;
+  }if(!clearance.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.textContent='Нет товаров для приоритетной распродажи по выбранному порогу.';td.className='hint';tr.appendChild(td);clearanceBody.appendChild(tr)}}
+  const clearanceExport=el('clearanceExport');if(clearanceExport)clearanceExport.disabled=!clearance.length;
   const clearanceCount=el('clearanceCount');if(clearanceCount)clearanceCount.textContent=number(clearance.length);
   const clearanceCapital=el('clearanceCapital');if(clearanceCapital)clearanceCapital.textContent=money(clearance.reduce((sum,item)=>sum+(item.costKnown?item.frozenValue:0),0));
   const clearanceUnknown=el('clearanceUnknown');if(clearanceUnknown)clearanceUnknown.textContent=number(clearance.filter(item=>!item.costKnown).length);
@@ -176,11 +178,13 @@
   if(!result.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.textContent='По выбранному порогу залежавшихся остатков не найдено.';td.className='hint';tr.appendChild(td);body.appendChild(tr)}
   const note=el('frozenStockNote');if(note)note.textContent='Проверка по '+days+' дн. продаж. Залежавшимся считается остаток без продаж за выбранный период или с покрытием более '+state.frozenThresholdDays+' дн. Сумма учитывает только заполненную себестоимость; резерв вычтен.';
  }
- function exportClearance(){\n  const items=state.clearanceItems||[];if(!items.length)return;
+ function exportClearance(){
+  const items=state.clearanceItems||[];if(!items.length)return;
   const rows=[['Место','Товар','SKU','Offer ID','Схема','Доступно, шт.','Продано за период, шт.','Покрытие, дней','Себестоимость / шт., ₽','Связано денег, ₽','Рекомендация']];
   items.forEach(item=>rows.push([item.rank,item.name,item.sku||'',item.offer||'',item.type,item.available,item.sold,item.coverage===null?'':Number(item.coverage.toFixed(1)),item.costKnown?item.unitCost:'',item.costKnown?Math.round(item.frozenValue):'',item.costKnown?'Приоритет распродажи':'Уточнить себестоимость']));
   const csv='\\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ozon-prioritet-rasprodazhi.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);\n }
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ozon-prioritet-rasprodazhi.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ }
  function render(){
   if(!state.stock)return;
   const products=Array.isArray(state.stock.products)?state.stock.products:[];
