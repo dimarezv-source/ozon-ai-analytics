@@ -2,6 +2,7 @@
   'use strict';
   const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(value)||0)+' ₽';
   const number=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(Number(value)||0);
+  const daysText=value=>Number.isFinite(Number(value))?(Number(value)<1?'< 1 дня':number(value)+' дн.'):'—';
   const currencyMoney=(value,currency)=>{const code=String(currency||'').toUpperCase();try{return new Intl.NumberFormat('ru-RU',{style:'currency',currency:code,maximumFractionDigits:2}).format(Number(value));}catch(_){return number(value)+' '+(code||'ед.');}};
   const el=id=>document.getElementById(id);
   let latestRanking=null, latestSales=null, feeRequestKey='';
@@ -165,7 +166,7 @@
     }
     for(const item of stock){
       if(item.level==='critical')actions.push({level:'critical',title:'Нет доступного остатка · '+item.name,detail:item.type+' · '+(item.sku?'SKU '+item.sku:'товар')+'. Проверь пополнение или доступность товара.',href:'#inventory',link:'Открыть остатки'});
-      else if(item.level==='warning')actions.push({level:'warning',title:'Запас скоро закончится · '+item.name,detail:item.type+' · доступно '+number(item.available)+' шт. · ориентир '+fmtDays(item.coverage)+'.',href:'#inventory',link:'Проверить остатки'});
+      else if(item.level==='warning')actions.push({level:'warning',title:'Запас скоро закончится · '+item.name,detail:item.type+' · доступно '+number(item.available)+' шт. · ориентир '+daysText(item.coverage)+'.',href:'#inventory',link:'Проверить остатки'});
     }
     for(const item of fees){
       if(item.severity==='critical'||item.severity==='warning')actions.push({level:item.severity,title:item.title,detail:item.detail,href:'#reconciliationPanel',link:'Открыть сверку'});
