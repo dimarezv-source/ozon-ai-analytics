@@ -182,7 +182,7 @@
   const items=state.clearanceItems||[];if(!items.length)return;
   const rows=[['Место','Товар','SKU','Offer ID','Схема','Доступно, шт.','Продано за период, шт.','Покрытие, дней','Себестоимость / шт., ₽','Связано денег, ₽','Рекомендация']];
   items.forEach(item=>rows.push([item.rank,item.name,item.sku||'',item.offer||'',item.type,item.available,item.sold,item.coverage===null?'':Number(item.coverage.toFixed(1)),item.costKnown?item.unitCost:'',item.costKnown?Math.round(item.frozenValue):'',item.costKnown?'Приоритет распродажи':'Уточнить себестоимость']));
-  const csv='\\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+  const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ozon-prioritet-rasprodazhi.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  }
  function render(){
