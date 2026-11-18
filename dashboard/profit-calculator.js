@@ -35,7 +35,7 @@
       additionalTransit:normalized.transit,other:normalized.other,tax
     };
     const total=Object.values(deductions).reduce((sum,value)=>sum+value,0);
-    const profit=Math.round((price-total)*100)/100;
+    const profit=Math.round(price-total);
     const returnFlowRaw=type==='FBO'?product.fbo_return_flow:product.return_flow;
     const returnFlow=returnFlowRaw===null||returnFlowRaw===undefined||returnFlowRaw===''?null:Number(returnFlowRaw);
     return {
@@ -54,7 +54,7 @@
     if(!scenario.ok)return {ok:false,reason:'invalid_scenario_price',current,scenario};
     return {
       ok:true,current,scenario,
-      deltaProfitPerUnit:Math.round((scenario.profit-current.profit)*100)/100,
+      deltaProfitPerUnit:Math.round(scenario.profit-current.profit),
       deltaMarginPoints:Math.round((scenario.marginPercent-current.marginPercent)*100)/100,
       scenarioAssumption:'same_costs_and_tariffs_no_demand_response'
     };
