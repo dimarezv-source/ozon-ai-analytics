@@ -41,3 +41,43 @@ def test_exact_posting_match_only_and_dictionary_labels():
     assert result["components"][2]["posting_match"]=="unmatched"
     assert result["metrics"]["posting_match_count"]==1
     assert result["metrics"]["known_type_count"]==3
+
+
+def test_allocates_only_exact_delivered_postings_and_separates_fbo_fbs():
+    records = [
+        {"posting_number": "FBO-1", "fee": {"type_id": 7, "accrued": {"amount": "-12.50", "currency": "RUB"}}},
+        {"posting": {"posting_number": "FBS-1"}, "fee": {"type_id": 7, "accrued": {"amount": "-8.00", "currency": "RUB"}}},
+        {"posting_number": "NOT-DELIVERED", "fee": {"type_id": 7, "accrued": {"amount": "-4.00", "currency": "RUB"}}},
+        {"fee": {"type_id": 9, "accrued": {"amount": "-3.00", "currency": "KZT"}}},
+    ]
+    result = normalize_accrual_records(
+        records,
+        {"7": {"name": "Delivery"}},
+        [
+            {"posting_number": "FBO-1", "fulfillment_type": "FBO"},
+            {"posting_number": "FBS-1", "fulfillment_type": "FBS"},
+            # A non-delivered posting is intentionally absent from the delivered list.
+        ],
+    )
+    assert [(x["fulfillment_type"], x["amount"], x["currency"]) for x in result["fulfillment_summary"]] == [
+        ("FBO", "-12.50", "RUB"),
+        ("FBS", "-8.00", "RUB"),
+    ]
+    assert result["metrics"]["posting_match_count"] == 2
+    assert result["metrics"]["posting_unmatched_count"] == 2
+    assert result["metrics"]["posting_match_percent"] == 50
+    assert result["unmatched_summary"] == [
+        {"type_id": "7", "label": "Delivery", "currency": "RUB", "amount": "-4.00", "components": 1},
+        {"type_id": "9", "label": None, "currency": "KZT", "amount": "-3.00", "components": 1},
+    ]
+    # Never add RUB and KZT into one misleading scalar total.
+    assert result["metrics"]["total_component_amount"] is None
+    assert result["metrics"]["total_component_amount_by_currency"] == {"KZT": "-3.00", "RUB": "-24.50"}
+
+
+def test_allows_single_currency_legacy_totals():
+    result = normalize_accrual_records([
+        {"posting_number": "FBO-1", "fee": {"type_id": 1, "accrued": {"amount": "-5", "currency": "RUB"}}}
+    ], {}, [{"posting_number": "FBO-1", "fulfillment_type": "FBO"}])
+    assert result["metrics"]["total_component_amount"] == "-5"
+    assert result["metrics"]["matched_amount"] == "-5"
