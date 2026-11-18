@@ -93,3 +93,35 @@ def test_sales_endpoint_rejects_reversed_dates(monkeypatch) -> None:
     )
 
     assert response.status_code == 400
+
+
+def test_sales_endpoint_returns_zero_totals_when_no_delivered_sales(monkeypatch) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
+    monkeypatch.setenv("OZON_CLIENT_ID", "client")
+    monkeypatch.setenv("OZON_API_KEY", "read-only-key")
+
+    class EmptyOzonClient:
+        def __init__(self, client_id, api_key, base_url):
+            pass
+
+        async def execute(self, operation, payload):
+            return {"result": {"postings": [], "has_next": False}}
+
+    monkeypatch.setattr("app.main.OzonReadOnlyClient", EmptyOzonClient)
+    response = TestClient(app).get(
+        "/api/sales?date_from=2026-11-01&date_to=2026-11-18",
+        auth=("owner", "test-password"),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sales_gmv"] == 0
+    assert data["delivered_units"] == 0
+    assert data["delivered_postings"] == 0
+    assert data["fulfillment"] == {
+        "FBO": {"delivered_units": 0, "sales_gmv": 0, "delivered_postings": 0},
+        "FBS": {"delivered_units": 0, "sales_gmv": 0, "delivered_postings": 0},
+    }
+    assert data["products"] == []
+    assert data["unpriced_units"] == 0
