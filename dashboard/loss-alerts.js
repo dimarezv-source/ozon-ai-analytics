@@ -146,7 +146,7 @@
     `;
     document.head.appendChild(style);
     const panel=document.createElement('section');panel.className='card action-center';panel.id='actionCenter';
-    panel.innerHTML='<div class="action-head"><div><h2>План действий на сегодня</h2><p>Приоритеты из прибыли, остатков и фактических удержаний</p></div><span class="action-score" id="actionLevel" data-level="unknown">Ожидаем данные</span></div>'+
+    panel.innerHTML='<div class="action-head"><div><h2>План действий на сегодня</h2><p>Приоритеты из экономики, остатков и финансовых начислений</p></div><span class="action-score" id="actionLevel" data-level="unknown">Ожидаем данные</span></div>'+
       '<div class="action-stats"><div class="action-stat"><small>Срочные задачи</small><strong id="actionCritical">—</strong></div><div class="action-stat"><small>Предупреждения</small><strong id="actionWarnings">—</strong></div><div class="action-stat"><small>Покрытие экономики</small><strong id="actionCoverage">—</strong></div><div class="action-stat"><small>Расчётная прибыль</small><strong id="actionProfit">—</strong></div></div>'+
       '<div class="action-list" id="actionItems"><div class="action-empty">Загрузи продажи и остатки — соберём список приоритетов.</div></div>'+
       '<p class="action-foot">Подсказки основаны только на доступных данных. Прибыль и покрытие — оценки; изменение цен и остатки в кабинете Ozon автоматически не меняются.</p>';
