@@ -25,6 +25,15 @@ jobs:
           OZON_API_KEY: ${{ secrets.OZON_API_KEY }}
         run: python scripts/fetch_catalog.py
 
+      - name: Fetch read-only prices and commissions
+        env:
+          OZON_CLIENT_ID: ${{ secrets.OZON_CLIENT_ID }}
+          OZON_API_KEY: ${{ secrets.OZON_API_KEY }}
+        run: python scripts/fetch_prices.py
+
+      - name: Build price and commission report
+        run: python scripts/build_prices_report.py
+
       - name: Build Markdown report
         run: python scripts/build_report.py
 
@@ -43,6 +52,8 @@ jobs:
           name: ozon-catalog-and-report
           path: |
             output/ozon-products.json
+            output/ozon-prices.json
+            output/prices-report.md
             output/report.md
           if-no-files-found: warn
           retention-days: 7
