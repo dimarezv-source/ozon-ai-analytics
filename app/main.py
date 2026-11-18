@@ -37,8 +37,8 @@ def require_dashboard_auth(
 
     valid = (
         credentials is not None
-        and secrets.compare_digest(credentials.username, expected_username)
-        and secrets.compare_digest(credentials.password, expected_password)
+        and secrets.compare_digest(credentials.username.encode('utf-8'), expected_username.encode('utf-8'))
+        and secrets.compare_digest(credentials.password.encode('utf-8'), expected_password.encode('utf-8'))
     )
     if not valid:
         raise HTTPException(
