@@ -297,7 +297,7 @@
 <script>
 (function(){
  const grid=document.getElementById('productGrid'),status=document.querySelector('.status'),notice=document.getElementById('liveNotice');
- const money=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)||0)+' ₽';
+ const money=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(Number(n)||0))+' ₽';
  const pct=n=>Number.isFinite(Number(n))?Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2})+'%':'—';
  const safeKey=p=>String(p.product_id||p.sku||p.offer_id||'unknown');
  const storageKey='ozon-ai-analytics-costs-v1';

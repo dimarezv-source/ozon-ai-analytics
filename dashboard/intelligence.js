@@ -3,7 +3,7 @@
     return String(product.product_id||product.sku||product.offer_id||'unknown');
   }
   function money(value){
-    return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(value)+' ₽';
+    return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(value)+' ₽';
   }
   function priceForMargin(product,expenses,fulfillmentType,calculation,targetMarginPercent){
     const commissionRate=Number(fulfillmentType==='FBO'?product.sales_percent_fbo:product.sales_percent_fbs);

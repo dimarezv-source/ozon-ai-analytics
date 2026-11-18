@@ -69,3 +69,10 @@ test('price simulator rejects an invalid scenario price without changing the bas
  assert.equal(r.reason,'invalid_scenario_price');
  assert.equal(r.current.ok,true);
 });
+
+test('monetary profit and simulator difference are rounded to whole rubles',()=>{
+ const r=calculateProfit({fulfillmentType:'FBO',unitPrice:1000.49,product:{...product,sales_percent_fbo:12.25,acquiring:2.25,fbo_delivery_to_customer:15.25,fbo_transit_min:5.25,fbo_transit_max:15.25},expenses:{cost:500.25,pack:10.25,ads:20.25,other:5.25,tax:6.25}});
+ assert.equal(r.ok,true);assert.equal(Number.isInteger(r.profit),true);
+ const sim=simulatePrice({fulfillmentType:'FBO',currentPrice:1000.49,scenarioPrice:1100.49,product,expenses:{cost:500.25}});
+ assert.equal(sim.ok,true);assert.equal(Number.isInteger(sim.deltaProfitPerUnit),true);
+});

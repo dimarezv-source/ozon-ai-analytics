@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  const el=id=>document.getElementById(id);
- const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)||0);
+ const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(n)||0);
  function buildMatrix(sales,finance){
   const map=new Map();
   const get=(schema,sku)=>{const key=String(schema||'')+':'+String(sku||'');if(!map.has(key))map.set(key,{schema:String(schema||'—'),sku:String(sku||''),units:0,gmv:0,returns:0,fees:new Map(),feeRecords:0});return map.get(key)};
