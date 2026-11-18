@@ -82,13 +82,14 @@
 .accrual-caveat{font-size:11px;color:var(--muted);line-height:1.55;margin-top:12px}
 @media(max-width:650px){.accrual-status{width:100%;margin:0}}
 
+.intelligence-panel{margin:0 0 18px}.intel-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.intel-kpi{background:#f7f8fc;border:1px solid var(--line);border-radius:12px;padding:13px}.intel-kpi small{display:block;color:var(--muted);font-size:10px;margin-bottom:7px}.intel-kpi strong{font-size:clamp(17px,2vw,24px);font-weight:850;font-variant-numeric:tabular-nums}.intel-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.intel-table{width:100%;border-collapse:collapse;min-width:760px;font-size:12px}.intel-table th,.intel-table td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}.intel-table th{font-size:10px;letter-spacing:.45px;text-transform:uppercase;color:var(--muted);background:#f8f9fc}.intel-table tr:last-child td{border-bottom:0}.intel-table .num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:750}.intel-table .loss{color:#c2413b}.intel-table .gain{color:#167b58}.intel-footnote{font-size:11px;line-height:1.55;color:var(--muted);margin-top:10px}@media(max-width:760px){.intel-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <div class="shell">
 <aside class="side">
  <div><div class="brand"><div class="mark">O</div><div>OZON AI<br>ANALYTICS</div></div><div class="subbrand">SELLER INTELLIGENCE</div></div>
- <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a></div>
+ <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#intelligence"><span>✦</span>Ozon Intelligence</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a></div>
  <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
 </aside>
 <main class="main">
@@ -122,6 +123,14 @@
   <div class="profit-period-note" id="periodProfitNote">Прибыль появится после загрузки продаж и каталога. Для расчёта используются расходы из карточек юнит-экономики.</div>
  </section>
  
+<section class="card intelligence-panel" id="intelligence">
+ <div class="sectionhead" style="margin:0"><div><h2>Ozon Intelligence · центр прибыли</h2><p>Рейтинг товаров за выбранный период · FBO и FBS отдельно</p></div><span class="tag">SMART RANKING</span></div>
+ <div class="intel-kpis"><div class="intel-kpi"><small>Расчётная прибыль товаров</small><strong id="intelProfit">—</strong></div><div class="intel-kpi"><small>Товаров в рейтинге</small><strong id="intelProducts">—</strong></div><div class="intel-kpi"><small>Покрытие продаж</small><strong id="intelCoverage">—</strong></div><div class="intel-kpi"><small>Убыточных позиций</small><strong id="intelLosses">—</strong></div></div>
+ <div class="hint" id="intelStatus">Загрузи продажи за период и укажи себестоимость товаров, чтобы построить рейтинг.</div>
+ <div class="intel-table-wrap" style="margin-top:12px"><table class="intel-table"><thead><tr><th>Товар</th><th>Схема</th><th>Шт.</th><th>Оборот</th><th>Расчётная прибыль</th><th>Маржа</th><th>Рекомендация</th></tr></thead><tbody id="intelRows"><tr><td colspan="7" class="hint">Ожидаем данные за период.</td></tr></tbody></table></div>
+ <p class="intel-footnote">Оценка по доставленным продажам, тарифам Seller API и введённым расходам. Товары без себестоимости или полных тарифов исключаются из рейтинга, а не считаются прибыльными с нулевыми затратами. Фактические начисления, возвраты и выплаты Ozon пока не смешиваются с этой оценкой.</p>
+</section>
+
 <section class="card accrual-panel" id="financeAccrualPanel">
  <div class="sectionhead" style="margin:0">
   <div><h2>Фактические начисления Ozon</h2><p>Данные финансового API · без смешивания с прогнозными тарифами</p></div>
@@ -184,6 +193,7 @@
  <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
 </main></div>
 <script src="/dashboard/profit-calculator.js"></script>
+<script src="/dashboard/intelligence.js"></script>
 <script>
 (function(){
  const grid=document.getElementById('productGrid'),status=document.querySelector('.status'),notice=document.getElementById('liveNotice');
@@ -208,6 +218,7 @@
    set('periodProfitMargin','—');set('periodProfitRevenue',money(0));set('periodProfitCoverage','0 из 0 шт.');
    set('periodProfitFbo','—');set('periodProfitFbs','—');set('periodRevenueSplit','—');
    set('periodProfitNote','Когда появятся доставленные заказы, здесь рассчитаем прибыль отдельно для FBO и FBS.');
+   renderIntelligence();
    return;
   }
   const catalogById=new Map();
@@ -257,6 +268,30 @@
   const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
   if(excluded)note+=' Исключено: '+excluded+' шт. — без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
   set('periodProfitNote',note);
+  renderIntelligence();
+ }
+  function renderIntelligence(){
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  const rows=document.getElementById('intelRows');if(!rows)return;
+  if(!periodSales||!window.OzonIntelligence||!window.OzonProfitCalculator){
+   set('intelProfit','—');set('intelProducts','—');set('intelCoverage','—');set('intelLosses','—');
+   rows.innerHTML='<tr><td colspan="7" class="hint">Загрузи продажи за выбранный период.</td></tr>';return;
+  }
+  const ranking=window.OzonIntelligence.buildProductRanking(periodSales,products,loadCosts(),window.OzonProfitCalculator);
+  set('intelProfit',ranking.includedUnits?((ranking.estimatedProfit>0?'+':'')+money(ranking.estimatedProfit)):'—');
+  set('intelProducts',String(ranking.items.length));
+  set('intelCoverage',ranking.coveragePercent.toLocaleString('ru-RU',{maximumFractionDigits:1})+'%');
+  set('intelLosses',String(ranking.items.filter(item=>item.profit<0).length));
+  rows.replaceChildren();
+  for(const item of ranking.items){
+   const tr=document.createElement('tr');
+   const values=[item.name+' · SKU '+(item.sku??'—'),item.fulfillmentType,String(item.units),money(item.revenue),(item.profit>0?'+':'')+money(item.profit),(item.marginPercent>0?'+':'')+item.marginPercent.toFixed(1).replace('.',',')+'%',item.recommendation];
+   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===4)td.className='num '+(item.profit<0?'loss':'gain');if(index===2||index===3)td.classList.add('num');tr.appendChild(td)});
+   rows.appendChild(tr);
+  }
+  if(!ranking.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.className='hint';td.textContent='Пока нет товаров с полными тарифами и заполненной себестоимостью.';tr.appendChild(td);rows.appendChild(tr)}
+  const ex=ranking.excluded;
+  set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
