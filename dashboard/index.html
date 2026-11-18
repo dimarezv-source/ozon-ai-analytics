@@ -181,9 +181,9 @@
    const required=type==='FBO'?['sales_percent_fbo','acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
    if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
    const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
-   const cost=Math.max(0,Number(values.cost)||0),pack=Math.max(0,Number(values.pack)||0);
-   const ads=Math.max(0,Number(values.ads)||0),transit=Math.max(0,Number(values.transit)||0);
-   const other=Math.max(0,Number(values.other)||0),taxRate=Math.max(0,Number(values.tax)||0);
+   const cost=values.cost??0,pack=values.pack??0;
+   const ads=values.ads??0,transit=values.transit??0;
+   const other=values.other??0,taxRate=values.tax??0;
    const calculation=window.OzonProfitCalculator.calculateProfit({
     fulfillmentType:type,unitPrice,product,
     expenses:{cost,pack,ads,transit,other,tax:taxRate}
@@ -211,7 +211,7 @@
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
-   const missingTariffs=!price||p.sales_percent_fbs==null||p.acquiring==null||p.delivery_to_customer==null||p.first_mile_min==null||p.first_mile_max==null||p.transit_min==null||p.transit_max==null;
+   const missingTariffs=false;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0,first=(firstMin+firstMax)/2;
   const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
   const card=document.createElement('article');card.className='card product';card.dataset.key=key;
@@ -223,7 +223,7 @@
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
    '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · транзит Ozon '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · возврат '+(p.return_flow==null?'—':money(p.return_flow))+'</div></div>';
   function calc(){
-   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=Math.max(0,Number(i.value)||0));
+   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));
    const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType:'FBS',unitPrice:price,product:p,expenses:vals});
    const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
