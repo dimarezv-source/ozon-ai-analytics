@@ -298,7 +298,7 @@
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;
   const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
-  const card=document.createElement('article');card.className='card product';card.dataset.key=key;
+  const card=document.createElement('article');card.className='card product';card.dataset.key=key;card.dataset.costConfigured=(costs.costConfigured===true||(costs.cost!==null&&costs.cost!==undefined&&Number(costs.cost)>0))?'true':'false';
   const fboCommission=Number(p.sales_percent_fbo)||0;
   const metrics=[['Комиссия FBS · '+pct(commission),money(price*commission/100)],['Комиссия FBO · '+pct(fboCommission),p.sales_percent_fbo==null?'—':money(price*fboCommission/100)],['Эквайринг',p.acquiring==null?'—':money(acq)],['Доставка клиенту',p.delivery_to_customer==null?'—':money(delivery)]];
   card.innerHTML='<div class="producttop"><div><div class="sku">SKU '+esc(p.sku??'—')+' · ID '+esc(p.product_id??'—')+'</div><h3>'+esc(p.name||p.offer_id||'Товар без названия')+'</h3><div class="productmeta">Offer ID: '+esc(p.offer_id??'—')+'</div></div><div class="price">'+(price?money(price):'Цена не указана')+'</div></div>'+
@@ -307,7 +307,7 @@
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
    '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · FBS транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · FBS возврат '+(p.return_flow==null?'—':money(p.return_flow))+' · FBO доставка '+(p.fbo_delivery_to_customer==null?'—':money(p.fbo_delivery_to_customer))+' · FBO транзит '+(p.fbo_transit_min==null?'—':money(p.fbo_transit_min)+'–'+money(p.fbo_transit_max))+' · FBO возврат '+(p.fbo_return_flow==null?'—':money(p.fbo_return_flow))+'</div></div>';
   function calc(){
-   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));
+   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=i.value===''?0:Number(i.value));vals.costConfigured=card.dataset.costConfigured==='true';
    const fulfillmentType=card.querySelector('[data-fulfillment]').value;const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType,unitPrice:price,product:p,expenses:vals});
    const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
@@ -316,7 +316,7 @@
    card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    updatePeriodProfit();
   }
-  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
+  card.querySelectorAll('input').forEach(i=>{i.addEventListener('input',()=>{if(i.dataset.key==='cost')card.dataset.costConfigured='true';calc()});if(i.dataset.key==='cost')i.addEventListener('focus',()=>{card.dataset.costConfigured='true';calc()})});card.querySelector('[data-fulfillment]').addEventListener('change',calc);calc();return card;
  }
  function render(){
   const q=(document.getElementById('productSearch').value||'').toLowerCase().trim();
