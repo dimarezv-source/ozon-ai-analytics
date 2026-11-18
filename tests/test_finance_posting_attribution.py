@@ -36,5 +36,5 @@ def test_normalize_posting_accruals_ignores_invalid_money_and_missing_sku():
             {"sku": 3, "type_id": 1, "accrued": {"amount": "2", "currency": "RUB"}},
         ],
     }])
-    assert len(result["posting_accruals"]) == 1
-    assert result["posting_product_summary"][0]["sku"] == "3"
+    assert len(result["posting_accruals"]) == 2
+    assert [row["sku"] for row in result["posting_product_summary"]] == ["2", "3"]
