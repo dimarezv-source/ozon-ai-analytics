@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import logging
 import secrets
-import time
+import time as time_module
 from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -45,7 +45,7 @@ def _valid_session(token: str | None, username: str, password: str) -> bool:
         expected = hmac.new(password.encode("utf-8"), payload, hashlib.sha256).digest()
         return (
             secrets.compare_digest(token_user, username)
-            and expires >= int(time.time())
+            and expires >= int(time_module.time())
             and hmac.compare_digest(signature, expected.hex().encode("ascii"))
         )
     except (ValueError, UnicodeError):
@@ -118,7 +118,7 @@ async def login_submit(request: Request):
             "<!doctype html><meta charset='utf-8'><p>Неверный логин или пароль.</p><a href='/login'>Попробовать снова</a>",
             status_code=401,
         )
-    expires = int(time.time()) + 12 * 60 * 60
+    expires = int(time_module.time()) + 12 * 60 * 60
     token = _session_token(username, settings.dashboard_password, expires)
     response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(
