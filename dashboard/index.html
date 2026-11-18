@@ -38,6 +38,8 @@
 @media(prefers-reduced-motion:reduce){.kpis .card,.product,.metric,.field input{transition:none}}
 
 .periodbar{display:grid;grid-template-columns:minmax(150px,.7fr) auto minmax(180px,1fr);align-items:center;gap:14px;background:linear-gradient(110deg,#fff 0%,#fff8f3 58%,#f0fbfc 100%);border:1px solid #e7eaf2;border-radius:16px;padding:14px 17px;margin:0 0 15px;box-shadow:0 7px 22px #202b500c}.periodbar b{display:block;font-size:13px}.periodbar small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.periodfields{display:flex;align-items:end;gap:8px}.periodfields label{display:grid;gap:4px;color:var(--muted);font-size:10px}.periodfields input{width:145px;max-width:100%;border:1px solid #dfe4ee;border-radius:8px;padding:8px 9px;background:#fff;color:var(--ink);font:inherit;font-size:12px}.periodfields input:focus{outline:0;border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da22}.periodfields button{border:0;border-radius:9px;padding:9px 14px;background:linear-gradient(110deg,var(--orange),var(--orange2));color:#241c25;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}.periodfields button:disabled{opacity:.6;cursor:wait}.periodmessage{font-size:11px;color:var(--muted);text-align:right}.periodmessage.error{color:#bd4657}@media(max-width:1050px){.periodbar{grid-template-columns:1fr auto}.periodmessage{grid-column:1/-1;text-align:left}}@media(max-width:650px){.periodbar{grid-template-columns:1fr;padding:13px;gap:10px}.periodfields{flex-wrap:wrap}.periodfields label{flex:1;min-width:110px}.periodfields input{width:100%}.periodfields button{flex:1}.periodmessage{grid-column:auto}}
+
+.catalogtools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:0 0 13px}.catalogtools input{flex:1;min-width:190px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;background:#fff}.catalogtools button{border:0;border-radius:10px;padding:10px 13px;background:linear-gradient(110deg,var(--orange),var(--orange2));font-weight:800;cursor:pointer}.catalogtools button.secondary{background:#fff;border:1px solid var(--line);color:var(--ink)}.productmeta{font-size:10px;color:var(--muted);margin-top:5px}.product .result{margin-top:15px}.catalogempty{display:none}.catalogtools .toolhint{font-size:11px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -48,7 +50,7 @@
  <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
 </aside>
 <main class="main">
- <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Предварительный расчёт</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>Снимок выгрузки · ручное обновление</div></header>
+ <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Предварительный расчёт</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>Подключение к Ozon…</div></header>
  <div class="periodbar">
   <div><b>Период продаж</b><small>Выбери любые даты · данные Ozon в UTC</small></div>
   <div class="periodfields"><label>С <input id="salesFrom" type="date"></label><label>По <input id="salesTo" type="date"></label><button id="salesLoad" type="button">Показать</button></div>
@@ -57,10 +59,10 @@
  <section class="grid kpis">
   <div class="card"><div class="klabel">Продажи за период <span>↗</span></div><div class="kvalue" data-sales-total>—</div><div class="hint" data-sales-hint>Оборот доставленных заказов до возвратов</div></div>
   <div class="card"><div class="klabel">Продано, шт.</div><div class="kvalue" data-sales-units>—</div><div class="hint" data-sales-units-hint>Количество в доставленных заказах</div></div>
-  <div class="card"><div class="klabel">Товаров в каталоге</div><div class="kvalue">2</div><div class="hint">Получено из Seller API</div></div>
-  <div class="card"><div class="klabel">Комиссия FBS</div><div class="kvalue accent">47%</div><div class="hint">Текущий тариф для обоих SKU</div></div>
+  <div class="card"><div class="klabel">Товаров в каталоге</div><div class="kvalue" data-catalog-count>—</div><div class="hint">Получено из Seller API</div></div>
+  <div class="card"><div class="klabel">Комиссия FBS</div><div class="kvalue accent" data-commission-average>—</div><div class="hint">Средняя комиссия по каталогу</div></div>
  </section>
- <div class="alert" style="margin:0 0 18px"><b>Важно: это не live-дашборд</b>Каталог и тарифы взяты из последней ручной выгрузки Ozon. Заказы и начисления сейчас равны нулю по последней проверке. Страница сама не обновляется — для актуализации требуется новый запуск выгрузки.</div>
+ <div class="alert" id="liveNotice" style="margin:0 0 18px"><b>Подключаем данные</b>Получаем актуальный каталог и тарифы из Ozon. Расходы, которые ты введёшь, сохраняются в этом браузере.</div>
  <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
  <section class="grid products">
   <article class="card product" data-product="hunter">
@@ -111,56 +113,74 @@
  <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
 </main></div>
 <script>
-const config={hunter:{price:2561,commission:.47,acquiring:25.61,firstMile:5,delivery:25},bukhanka:{price:2254,commission:.47,acquiring:22.54,firstMile:5,delivery:25}};
-const rub=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' ₽';
-document.querySelectorAll('.product').forEach(card=>{const c=config[card.dataset.product];const inputs=[...card.querySelectorAll('input')];function calc(){const v={};inputs.forEach(i=>v[i.dataset.key]=Math.max(0,Number(i.value)||0));const fees=c.price*c.commission+c.acquiring+c.firstMile+c.delivery;const profit=c.price-fees-v.cost-v.pack-v.ads-v.transit-v.other;card.querySelector('[data-out=profit]').textContent=rub(profit);const margin=profit/c.price*100;const out=card.querySelector('[data-out=margin]');out.textContent=(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'% от цены';out.style.color=profit>=0?'#ff9a68':'#ff7770';}inputs.forEach(i=>i.addEventListener('input',calc));calc();});
-</script>
-
-<script>
-(async function loadLiveSnapshot(){
-  const status = document.querySelector('.status');
-  const warning = document.querySelector('.alert');
-  try {
-    const response = await fetch('/api/dashboard', {headers:{'Accept':'application/json'}});
-    if (!response.ok) throw new Error('live data unavailable');
-    const data = await response.json();
-    if (!data || data.status !== 'ok' || !Array.isArray(data.products)) throw new Error('invalid snapshot');
-    status.innerHTML = '<i class="dot"></i>Каталог и тарифы: онлайн';
-    if (warning) {
-      warning.innerHTML = '<b>Продажи загружаются по выбранному периоду</b>Показатель считает стоимость доставленных отправлений FBO и FBS до вычета возвратов и удержаний. Это оценка оборота, а не выплата или чистая прибыль.';
-    }
-    const fmt = n => n == null ? '—' : new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)) + ' ₽';
-    for (const p of data.products) {
-      const card = [...document.querySelectorAll('.product')].find(el => {
-        const sku = el.querySelector('.sku')?.textContent || '';
-        return (p.sku != null && sku.includes(String(p.sku))) ||
-          (p.product_id != null && sku.includes(String(p.product_id)));
-      });
-      if (!card) continue;
-      if (p.name) card.querySelector('h3').textContent = p.name;
-      if (p.price != null) card.querySelector('.price').textContent = fmt(p.price);
-      const metrics = card.querySelectorAll('.metric b');
-      if (p.sales_percent_fbs != null) metrics[0].textContent = Number(p.price || 0) * Number(p.sales_percent_fbs) / 100 >= 0
-        ? fmt(Number(p.price || 0) * Number(p.sales_percent_fbs) / 100) + ' (' + p.sales_percent_fbs + '%)' : '—';
-      if (p.acquiring != null) metrics[1].textContent = fmt(p.acquiring);
-      if (p.delivery_to_customer != null) metrics[2].textContent = fmt(p.delivery_to_customer);
-      const c = config[card.dataset.product];
-      if (c) {
-        if (p.price != null) c.price = Number(p.price);
-        if (p.sales_percent_fbs != null) c.commission = Number(p.sales_percent_fbs)/100;
-        if (p.acquiring != null) c.acquiring = Number(p.acquiring);
-        if (p.first_mile_min != null && p.first_mile_max != null) c.firstMile = (Number(p.first_mile_min)+Number(p.first_mile_max))/2;
-        if (p.delivery_to_customer != null) c.delivery = Number(p.delivery_to_customer);
-        card.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event('input')));
-      }
-    }
-    const count = document.querySelectorAll('.kpis .card')[2]?.querySelector('.kvalue');
-    if (count) count.textContent = String(data.products_count);
-  } catch (_) {
-    status.innerHTML = '<i class="dot" style="background:#c58b2b"></i>Снимок выгрузки · API недоступен';
+(function(){
+ const grid=document.getElementById('productGrid'),status=document.querySelector('.status'),notice=document.getElementById('liveNotice');
+ const money=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)||0)+' ₽';
+ const pct=n=>Number.isFinite(Number(n))?Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2})+'%':'—';
+ const safeKey=p=>String(p.product_id||p.sku||p.offer_id||'unknown');
+ const storageKey='ozon-ai-analytics-costs-v1';
+ let products=[];
+ function loadCosts(){try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(_){return {}}}
+ function saveCosts(){try{localStorage.setItem(storageKey,JSON.stringify(loadCosts()))}catch(_){}}
+ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+ function makeCard(p){
+  const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
+  const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0,first=(firstMin+firstMax)/2;
+  const acq=Number(p.acquiring)||0,delivery=Number(p.delivery_to_customer)||0;
+  const card=document.createElement('article');card.className='card product';card.dataset.key=key;
+  const metrics=[['Комиссия FBS · '+pct(commission),money(price*commission/100)],['Эквайринг',p.acquiring==null?'—':money(acq)],['Доставка клиенту',p.delivery_to_customer==null?'—':money(delivery)]];
+  card.innerHTML='<div class="producttop"><div><div class="sku">SKU '+esc(p.sku??'—')+' · ID '+esc(p.product_id??'—')+'</div><h3>'+esc(p.name||p.offer_id||'Товар без названия')+'</h3><div class="productmeta">Offer ID: '+esc(p.offer_id??'—')+'</div></div><div class="price">'+(price?money(price):'Цена не указана')+'</div></div>'+
+   '<div class="productbody"><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
+   '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Транзит / логистика, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
+   '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
+   '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+'</div></div>';
+  function calc(){
+   const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=Math.max(0,Number(i.value)||0));
+   const fee=price*commission/100+acq+first+delivery;
+   const tax=price*vals.tax/100;
+   const profit=price-fee-vals.cost-vals.pack-vals.ads-vals.transit-vals.other-tax;
+   const margin=price?profit/price*100:0;
+   card.querySelector('[data-out=profit]').textContent=price?money(profit):'Нет цены';
+   const out=card.querySelector('[data-out=margin]');out.textContent=price?(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%':'—';out.style.color=profit>=0?'#ffb080':'#ff7770';
+   const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
+   card.dataset.profit=String(profit);card.dataset.margin=String(margin);
   }
+  card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));calc();return card;
+ }
+ function render(){
+  const q=(document.getElementById('productSearch').value||'').toLowerCase().trim();
+  grid.innerHTML='';let shown=0;
+  for(const p of products){const hay=[p.name,p.sku,p.product_id,p.offer_id].join(' ').toLowerCase();if(q&&!hay.includes(q))continue;grid.appendChild(makeCard(p));shown++}
+  document.getElementById('catalogCountHint').textContent='Показано '+shown+' из '+products.length+' товаров';
+  if(!shown)grid.innerHTML='<div class="empty">Ничего не найдено. Измени поисковый запрос.</div>';
+ }
+ async function refresh(){
+  status.innerHTML='<i class="dot" style="background:#d39a37"></i>Обновление данных…';
+  try{
+   const r=await fetch('/api/dashboard',{headers:{Accept:'application/json'}});
+   const data=await r.json();if(!r.ok)throw new Error(data.detail||'Не удалось загрузить каталог');
+   if(data.status!=='ok'||!Array.isArray(data.products))throw new Error('Некорректный ответ Seller API');
+   products=data.products;render();
+   document.querySelector('[data-catalog-count]').textContent=String(data.products_count);
+   const commissions=products.map(p=>Number(p.sales_percent_fbs)).filter(n=>Number.isFinite(n)&&n>0);
+   document.querySelector('[data-commission-average]').textContent=commissions.length?pct(commissions.reduce((a,b)=>a+b,0)/commissions.length):'—';
+   status.innerHTML='<i class="dot"></i>Ozon API · данные обновлены';
+   notice.innerHTML='<b>Каталог и тарифы получены из Ozon</b>Расходы и себестоимость хранятся локально в этом браузере. Расчёт прибыли предварительный: первая миля усредняется по диапазону, транзит, возвраты и фактические начисления требуют отдельной сверки.';
+  }catch(e){status.innerHTML='<i class="dot" style="background:#c58b2b"></i>API недоступен';notice.innerHTML='<b>Не удалось обновить каталог</b>'+esc(e.message)+' · проверь соединение и доступ к Ozon API.';grid.innerHTML='<div class="empty">Нет актуальных данных. Обнови страницу позже.</div>'}
+ }
+ document.getElementById('productSearch').addEventListener('input',render);
+ document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров в этом браузере?'))return;localStorage.removeItem(storageKey);render()});
+ document.getElementById('exportEconomics').addEventListener('click',()=>{
+  const rows=[['Товар','SKU','Product ID','Offer ID','Цена','Комиссия %','Себестоимость','Упаковка','Реклама','Транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
+  for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,p.price,p.sales_percent_fbs,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
+  const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ozon-unit-economics.csv';a.click();URL.revokeObjectURL(url);
+ });
+ refresh();
 })();
-</script>
+</script>>
+
+>
 <script>
 (function setupSalesPeriod(){
  const from=document.getElementById('salesFrom'),to=document.getElementById('salesTo'),button=document.getElementById('salesLoad'),message=document.getElementById('salesMessage');
