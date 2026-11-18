@@ -41,3 +41,22 @@ def test_exact_posting_match_only_and_dictionary_labels():
     assert result["components"][2]["posting_match"]=="unmatched"
     assert result["metrics"]["posting_match_count"]==1
     assert result["metrics"]["known_type_count"]==3
+
+
+
+def test_currency_and_fulfillment_metrics_do_not_mix_currencies():
+    records=[
+        {"posting_number":"P-1","item":{"type_id":1,"accrued":{"amount":"10","currency":"RUB"}}},
+        {"posting_number":"P-2","item":{"type_id":2,"accrued":{"amount":"3","currency":"USD"}}},
+        {"item":{"type_id":3,"accrued":{"amount":"-2","currency":"RUB"}}},
+    ]
+    result=normalize_accrual_records(records, {"1":{"name":"Sale"},"2":{"name":"Fee"}}, [
+        {"posting_number":"P-1","fulfillment_type":"FBO"},
+        {"posting_number":"P-2","fulfillment_type":"FBS"},
+    ])
+    assert result["currency_metrics"]["RUB"]["total"] == "8"
+    assert result["currency_metrics"]["RUB"]["matched"] == "10"
+    assert result["currency_metrics"]["USD"]["total"] == "3"
+    assert result["fulfillment_metrics"]["FBO"]["amount"]["RUB"] == "10"
+    assert result["fulfillment_metrics"]["FBS"]["amount"]["USD"] == "3"
+    assert result["fulfillment_metrics"]["unmatched"]["components"] == 1
