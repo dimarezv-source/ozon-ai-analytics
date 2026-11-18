@@ -160,6 +160,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
     gmv = Decimal("0")
     unpriced_units = 0
     counts = {"FBO": 0, "FBS": 0}
+    sku_sales: dict[str, dict] = {}
     try:
         for schema, path in (("FBO", "/v3/posting/fbo/list"), ("FBS", "/v4/posting/fbs/list")):
             cursor = ""
@@ -191,13 +192,27 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                         except (TypeError, ValueError):
                             quantity = 0
                         units += quantity
+                        sku = str(product.get("sku") or "")
+                        product_id = str(product.get("product_id") or "")
+                        offer_id = str(product.get("offer_id") or "")
+                        name = str(product.get("name") or offer_id or product_id or sku or "Товар без названия")
+                        key = sku or product_id or offer_id or name
+                        row = sku_sales.setdefault(key, {
+                            "sku": sku or None, "product_id": product_id or None,
+                            "offer_id": offer_id or None, "name": name,
+                            "units": 0, "sales_gmv": Decimal("0"), "unpriced_units": 0,
+                        })
+                        row["units"] += quantity
                         try:
                             price = Decimal(str(product.get("price")))
                             if not price.is_finite() or price < 0:
                                 raise InvalidOperation
-                            gmv += price * quantity
+                            line_gmv = price * quantity
+                            gmv += line_gmv
+                            row["sales_gmv"] += line_gmv
                         except (InvalidOperation, ValueError, TypeError):
                             unpriced_units += quantity
+                            row["unpriced_units"] += quantity
                 has_next = body.get("has_next", False)
                 next_cursor = body.get("cursor") or ""
                 if not has_next:
@@ -208,9 +223,14 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
                 cursor = next_cursor
             else:
                 raise ValueError(f"{schema}: pagination safety limit reached.")
+        product_rows = [
+            {**row, "sales_gmv": float(row["sales_gmv"])}
+            for row in sorted(sku_sales.values(), key=lambda item: item["sales_gmv"], reverse=True)
+        ]
         return {"status": "ok", "mode": "read-only", "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
                 "sales_gmv": float(gmv), "delivered_units": units, "delivered_postings": len(delivered_postings),
                 "fbo_postings": counts["FBO"], "fbs_postings": counts["FBS"], "unpriced_units": unpriced_units,
+                "products": product_rows,
                 "basis": "Delivered postings at current status; GMV is estimated from item price x quantity before returns and deductions."}
     except Exception as exc:
         logger.exception("Could not retrieve Ozon sales for selected period: %s", type(exc).__name__)
