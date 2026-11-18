@@ -24,25 +24,25 @@ def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
             assert api_key == "read-only-key"
 
         async def execute(self, operation, payload):
-            if operation == "posting_fbo_list":
-                return {
-                    "result": {
-                        "postings": [{
-                            "posting_number": "FBO-1",
-                            "status": "delivered",
-                            "products": [{
-                                "sku": 123,
-                                "product_id": 456,
-                                "offer_id": "offer-1",
-                                "name": "Test product",
-                                "quantity": 2,
-                                "price": "100.50",
-                            }],
+            schema = "FBO" if operation == "posting_fbo_list" else "FBS"
+            quantity = 2 if schema == "FBO" else 3
+            return {
+                "result": {
+                    "postings": [{
+                        "posting_number": f"{schema}-1",
+                        "status": "delivered",
+                        "products": [{
+                            "sku": 123,
+                            "product_id": 456,
+                            "offer_id": "offer-1",
+                            "name": "Test product",
+                            "quantity": quantity,
+                            "price": "100.50",
                         }],
-                        "has_next": False,
-                    }
+                    }],
+                    "has_next": False,
                 }
-            return {"result": {"postings": [], "has_next": False}}
+            }
 
     monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
     response = TestClient(app).get(
@@ -52,17 +52,34 @@ def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
 
     assert response.status_code == 200
     data = response.json()
-    assert data["sales_gmv"] == 201.0
-    assert data["delivered_units"] == 2
-    assert data["products"] == [{
-        "sku": "123",
-        "product_id": "456",
-        "offer_id": "offer-1",
-        "name": "Test product",
-        "units": 2,
-        "sales_gmv": 201.0,
-        "unpriced_units": 0,
-    }]
+    assert data["sales_gmv"] == 502.5
+    assert data["delivered_units"] == 5
+    assert data["fulfillment"] == {
+        "FBO": {"delivered_units": 2, "sales_gmv": 201.0, "delivered_postings": 1},
+        "FBS": {"delivered_units": 3, "sales_gmv": 301.5, "delivered_postings": 1},
+    }
+    assert data["products"] == [
+        {
+            "fulfillment_type": "FBO",
+            "sku": "123",
+            "product_id": "456",
+            "offer_id": "offer-1",
+            "name": "Test product",
+            "units": 2,
+            "sales_gmv": 201.0,
+            "unpriced_units": 0,
+        },
+        {
+            "fulfillment_type": "FBS",
+            "sku": "123",
+            "product_id": "456",
+            "offer_id": "offer-1",
+            "name": "Test product",
+            "units": 3,
+            "sales_gmv": 301.5,
+            "unpriced_units": 0,
+        },
+    ]
 
 
 def test_sales_endpoint_rejects_reversed_dates(monkeypatch) -> None:
