@@ -567,6 +567,26 @@ def _summarize_returns(rows: list[dict]) -> list[dict]:
         for _, item in sorted(totals.items(), key=lambda pair: pair[0])
     ]
 
+async def _fetch_posting_accruals(client: OzonReadOnlyClient, records: list[dict]) -> list[dict]:
+    """Fetch explicit SKU accruals for posting numbers already present in by-day records."""
+    numbers, seen = [], set()
+    for record in records:
+        posting = record.get("posting") if isinstance(record.get("posting"), dict) else {}
+        number = record.get("posting_number") or posting.get("posting_number")
+        if number not in (None, "") and str(number) not in seen:
+            seen.add(str(number))
+            numbers.append(str(number))
+    rows = []
+    # Ozon documents batches of up to 200 posting numbers per request.
+    for start in range(0, len(numbers), 200):
+        response = await client.execute("finance_accrual_postings", {"posting_numbers": numbers[start:start + 200]})
+        page = response.get("posting_accruals", [])
+        if not isinstance(page, list):
+            raise ValueError("Unexpected posting accruals response")
+        rows.extend(item for item in page if isinstance(item, dict))
+    return rows
+
+
 @app.get("/api/finance/reconciliation", tags=["dashboard"])
 async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Return conservative normalized reconciliation totals, with unknowns exposed."""
@@ -604,12 +624,15 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
             else: raise ValueError("Pagination safety limit reached")
             day += timedelta(days=1)
         delivered_postings = await _fetch_delivered_posting_refs(client, date_from, date_to)
+        posting_accrual_rows = await _fetch_posting_accruals(client, records)
+        from app.analytics.finance_posting_attribution import normalize_posting_accruals
+        product_attribution = normalize_posting_accruals(posting_accrual_rows, dictionary, delivered_postings)
         return_records = await _fetch_returns(client, date_from, date_to)
         normalized = normalize_accrual_records(records, dictionary, delivered_postings)
         return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
                 "source_records":len(records), "delivered_posting_count":len(delivered_postings),
                 "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
-                "dictionary":dictionary, **normalized,
+                **product_attribution, "dictionary":dictionary, **normalized,
                 "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated. Returns are summarized separately by logistic return date and are not subtracted from profit automatically."}
     except Exception as exc:
         logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
