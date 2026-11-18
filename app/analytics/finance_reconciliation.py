@@ -115,8 +115,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
                 "posting_number": number, "fulfillment_type": fulfillment,
                 "posting_match": "matched" if fulfillment else "unmatched",
                 "classification": "known_type" if label else "unknown_type"})
-            if currency:
-                currencies.add(currency)
+            currencies.add(currency_bucket)
 
     serialized = _serialize_totals(summary, ())
     for row in serialized:
@@ -127,7 +126,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     unknown_count = sum(1 for row in output if row["classification"] == "unknown_type")
     known_count = len(output) - unknown_count
     # Legacy scalar totals remain meaningful only when the source uses one currency.
-    single_currency = len(currencies) <= 1 and "" not in currencies
+    single_currency = len(currencies) <= 1 and "UNKNOWN_CURRENCY" not in currencies
     return {
         "components": output,
         "summary": serialized,
@@ -146,7 +145,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             "matched_amount_by_currency": amounts(matched_by_currency),
             "known_type_amount_by_currency": amounts(known_by_currency),
             "total_component_amount_by_currency": amounts(total_by_currency),
-            "currencies": sorted(currency for currency in currencies if currency) + (["UNKNOWN_CURRENCY"] if any(not c for c in [row["currency"] for row in output]) else []),
+            "currencies": sorted(currencies),
         },
         "basis": "Raw source components; type labels only from Ozon dictionary. Posting attribution requires exact delivered posting-number match. Amounts are separated by currency.",
     }
