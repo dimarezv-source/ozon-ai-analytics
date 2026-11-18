@@ -19,30 +19,38 @@ def money(value):
 
 
 def collect_components(record):
-    """Extract explicitly paired type_id/accrued amounts from raw accrual."""
+    """Extract paired fee components and only explicit SKU/product context."""
     found = []
 
-    def walk(node, path=""):
+    def walk(node, path="", context=None):
+        context = dict(context or {})
         if isinstance(node, list):
             for i, child in enumerate(node):
-                walk(child, f"{path}[{i}]")
+                walk(child, f"{path}[{i}]", context)
             return
         if not isinstance(node, dict):
             return
+        for field in ("sku", "product_id", "offer_id"):
+            value = node.get(field)
+            if value not in (None, ""):
+                context[field] = str(value)
         accrued, type_id = node.get("accrued"), node.get("type_id")
         if type_id is not None and isinstance(accrued, dict) and accrued.get("amount") is not None:
             amount = money(accrued)
             if amount is not None:
-                found.append({"type_id": str(type_id), "amount": amount,
-                              "currency": str(accrued.get("currency") or ""),
-                              "path": path})
+                found.append({
+                    "type_id": str(type_id), "amount": amount,
+                    "currency": str(accrued.get("currency") or ""),
+                    "path": path, "sku": context.get("sku"),
+                    "product_id": context.get("product_id"),
+                    "offer_id": context.get("offer_id"),
+                })
             return
         for key, child in node.items():
-            walk(child, f"{path}.{key}" if path else key)
+            walk(child, f"{path}.{key}" if path else key, context)
 
     walk(record)
     return found
-
 
 def _serialize_totals(totals, keys):
     return [
@@ -64,6 +72,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     summary = {}
     fulfillment_totals = {}
     unmatched_totals = {}
+    product_fee_totals = {}
     matched_by_currency = {}
     known_by_currency = {}
     total_by_currency = {}
@@ -111,6 +120,15 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
                     "amount": Decimal("0"), "components": 0})
                 target["amount"] += amount
                 target["components"] += 1
+            if component.get("sku") is not None:
+                pkey = (fulfillment or "UNMATCHED", component["sku"], type_id, currency)
+                product_row = product_fee_totals.setdefault(pkey, {
+                    "fulfillment_type": fulfillment, "sku": component["sku"],
+                    "product_id": component.get("product_id"), "offer_id": component.get("offer_id"),
+                    "type_id": type_id, "label": label, "currency": currency,
+                    "amount": Decimal("0"), "components": 0})
+                product_row["amount"] += amount
+                product_row["components"] += 1
             output.append({**component, "label": label,
                 "posting_number": number, "fulfillment_type": fulfillment,
                 "posting_match": "matched" if fulfillment else "unmatched",
@@ -132,11 +150,14 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
         "summary": serialized,
         "fulfillment_summary": _serialize_totals(fulfillment_totals, ()),
         "unmatched_summary": _serialize_totals(unmatched_totals, ()),
+        "product_fee_summary": _serialize_totals(product_fee_totals, ()),
         "metrics": {
             "component_count": len(output),
             "posting_match_count": matched_count,
             "posting_unmatched_count": len(output) - matched_count,
             "posting_match_percent": round(matched_count / len(output) * 100, 2) if output else 0,
+            "sku_attributed_count": sum(1 for row in output if row.get("sku") is not None),
+            "sku_unattributed_count": sum(1 for row in output if row.get("sku") is None),
             "known_type_count": known_count,
             "unknown_type_count": unknown_count,
             "matched_amount": str(sum(matched_by_currency.values(), Decimal("0"))) if single_currency else None,
