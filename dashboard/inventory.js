@@ -221,6 +221,7 @@
  ['replenishmentLeadDays','replenishmentSafetyDays','frozenThresholdDays'].forEach(id=>{const input=el(id);if(input)input.addEventListener('change',saveSettings)});
  root.addEventListener('ozon:catalog-loaded',event=>{state.products=Array.isArray(event.detail)?event.detail:[];if(!state.stock)load();else render()});
  root.addEventListener('ozon:sales-loaded',event=>{state.sales=event.detail||null;render()});
+ root.addEventListener('ozon:costs-updated',()=>render());
  const button=el('inventoryRefresh');if(button)button.addEventListener('click',load);
  const exportButton=el('replenishmentExport');if(exportButton)exportButton.addEventListener('click',exportReplenishment);
 })(window);
