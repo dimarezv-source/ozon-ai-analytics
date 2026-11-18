@@ -21,7 +21,7 @@ class ReadOperation:
 # /v3/product/list is an informational catalog endpoint. The current role
 # mapping article still names its retired predecessor /v2/product/list under
 # Admin read-only; the Ozon key itself must therefore remain Admin read-only.
-# No mutation, price, stock, or promotion operation is registered; posting and return
+# No mutation, price-changing, stock-changing, or promotion operation is registered; posting and return
 # operations below are explicitly read-only list endpoints.
 READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {
     "product_list": ReadOperation(
@@ -30,6 +30,7 @@ READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {
     ),
     "product_info_list": ReadOperation(path="/v3/product/info/list", http_method="POST"),
     "product_info_prices": ReadOperation(path="/v5/product/info/prices", http_method="POST"),
+    "product_info_stocks": ReadOperation(path="/v4/product/info/stocks", http_method="POST"),
     "finance_accrual_types": ReadOperation(path="/v1/finance/accrual/types", http_method="POST"),
     "finance_accrual_by_day": ReadOperation(path="/v1/finance/accrual/by-day", http_method="POST"),
     "finance_accrual_postings": ReadOperation(path="/v1/finance/accrual/postings", http_method="POST"),

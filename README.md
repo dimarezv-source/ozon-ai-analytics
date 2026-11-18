@@ -75,6 +75,12 @@ For the first end-to-end sales estimate, use **Actions → Ozon read-only sales 
 
 The net units and net GMV are still estimates from current posting/return snapshots and original item prices. Recent orders can receive returns later. Reconcile the report with finance accruals before treating it as actual net revenue or profit.
 
+## Live inventory monitoring
+
+The hosted dashboard includes a separate read-only inventory panel. It reads current stock records through `/v4/product/info/stocks`, with cursor pagination. Available quantity is calculated as `present - reserved`; FBO and FBS are shown separately. The panel can estimate days of stock from delivered units in the selected sales period, but this is a simple historical-rate indicator, not a demand forecast. No stock update methods are allowlisted or called.
+
+The stock endpoint may require the **Admin read-only** Seller API role. If the inventory panel reports an access error while the catalog still loads, check the key's read-only role access to this informational method; do not grant write permissions.
+
 ## Local development
 
 - Python 3.12+
