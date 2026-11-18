@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main, feature/fbo-fbs-profit-split]
+    branches: [main, feature/fbo-fbs-profit-split, feature/ozon-intelligence-profit-center]
   pull_request:
     branches: [main]
 
@@ -28,5 +28,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Run profit calculator tests
+      - name: Run JavaScript tests
         run: node --test tests-js/*.test.js
