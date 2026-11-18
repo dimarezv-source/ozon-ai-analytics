@@ -452,6 +452,7 @@
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
    const out=card.querySelector('[data-out=margin]');out.textContent=!valid?'Неполные данные':(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%';out.style.color=!valid?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
    const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
+    window.dispatchEvent(new CustomEvent('ozon:costs-updated'));
    card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    const scenarioInput=card.querySelector('[data-sim-price]'),scenarioPrice=scenarioInput&&scenarioInput.value!==''?Number(scenarioInput.value):NaN;
    const scenario=window.OzonProfitCalculator.simulatePrice({fulfillmentType,currentPrice:price,scenarioPrice,product:p,expenses:vals});
