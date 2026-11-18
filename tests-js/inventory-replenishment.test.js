@@ -73,3 +73,14 @@ test('does not classify stock as frozen when coverage is at or below threshold',
  ],{a:{cost:10}},60);
  assert.equal(result.items.length,0);assert.equal(result.frozenValue,0);
 });
+ 
+ 
+test('ranks frozen inventory by known tied-up capital and leaves unknown costs unpriced',()=>{ 
+ const result=window.OzonInventoryPlanner.calculateClearanceRanking([ 
+  {name:'Low capital',costKnown:true,frozenValue:200,coverage:120,available:4}, 
+  {name:'Unknown',costKnown:false,frozenValue:null,coverage:null,available:8}, 
+  {name:'High capital',costKnown:true,frozenValue:900,coverage:60,available:3} 
+ ]); 
+ assert.deepEqual(result.map(item=>item.name),['High capital','Low capital','Unknown']); 
+ assert.deepEqual(result.map(item=>item.rank),[1,2,3]); 
+}); 
