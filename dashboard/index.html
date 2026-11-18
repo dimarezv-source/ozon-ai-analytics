@@ -143,10 +143,10 @@
    const tax=price*vals.tax/100;
    const profit=price-fee-vals.cost-vals.pack-vals.ads-vals.transit-vals.other-tax;
    const margin=price?profit/price*100:0;
-   card.querySelector('[data-out=profit]').textContent=price?money(profit):'Нет цены';
-   const out=card.querySelector('[data-out=margin]');out.textContent=price?(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%':'—';out.style.color=profit>=0?'#ffb080':'#ff7770';
+   card.querySelector('[data-out=profit]').textContent=missingTariffs?'Нужны тарифы':price?money(profit):'Нет цены';
+   const out=card.querySelector('[data-out=margin]');out.textContent=missingTariffs?'Неполные данные':price?(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%':'—';out.style.color=missingTariffs?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
    const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
-   card.dataset.profit=String(profit);card.dataset.margin=String(margin);
+   card.dataset.profit=missingTariffs?'':String(profit);card.dataset.margin=missingTariffs?'':String(margin);
   }
   card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));calc();return card;
  }
