@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(value)||0)+' ₽';
+  const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value)||0)+' ₽';
   const number=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(Number(value)||0);
   const daysText=value=>Number.isFinite(Number(value))?(Number(value)<1?'< 1 дня':number(value)+' дн.'):'—';
   const currencyMoney=(value,currency)=>{const code=String(currency||'').toUpperCase();try{return new Intl.NumberFormat('ru-RU',{style:'currency',currency:code,maximumFractionDigits:2}).format(Number(value));}catch(_){return number(value)+' '+(code||'ед.');}};
