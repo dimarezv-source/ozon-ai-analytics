@@ -134,6 +134,11 @@
   <span class="accrual-status" id="accrualStatus" role="status">Выбери период до 31 дня.</span>
  </div>
  <div id="accrualSummary" class="hint">Начисления ещё не загружались.</div>
+ <div class="accrual-summary-wrap" style="margin-top:14px">
+  <h3 style="margin:0 0 8px;font-size:15px">Сводка по типам начислений</h3>
+  <p class="hint" style="margin:0 0 8px">Сумма только явно связанных компонентов Ozon, отдельно по валютам. Это не прибыль и не выплата.</p>
+  <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Тип</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Компонентов</th></tr></thead><tbody id="accrualFeeSummaryRows"><tr><td colspan="5" class="hint">Сводка появится после загрузки.</td></tr></tbody></table></div>
+ </div>
  <div class="accrual-table-wrap" style="margin-top:12px">
   <table class="accrual-table"><thead><tr><th>Дата</th><th>Категория</th><th>Тип начисления</th><th>Сумма / компоненты</th><th>Исходная запись</th></tr></thead>
   <tbody id="accrualRows"><tr><td colspan="5" class="hint">Нет загруженных записей.</td></tr></tbody></table>
@@ -356,10 +361,12 @@
  const panel=document.getElementById('financeAccrualPanel');if(!panel)return;
  const from=document.getElementById('accrualFrom'),to=document.getElementById('accrualTo'),button=document.getElementById('accrualLoad');
  const status=document.getElementById('accrualStatus'),summary=document.getElementById('accrualSummary'),tbody=document.getElementById('accrualRows');
+ const feeSummaryRows=document.getElementById('accrualFeeSummaryRows');
  const utcToday=new Date();const fmt=d=>d.toISOString().slice(0,10);
  const end=new Date(Date.UTC(utcToday.getUTCFullYear(),utcToday.getUTCMonth(),utcToday.getUTCDate()));
  const start=new Date(end);start.setUTCDate(start.getUTCDate()-6);from.value=fmt(start);to.value=fmt(end);
  const safe=v=>v===null||v===undefined||v===''?'—':String(v);
+ const numberFormat=v=>new Intl.NumberFormat('ru-RU').format(Number(v)||0);
  const money=v=>{if(!v||typeof v!=='object'||!('amount'in v))return null;return safe(v.amount)+' '+safe(v.currency)};
  function inspectRecord(record){
   const amounts=[],typeIds=new Set();
@@ -398,7 +405,15 @@
   try{
    const response=await fetch('/api/finance/accruals?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
    const data=await response.json();if(!response.ok)throw new Error(data.detail||'Не удалось получить начисления.');
-   const types=data.accrual_types||{};tbody.replaceChildren();
+   const types=data.accrual_types||{};tbody.replaceChildren();feeSummaryRows.replaceChildren();
+   for(const item of (data.fee_summary||[])){
+    const tr=document.createElement('tr');const type=types[String(item.type_id)]||{};
+    cell(tr,type.description||type.name||('Тип ID '+item.type_id));
+    cell(tr,String(item.type_id),'muted');cell(tr,safe(item.currency));
+    cell(tr,safe(item.amount),'amount');cell(tr,numberFormat(item.count));feeSummaryRows.appendChild(tr);
+   }
+   if(!(data.fee_summary||[]).length){const tr=document.createElement('tr');cell(tr,'Нет компонентов для сводки.');tr.firstChild.colSpan=5;feeSummaryRows.appendChild(tr)}
+
    for(const record of (data.accruals||[])){
     const tr=document.createElement('tr');
     const found=inspectRecord(record);
