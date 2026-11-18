@@ -62,6 +62,26 @@
 @media(max-width:650px){.profit-period-main{align-items:flex-start;flex-direction:column}.profit-period-main .profit-caption{text-align:left}.profit-period-stats{grid-template-columns:1fr 1fr}.profit-stat:last-child{grid-column:1/-1}}
 
 .salesbreak{margin:0 0 16px;display:none}.salesbreak table{width:100%;border-collapse:collapse;font-size:12px}.salesbreak th,.salesbreak td{padding:10px 9px;text-align:left;border-bottom:1px solid var(--line)}.salesbreak th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px}.salesbreak td:last-child,.salesbreak th:last-child{text-align:right}.salesbreak td:nth-last-child(2),.salesbreak th:nth-last-child(2){text-align:right}.salesbreak .muted{color:var(--muted)}@media(max-width:650px){.salesbreak{overflow:auto}.salesbreak table{min-width:520px}}
+
+/* Actual Ozon finance accruals — raw, auditable records */
+.accrual-panel{margin:18px 0;overflow:hidden}
+.accrual-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:14px 0}
+.accrual-toolbar label{display:grid;gap:5px;color:var(--muted);font-size:10px}
+.accrual-toolbar input{border:1px solid #dfe4ee;border-radius:8px;padding:9px 10px;font:inherit;font-size:12px}
+.accrual-toolbar button{border:0;border-radius:9px;padding:10px 15px;background:linear-gradient(110deg,var(--orange),var(--orange2));font-weight:800;cursor:pointer}
+.accrual-toolbar button:disabled{opacity:.6;cursor:wait}
+.accrual-status{font-size:11px;color:var(--muted);margin-left:auto}
+.accrual-status.error{color:var(--red)}
+.accrual-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}
+.accrual-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}
+.accrual-table th,.accrual-table td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.accrual-table th{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);background:#f8f9fc}
+.accrual-table tr:last-child td{border-bottom:0}
+.accrual-table .amount{font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
+.accrual-json{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.5 ui-monospace,monospace;color:#596174;background:#f7f8fc;border-radius:8px;padding:9px}
+.accrual-caveat{font-size:11px;color:var(--muted);line-height:1.55;margin-top:12px}
+@media(max-width:650px){.accrual-status{width:100%;margin:0}}
+
 </style>
 </head>
 <body>
@@ -101,6 +121,26 @@
   </div>
   <div class="profit-period-note" id="periodProfitNote">Прибыль появится после загрузки продаж и каталога. Для расчёта используются расходы из карточек юнит-экономики.</div>
  </section>
+ 
+<section class="card accrual-panel" id="financeAccrualPanel">
+ <div class="sectionhead" style="margin:0">
+  <div><h2>Фактические начисления Ozon</h2><p>Данные финансового API · без смешивания с прогнозными тарифами</p></div>
+  <span class="tag">RAW DATA</span>
+ </div>
+ <div class="accrual-toolbar">
+  <label>С <input id="accrualFrom" type="date"></label>
+  <label>По <input id="accrualTo" type="date"></label>
+  <button id="accrualLoad" type="button">Загрузить начисления</button>
+  <span class="accrual-status" id="accrualStatus" role="status">Выбери период до 31 дня.</span>
+ </div>
+ <div id="accrualSummary" class="hint">Начисления ещё не загружались.</div>
+ <div class="accrual-table-wrap" style="margin-top:12px">
+  <table class="accrual-table"><thead><tr><th>Дата</th><th>Категория</th><th>Тип начисления</th><th>Сумма / компоненты</th><th>Исходная запись</th></tr></thead>
+  <tbody id="accrualRows"><tr><td colspan="5" class="hint">Нет загруженных записей.</td></tr></tbody></table>
+ </div>
+ <p class="accrual-caveat">Важно: здесь показаны исходные записи Ozon. Итоговая прибыль пока не рассчитывается по ним: сначала нужно сверить типы начислений, возвраты и удержания с финансовым отчётом кабинета. Неизвестные типы не скрываются и не считаются нулём.</p>
+</section>
+
  <div class="alert" id="liveNotice" style="margin:0 0 18px"><b>Подключаем данные</b>Получаем актуальный каталог и тарифы из Ozon. Расходы, которые ты введёшь, сохраняются в этом браузере.</div>
  <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
  <div class="catalogtools">
@@ -310,4 +350,58 @@
  button.addEventListener('click',load);
 })();
 </script>
+
+<script>
+(function setupFinanceAccruals(){
+ const panel=document.getElementById('financeAccrualPanel');if(!panel)return;
+ const from=document.getElementById('accrualFrom'),to=document.getElementById('accrualTo'),button=document.getElementById('accrualLoad');
+ const status=document.getElementById('accrualStatus'),summary=document.getElementById('accrualSummary'),tbody=document.getElementById('accrualRows');
+ const utcToday=new Date();const fmt=d=>d.toISOString().slice(0,10);
+ const end=new Date(Date.UTC(utcToday.getUTCFullYear(),utcToday.getUTCMonth(),utcToday.getUTCDate()));
+ const start=new Date(end);start.setUTCDate(start.getUTCDate()-6);from.value=fmt(start);to.value=fmt(end);
+ const safe=v=>v===null||v===undefined||v===''?'—':String(v);
+ const money=v=>{if(!v||typeof v!=='object'||!('amount'in v))return null;return safe(v.amount)+' '+safe(v.currency)};
+ function components(record){
+  const out=[];
+  for(const [key,value] of Object.entries(record||{})){
+   if(value&&typeof value==='object'&&!Array.isArray(value)){
+    const formatted=money(value);if(formatted)out.push(key+': '+formatted);
+    else if(Array.isArray(value.services))for(const service of value.services){const m=money(service);if(m)out.push(safe(service.name||service.service_name||key)+': '+m)}
+    else if(Array.isArray(value.fees))for(const fee of value.fees){const m=money(fee);if(m)out.push(safe(fee.name||fee.type||key)+': '+m)}
+   }
+  }
+  return out.length?out.join('\n'):'Суммы не распознаны — смотри исходную запись';
+ }
+ function cell(tr,value,className){const td=document.createElement('td');td.textContent=value;if(className)td.className=className;tr.appendChild(td);return td}
+ async function load(){
+  if(!from.value||!to.value){status.textContent='Укажи обе даты.';status.classList.add('error');return}
+  const days=(Date.parse(to.value+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z'))/86400000;
+  if(days<0||days>30){status.textContent='Период должен быть от 1 до 31 дня.';status.classList.add('error');return}
+  button.disabled=true;button.textContent='Загружаю…';status.classList.remove('error');status.textContent='Запрашиваю начисления Ozon…';
+  try{
+   const response=await fetch('/api/finance/accruals?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}});
+   const data=await response.json();if(!response.ok)throw new Error(data.detail||'Не удалось получить начисления.');
+   const types=data.accrual_types||{};tbody.replaceChildren();
+   for(const record of (data.accruals||[])){
+    const tr=document.createElement('tr');
+    const typeId=record.operation_type_id??record.accrual_type_id??record.type_id??record.operation_type??record.type??'—';
+    const typeInfo=types[String(typeId)]||{};
+    cell(tr,safe(record.date));
+    cell(tr,safe(record.accrued_category||record.category||'—'));
+    const typeCell=cell(tr,safe(typeInfo.name||record.operation_type_name||record.operation_name||typeId));
+    if(!typeInfo.name&&String(typeId)!=='—')typeCell.title='Тип не найден в справочнике Ozon: '+String(typeId);
+    cell(tr,components(record),'amount');
+    const detail=cell(tr,'');const details=document.createElement('details');const summaryEl=document.createElement('summary');summaryEl.textContent='Показать JSON';const pre=document.createElement('pre');pre.className='accrual-json';pre.textContent=JSON.stringify(record,null,2);details.append(summaryEl,pre);detail.appendChild(details);
+    tbody.appendChild(tr);
+   }
+   if(!(data.accruals||[]).length){const tr=document.createElement('tr');cell(tr,'За этот период начислений не найдено.');tr.firstChild.colSpan=5;tbody.appendChild(tr)}
+   summary.textContent='Записей: '+(data.record_count??(data.accruals||[]).length)+' · период: '+data.period.date_from+' — '+data.period.date_to+' · справочник типов: '+Object.keys(types).length;
+   status.textContent='Загружено из Ozon';
+  }catch(error){status.textContent=error.message;status.classList.add('error')}
+  finally{button.disabled=false;button.textContent='Загрузить начисления'}
+ }
+ button.addEventListener('click',load);
+})();
+</script>
+
 </body></html>
