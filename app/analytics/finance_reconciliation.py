@@ -105,7 +105,14 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
 
     serialized = [{**item, "amount": str(item["amount"])}
         for _, item in sorted(summary.items(), key=lambda x: x[0])]
+    currency_metrics_serialized = {currency: {key: str(value) if isinstance(value, Decimal) else value
+        for key, value in metrics.items()} for currency, metrics in currency_metrics.items()}
+    fulfillment_metrics_serialized = {bucket: {"components": metrics["components"],
+        "amount": {currency: str(value) for currency, value in metrics["amount"].items()}}
+        for bucket, metrics in fulfillment_metrics.items()}
     return {"components": output, "summary": serialized,
+        "currency_metrics": currency_metrics_serialized,
+        "fulfillment_metrics": fulfillment_metrics_serialized,
         "metrics": {"component_count": len(output),
             "posting_match_count": sum(1 for row in output if row["posting_match"] == "matched"),
             "known_type_count": sum(1 for row in output if row["classification"] == "known_type"),
