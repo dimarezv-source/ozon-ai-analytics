@@ -78,7 +78,7 @@ def require_dashboard_auth(
         and secrets.compare_digest(credentials.password.encode("utf-8"), expected_password.encode("utf-8"))
     )
     if not (cookie_ok or basic_ok):
-        raise HTTPException(status_code=401, detail="Authentication required.")
+        raise HTTPException(status_code=401, detail="Authentication required.", headers={"WWW-Authenticate": "Basic"})
 
 
 @app.get("/login", tags=["dashboard"], response_class=HTMLResponse, include_in_schema=False)
