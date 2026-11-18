@@ -230,6 +230,18 @@ def test_finance_reconciliation_matches_delivered_fbo_fbs_postings(monkeypatch) 
                 return {"result": {"postings": [
                     {"posting_number": "FBS-1", "status": "delivered"},
                 ], "has_next": False, "cursor": ""}}
+            if operation == "returns_list" and payload["last_id"] == 0:
+                return {"returns": [{
+                    "id": 101, "schema": "Fbs", "type": "FullReturn",
+                    "product": {"sku": 123, "offer_id": "A-1", "name": "Товар A",
+                                "price": {"currency_code": "RUB", "price": "100"}, "quantity": 1},
+                }], "has_next": True}
+            if operation == "returns_list" and payload["last_id"] == 101:
+                return {"returns": [{
+                    "id": 102, "schema": "Fbo", "type": "PartialReturn",
+                    "product": {"sku": 123, "offer_id": "A-1", "name": "Товар A",
+                                "price": {"currency_code": "RUB", "price": "80"}, "quantity": 2},
+                }], "has_next": False}
             raise AssertionError(f"Unexpected operation: {operation}")
 
     monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
@@ -247,7 +259,11 @@ def test_finance_reconciliation_matches_delivered_fbo_fbs_postings(monkeypatch) 
     assert data["metrics"]["posting_match_count"] == 2
     assert data["metrics"]["posting_unmatched_count"] == 1
     assert data["unmatched_summary"][0]["amount"] == "-4"
+    assert data["return_record_count"] == 2
+    assert [(row["fulfillment_type"], row["quantity"], row["returned_value"]) for row in data["returns_summary"]] == [
+        ("FBO", 2, "160"), ("FBS", 1, "100"),
+    ]
     assert [call[0] for call in calls] == [
         "finance_accrual_types", "finance_accrual_by_day",
-        "posting_fbo_list", "posting_fbs_list",
+        "posting_fbo_list", "posting_fbs_list", "returns_list", "returns_list",
     ]
