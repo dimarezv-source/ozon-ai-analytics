@@ -78,7 +78,7 @@
         const data=await response.json();if(!response.ok)throw new Error(data.detail||'Ошибка сверки');
         return data;
       });
-      const [current,previous]=await Promise.all([query(from,to),query(iso(previousStart),iso(previousEnd))]);
+      const current=await query(from,to);const previous=await query(iso(previousStart),iso(previousEnd));
       const old=new Map((previous.summary||[]).map(item=>[String(item.type_id)+'|'+String(item.currency),item]));
       const types=current.dictionary||{};
       for(const item of current.summary||[]){
