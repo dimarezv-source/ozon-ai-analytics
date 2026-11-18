@@ -352,6 +352,25 @@ def _summarize_posting_fee_components(rows: list[dict]) -> list[dict]:
     ]
 
 
+def _reconcile_posting_fees(posting_fee_summary: list[dict], delivered_posting_refs: list[dict]) -> list[dict]:
+    """Attach fulfillment only through an exact posting-number match."""
+    fulfillment_by_posting = {
+        str(item["posting_number"]): str(item["fulfillment_type"])
+        for item in delivered_posting_refs
+        if isinstance(item, dict)
+        and item.get("posting_number") not in (None, "")
+        and item.get("fulfillment_type") in ("FBO", "FBS")
+    }
+    return [
+        {
+            **fee,
+            "fulfillment_type": fulfillment_by_posting.get(str(fee.get("posting_number") or "")),
+            "reconciliation_status": "matched" if fulfillment_by_posting.get(str(fee.get("posting_number") or "")) else "unmatched",
+        }
+        for fee in posting_fee_summary
+    ]
+
+
 @app.get("/api/finance/accruals", tags=["dashboard"])
 async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
