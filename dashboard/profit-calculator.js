@@ -45,6 +45,20 @@
       profit,marginPercent:Math.round(profit/price*10000)/100
     };
   }
-  root.OzonProfitCalculator={calculateProfit};
+  function simulatePrice(input){
+    const currentPrice=Number(input.currentPrice),scenarioPrice=Number(input.scenarioPrice);
+    const common={fulfillmentType:input.fulfillmentType,product:input.product,expenses:input.expenses};
+    const current=calculateProfit({...common,unitPrice:currentPrice});
+    if(!current.ok)return {ok:false,reason:'invalid_current_price',current};
+    const scenario=calculateProfit({...common,unitPrice:scenarioPrice});
+    if(!scenario.ok)return {ok:false,reason:'invalid_scenario_price',current,scenario};
+    return {
+      ok:true,current,scenario,
+      deltaProfitPerUnit:Math.round((scenario.profit-current.profit)*100)/100,
+      deltaMarginPoints:Math.round((scenario.marginPercent-current.marginPercent)*100)/100,
+      scenarioAssumption:'same_costs_and_tariffs_no_demand_response'
+    };
+  }
+  root.OzonProfitCalculator={calculateProfit,simulatePrice};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.OzonProfitCalculator;
 })(typeof globalThis!=='undefined'?globalThis:this);
