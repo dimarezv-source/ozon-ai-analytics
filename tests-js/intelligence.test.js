@@ -8,7 +8,7 @@ const product={
  delivery_to_customer:10,first_mile_min:2,first_mile_max:4,transit_min:4,transit_max:6,
  fbo_delivery_to_customer:8,fbo_transit_min:2,fbo_transit_max:4
 };
-const costs={'101':{cost:50,pack:2,ads:3,transit:0,other:0,tax:0}};
+const costs={'101':{cost:50,costConfigured:true,pack:2,ads:3,transit:0,other:0,tax:0}};
 const sales={products:[
  {product_id:'101',sku:'9001',units:2,sales_gmv:200,fulfillment_type:'FBS'},
  {product_id:'101',sku:'9001',units:1,sales_gmv:100,fulfillment_type:'FBO'}
@@ -56,4 +56,17 @@ test('never labels estimated product profit as actual profit',()=>{
  const result=buildProductRanking(sales,[product],costs,{calculateProfit});
  assert.equal(result.isActualProfit,false);
  assert.equal(result.items.every(item=>item.dataStatus==='estimate'),true);
+});
+
+test('accepts an explicitly confirmed zero cost for free products',()=>{
+ const freeCosts={'101':{cost:0,costConfigured:true}};
+ const result=buildProductRanking(sales,[product],freeCosts,{calculateProfit});
+ assert.equal(result.includedUnits,3);
+ assert.equal(result.excluded.missingCost,0);
+});
+test('does not treat an unconfirmed default zero as known product cost',()=>{
+ const defaultCosts={'101':{cost:0,costConfigured:false}};
+ const result=buildProductRanking(sales,[product],defaultCosts,{calculateProfit});
+ assert.equal(result.includedUnits,0);
+ assert.equal(result.excluded.missingCost,3);
 });
