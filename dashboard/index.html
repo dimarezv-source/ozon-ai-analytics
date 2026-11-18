@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ozon AI Analytics — Dashboard</title>
+<style>
+:root{--orange:#ff6b24;--ink:#17191d;--muted:#777d86;--line:#eceef1;--bg:#f5f6f8;--green:#16845b;--red:#c64c45}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.shell{display:grid;grid-template-columns:228px 1fr;min-height:100vh}.side{background:#17191d;color:#fff;padding:26px 18px;display:flex;flex-direction:column;gap:32px}.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:16px}.mark{width:36px;height:36px;background:var(--orange);border-radius:11px;display:grid;place-items:center;color:#17191d;font-weight:900;font-size:20px}.subbrand{font-size:10px;color:#aeb2b9;letter-spacing:1.7px;margin:4px 0 0 47px}.navlabel{color:#777e88;font-size:10px;letter-spacing:1.5px;margin:0 10px 10px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;margin:3px 0;color:#bfc3c9;text-decoration:none;border-radius:9px}.nav a.active{background:#2a2d32;color:#fff;border-left:3px solid var(--orange)}.nav a span{font-size:17px;width:18px;text-align:center}.sidefoot{margin-top:auto;color:#9298a1;font-size:11px;line-height:1.7}.main{padding:28px 34px 50px;max-width:1600px;width:100%;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:28px}.eyebrow{font-size:11px;letter-spacing:1.6px;color:var(--muted);text-transform:uppercase}.top h1{font-size:27px;letter-spacing:-.8px;margin:5px 0 0}.status{background:#fff;border:1px solid var(--line);border-radius:30px;padding:9px 14px;color:#50565e;font-size:12px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px}.grid{display:grid;gap:14px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px 19px;min-width:0}.klabel{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}.kvalue{font-size:27px;font-weight:760;letter-spacing:-1px;margin:13px 0 4px}.hint{font-size:11px;color:var(--muted)}.accent{color:var(--orange)}.sectionhead{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:27px 0 13px}.sectionhead h2{font-size:17px;margin:0;letter-spacing:-.3px}.sectionhead p{margin:4px 0 0;color:var(--muted);font-size:12px}.tag{font-size:10px;letter-spacing:.5px;border-radius:30px;padding:5px 9px;background:#fff1e9;color:#b84c17;font-weight:700}.products{grid-template-columns:1fr 1fr}.product{padding:0;overflow:hidden}.producttop{padding:17px 19px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.sku{font-size:10px;color:var(--muted);letter-spacing:1px}.product h3{font-size:15px;margin:5px 0 0}.price{font-size:22px;font-weight:800;white-space:nowrap}.productbody{padding:17px 19px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}.metric{background:#f7f8fa;border-radius:10px;padding:10px}.metric small{display:block;color:var(--muted);font-size:10px}.metric b{display:block;font-size:15px;margin-top:5px}.costgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;color:#646b74;font-size:11px;margin-bottom:5px}.field input{width:100%;border:1px solid #e3e6ea;border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus{border-color:var(--orange);box-shadow:0 0 0 3px #ff6b241c}.result{margin-top:15px;border-radius:11px;background:#191b1f;color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px}.result small{display:block;color:#aeb3bb;font-size:10px}.result strong{font-size:22px}.result .pct{font-size:12px;color:#ff9a68}.wide{grid-column:1/-1}.bottom{grid-template-columns:1.25fr .75fr}.barlist{display:grid;gap:13px;margin-top:16px}.barrow{display:grid;grid-template-columns:130px 1fr 48px;gap:10px;align-items:center;font-size:12px}.track{height:8px;border-radius:20px;background:#f0f1f3;overflow:hidden}.fill{height:100%;background:var(--orange);border-radius:20px}.alert{background:#fff8f3;border:1px solid #ffe0cf;border-radius:11px;padding:13px 14px;color:#754126;font-size:12px;margin-top:13px}.alert b{display:block;margin-bottom:4px;color:#3a2418}.note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6}.empty{border:1px dashed #d8dce1;border-radius:11px;padding:17px;color:var(--muted);font-size:12px;text-align:center}.footer{margin-top:22px;color:#8a9098;font-size:10px;display:flex;justify-content:space-between;gap:10px}
+@media(max-width:1050px){.shell{grid-template-columns:190px 1fr}.main{padding:24px 20px}.kpis{grid-template-columns:repeat(2,1fr)}.products{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}}
+@media(max-width:650px){.shell{display:block}.side{padding:12px 14px;display:block}.brand{display:inline-flex}.subbrand{display:none}.navlabel,.sidefoot{display:none}.nav{display:flex;overflow:auto;margin-top:12px;gap:5px}.nav a{white-space:nowrap;padding:8px 10px;font-size:11px;margin:0}.nav a span{font-size:14px}.main{padding:22px 13px 35px}.top{align-items:flex-start;flex-direction:column;margin-bottom:20px}.top h1{font-size:23px}.kpis{gap:9px}.card{padding:14px}.kvalue{font-size:22px}.producttop{padding:14px}.productbody{padding:14px}.metrics{gap:6px}.metric{padding:8px}.metric b{font-size:13px}.barrow{grid-template-columns:95px 1fr 42px}.footer{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+ <div><div class="brand"><div class="mark">O</div><div>OZON AI<br>ANALYTICS</div></div><div class="subbrand">SELLER INTELLIGENCE</div></div>
+ <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a></div>
+ <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
+</aside>
+<main class="main">
+ <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Главная</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>API подключён · только чтение</div></header>
+ <section class="grid kpis">
+  <div class="card"><div class="klabel">Продажи за период <span>↗</span></div><div class="kvalue">0 ₽</div><div class="hint">Нет подтверждённых заказов</div></div>
+  <div class="card"><div class="klabel">Продано, шт.</div><div class="kvalue">0</div><div class="hint">По сверке заказов и возвратов</div></div>
+  <div class="card"><div class="klabel">Товаров в каталоге</div><div class="kvalue">2</div><div class="hint">Получено из Seller API</div></div>
+  <div class="card"><div class="klabel">Комиссия FBS</div><div class="kvalue accent">47%</div><div class="hint">Текущий тариф для обоих SKU</div></div>
+ </section>
+ <div class="sectionhead" id="unit"><div><h2>Юнит-экономика по товарам</h2><p>Измени себестоимость и расходы — расчёт обновится автоматически.</p></div><span class="tag">КАЛЬКУЛЯТОР</span></div>
+ <section class="grid products">
+  <article class="card product" data-product="hunter">
+   <div class="producttop"><div><div class="sku">SKU 6320918122 · ХАНТЕР</div><h3>Зеркала заднего вида УАЗ-31519</h3></div><div class="price">2 561 ₽</div></div>
+   <div class="productbody"><div class="metrics"><div class="metric"><small>Комиссия 47%</small><b>1 203,67 ₽</b></div><div class="metric"><small>Эквайринг</small><b>25,61 ₽</b></div><div class="metric"><small>Доставка клиенту</small><b>25 ₽</b></div></div>
+    <div class="costgrid">
+     <div class="field"><label>Закупка / себестоимость, ₽</label><input data-key="cost" type="number" min="0" value="0"></div>
+     <div class="field"><label>Упаковка, ₽</label><input data-key="pack" type="number" min="0" value="0"></div>
+     <div class="field"><label>Реклама на 1 заказ, ₽</label><input data-key="ads" type="number" min="0" value="0"></div>
+     <div class="field"><label>Транзит / логистика, ₽</label><input data-key="transit" type="number" min="0" value="0" placeholder="введите сумму"></div>
+     <div class="field wide"><label>Прочие расходы, ₽</label><input data-key="other" type="number" min="0" value="0"></div>
+    </div><div class="result"><div><small>Остаток с единицы до налога*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">Укажите расходы</div></div>
+   </div>
+  </article>
+  <article class="card product" data-product="bukhanka">
+   <div class="producttop"><div><div class="sku">SKU 6363848329 · БУХАНКА</div><h3>Зеркала заднего вида УАЗ-452</h3></div><div class="price">2 254 ₽</div></div>
+   <div class="productbody"><div class="metrics"><div class="metric"><small>Комиссия 47%</small><b>1 059,38 ₽</b></div><div class="metric"><small>Эквайринг</small><b>22,54 ₽</b></div><div class="metric"><small>Доставка клиенту</small><b>25 ₽</b></div></div>
+    <div class="costgrid">
+     <div class="field"><label>Закупка / себестоимость, ₽</label><input data-key="cost" type="number" min="0" value="0"></div>
+     <div class="field"><label>Упаковка, ₽</label><input data-key="pack" type="number" min="0" value="0"></div>
+     <div class="field"><label>Реклама на 1 заказ, ₽</label><input data-key="ads" type="number" min="0" value="0"></div>
+     <div class="field"><label>Транзит / логистика, ₽</label><input data-key="transit" type="number" min="0" value="0" placeholder="введите сумму"></div>
+     <div class="field wide"><label>Прочие расходы, ₽</label><input data-key="other" type="number" min="0" value="0"></div>
+    </div><div class="result"><div><small>Остаток с единицы до налога*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">Укажите расходы</div></div>
+   </div>
+  </article>
+ </section>
+ <section class="grid bottom">
+  <div class="card" id="fees"><div class="sectionhead" style="margin:0"><div><h2>Структура известных удержаний</h2><p>Расчёт от текущей цены; транзит показан диапазоном.</p></div></div>
+   <div class="barlist">
+    <div class="barrow"><span>Комиссия FBS</span><div class="track"><div class="fill" style="width:94%"></div></div><b>47%</b></div>
+    <div class="barrow"><span>Эквайринг</span><div class="track"><div class="fill" style="width:2%;opacity:.7"></div></div><b>≈1%</b></div>
+    <div class="barrow"><span>Первая миля</span><div class="track"><div class="fill" style="width:1%;opacity:.55"></div></div><b>0–10 ₽</b></div>
+    <div class="barrow"><span>Доставка</span><div class="track"><div class="fill" style="width:2%;opacity:.45"></div></div><b>25 ₽</b></div>
+   </div>
+   <div class="alert"><b>Важно: транзит не включён в автоматический расчёт</b>Ozon вернул диапазоны 58–529 ₽ для Хантера и 46–345 ₽ для Буханки. Введите ожидаемую сумму вручную после проверки условий логистики.</div>
+  </div>
+  <div class="card" id="data"><div class="sectionhead" style="margin:0"><div><h2>Качество данных</h2><p>Что известно на текущий момент</p></div></div>
+   <div class="barlist">
+    <div class="barrow"><span>Каталог</span><div class="track"><div class="fill" style="width:100%"></div></div><b>2/2</b></div>
+    <div class="barrow"><span>Тарифы</span><div class="track"><div class="fill" style="width:100%"></div></div><b>2/2</b></div>
+    <div class="barrow"><span>Заказы</span><div class="track"><div class="fill" style="width:0%"></div></div><b>0</b></div>
+    <div class="barrow"><span>Начисления</span><div class="track"><div class="fill" style="width:0%"></div></div><b>0</b></div>
+   </div>
+   <div class="empty" style="margin-top:17px">Пока нет заказов и фактических выплат.<br>Прогноз ≠ подтверждённая прибыль.</div>
+  </div>
+ </section>
+ <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
+</main></div>
+<script>
+const config={hunter:{price:2561,commission:.47,acquiring:25.61,firstMile:5,delivery:25},bukhanka:{price:2254,commission:.47,acquiring:22.54,firstMile:5,delivery:25}};
+const rub=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' ₽';
+document.querySelectorAll('.product').forEach(card=>{const c=config[card.dataset.product];const inputs=[...card.querySelectorAll('input')];function calc(){const v={};inputs.forEach(i=>v[i.dataset.key]=Math.max(0,Number(i.value)||0));const fees=c.price*c.commission+c.acquiring+c.firstMile+c.delivery;const profit=c.price-fees-v.cost-v.pack-v.ads-v.transit-v.other;card.querySelector('[data-out=profit]').textContent=rub(profit);const margin=profit/c.price*100;const out=card.querySelector('[data-out=margin]');out.textContent=(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'% от цены';out.style.color=profit>=0?'#ff9a68':'#ff7770';}inputs.forEach(i=>i.addEventListener('input',calc));calc();});
+</script>
+</body></html>
