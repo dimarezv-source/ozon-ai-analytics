@@ -27,6 +27,7 @@ app = FastAPI(
 
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
+INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
 
 
 def _session_token(username: str, password: str, expires: int) -> str:
@@ -461,6 +462,11 @@ async def dashboard(_: None = Depends(require_dashboard_auth)) -> FileResponse:
 @app.get("/dashboard/profit-calculator.js", tags=["dashboard"], include_in_schema=False)
 async def profit_calculator_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(PROFIT_CALCULATOR_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/intelligence.js", tags=["dashboard"], include_in_schema=False)
+async def intelligence_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(INTELLIGENCE_FILE, media_type="application/javascript")
 
 
 @app.get("/api/dashboard", tags=["dashboard"])
