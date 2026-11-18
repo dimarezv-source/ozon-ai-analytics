@@ -1,9 +1,14 @@
+import base64
+import hashlib
+import hmac
 import logging
 import secrets
+import time
 from pathlib import Path
+from urllib.parse import parse_qs
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import get_settings
@@ -21,10 +26,35 @@ app = FastAPI(
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
 
 
+def _session_token(username: str, password: str, expires: int) -> str:
+    payload = f"{username}:{expires}".encode("utf-8")
+    signature = hmac.new(password.encode("utf-8"), payload, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(payload + b"." + signature).decode("ascii")
+
+
+def _valid_session(token: str | None, username: str, password: str) -> bool:
+    if not token:
+        return False
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode("ascii"))
+        payload, signature = decoded.rsplit(b".", 1)
+        token_user, expires_text = payload.decode("utf-8").rsplit(":", 1)
+        expires = int(expires_text)
+        expected = hmac.new(password.encode("utf-8"), payload, hashlib.sha256).digest()
+        return (
+            secrets.compare_digest(token_user, username)
+            and expires >= int(time.time())
+            and hmac.compare_digest(signature, expected)
+        )
+    except (ValueError, UnicodeError):
+        return False
+
+
 def require_dashboard_auth(
+    request: Request,
     credentials: HTTPBasicCredentials | None = Depends(security),
 ) -> None:
-    """Protect the dashboard and live data endpoint with HTTP Basic auth."""
+    """Protect dashboard routes using a signed login cookie or HTTP Basic."""
     settings = get_settings()
     expected_username = settings.dashboard_username
     expected_password = settings.dashboard_password
@@ -35,17 +65,72 @@ def require_dashboard_auth(
             detail="Dashboard authentication is not configured on this server.",
         )
 
-    valid = (
+    cookie_ok = _valid_session(
+        request.cookies.get("ozon_dashboard_session"),
+        expected_username,
+        expected_password,
+    )
+    basic_ok = (
         credentials is not None
-        and secrets.compare_digest(credentials.username.encode('utf-8'), expected_username.encode('utf-8'))
-        and secrets.compare_digest(credentials.password.encode('utf-8'), expected_password.encode('utf-8'))
+        and secrets.compare_digest(credentials.username.encode("utf-8"), expected_username.encode("utf-8"))
+        and secrets.compare_digest(credentials.password.encode("utf-8"), expected_password.encode("utf-8"))
+    )
+    if not (cookie_ok or basic_ok):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+
+@app.get("/login", tags=["dashboard"], response_class=HTMLResponse, include_in_schema=False)
+async def login_page() -> HTMLResponse:
+    return HTMLResponse("""<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Вход · Ozon AI Analytics</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111827;color:#f9fafb;font:16px Arial,sans-serif}
+form{width:min(92vw,390px);padding:30px;background:#1f2937;border:1px solid #374151;border-radius:18px}
+h1{font-size:23px;margin:0 0 8px}p{color:#9ca3af;margin:0 0 24px}
+label{display:block;margin:15px 0 7px;color:#d1d5db;font-size:14px}
+input{width:100%;padding:13px;border:1px solid #4b5563;border-radius:9px;background:#111827;color:white;font-size:16px}
+button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:9px;background:#f97316;color:#111827;font-weight:700;font-size:16px;cursor:pointer}
+</style>
+<form method="post" action="/login"><h1>Ozon AI Analytics</h1><p>Войдите в личный кабинет</p>
+<label for="username">Логин</label><input id="username" name="username" autocomplete="username" required>
+<label for="password">Пароль</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<button type="submit">Войти</button></form></html>""")
+
+
+@app.post("/login", include_in_schema=False)
+async def login_submit(request: Request):
+    settings = get_settings()
+    body = (await request.body()).decode("utf-8", errors="replace")
+    fields = parse_qs(body)
+    username = fields.get("username", [""])[0]
+    password = fields.get("password", [""])[0]
+    if not settings.dashboard_username or not settings.dashboard_password:
+        raise HTTPException(status_code=503, detail="Dashboard authentication is not configured.")
+    valid = (
+        secrets.compare_digest(username.encode("utf-8"), settings.dashboard_username.encode("utf-8"))
+        and secrets.compare_digest(password.encode("utf-8"), settings.dashboard_password.encode("utf-8"))
     )
     if not valid:
-        raise HTTPException(
+        return HTMLResponse(
+            "<!doctype html><meta charset='utf-8'><p>Неверный логин или пароль.</p><a href='/login'>Попробовать снова</a>",
             status_code=401,
-            detail="Authentication required.",
-            headers={"WWW-Authenticate": "Basic"},
         )
+    expires = int(time.time()) + 12 * 60 * 60
+    token = _session_token(username, settings.dashboard_password, expires)
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie(
+        "ozon_dashboard_session", token, max_age=12 * 60 * 60,
+        httponly=True, secure=True, samesite="lax", path="/",
+    )
+    return response
+
+
+@app.post("/logout", include_in_schema=False)
+async def logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("ozon_dashboard_session", path="/")
+    return response
 
 
 @app.get("/health", tags=["system"])
