@@ -40,6 +40,11 @@ jobs:
       - name: Show report in GitHub Actions
         if: always()
         run: |
+          if [ -f output/prices-report.md ]; then
+            cat output/prices-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Price/commission report was not generated. Check the fetch step logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f output/report.md ]; then
             cat output/report.md >> "$GITHUB_STEP_SUMMARY"
           else
