@@ -178,7 +178,7 @@
     const value=sale[field];if(value!==null&&value!==undefined&&String(value)!==''){product=catalogById.get(field+':'+String(value));if(product)break;}
    }
    if(!product){unmatchedUnits+=units;continue;}
-   const required=type==='FBO'?['sales_percent_fbo','acquiring']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max'];
+   const required=type==='FBO'?['sales_percent_fbo','acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
    if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
    const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
    const cost=Math.max(0,Number(values.cost)||0),pack=Math.max(0,Number(values.pack)||0);
@@ -202,7 +202,7 @@
   set('periodProfitFbo',totals.FBO.units?((totals.FBO.profit>0?'+':'')+money(totals.FBO.profit)):'Нет данных');
   set('periodProfitFbs',totals.FBS.units?((totals.FBS.profit>0?'+':'')+money(totals.FBS.profit)):'Нет данных');
   set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
-  let note='FBO: комиссия FBO + эквайринг; FBS: комиссия FBS + эквайринг + первая миля (среднее диапазона) + доставка клиенту. Себестоимость, упаковка, реклама, прочие расходы и налог берутся из карточек товара.';
+  let note='FBO: комиссия FBO + эквайринг + доставка клиенту + транзит (среднее диапазона). FBS: комиссия FBS + эквайринг + первая миля + доставка клиенту + транзит (среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и налог берутся из карточек товара.';
   note+=' Для FBO отдельные услуги фулфилмента и хранения не включены, если их нет в доступных тарифах API. Возвраты и фактические начисления не учтены.';
   const excluded=unmatchedUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
   if(excluded)note+=' Исключено: '+excluded+' шт. — без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
@@ -219,19 +219,17 @@
   const metrics=[['Комиссия FBS · '+pct(commission),money(price*commission/100)],['Комиссия FBO · '+pct(fboCommission),p.sales_percent_fbo==null?'—':money(price*fboCommission/100)],['Эквайринг',p.acquiring==null?'—':money(acq)],['Доставка клиенту',p.delivery_to_customer==null?'—':money(delivery)]];
   card.innerHTML='<div class="producttop"><div><div class="sku">SKU '+esc(p.sku??'—')+' · ID '+esc(p.product_id??'—')+'</div><h3>'+esc(p.name||p.offer_id||'Товар без названия')+'</h3><div class="productmeta">Offer ID: '+esc(p.offer_id??'—')+'</div></div><div class="price">'+(price?money(price):'Цена не указана')+'</div></div>'+
    '<div class="productbody"><div class="metrics">'+metrics.map(m=>'<div class="metric"><small>'+m[0]+'</small><b>'+m[1]+'</b></div>').join('')+'</div>'+
-   '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Транзит / логистика, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
+   '<div class="costgrid">'+[['cost','Закупка / себестоимость, ₽'],['pack','Упаковка, ₽'],['ads','Реклама на 1 заказ, ₽'],['transit','Дополнительная логистика вручную, ₽'],['other','Прочие расходы, ₽'],['tax','Налог, % (если применимо)']].map(([k,label])=>'<div class="field '+(k==='other'||k==='tax'?'wide':'')+'"><label>'+label+'</label><input data-key="'+k+'" type="number" min="0" step="0.01" value="'+esc(costs[k]??'0')+'"></div>').join('')+'</div>'+
    '<div class="result"><div><small>Расчётный остаток с единицы после введённых расходов*</small><strong data-out="profit">—</strong></div><div class="pct" data-out="margin">—</div></div>'+
-   '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · транзит '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+'</div></div>';
+   '<div class="productmeta" data-out="basis">Тарифы из Seller API · первая миля '+(p.first_mile_min==null?'—':money(firstMin)+'–'+money(firstMax))+' · транзит Ozon '+(p.transit_min==null?'—':money(p.transit_min)+'–'+money(p.transit_max))+' · возврат '+(p.return_flow==null?'—':money(p.return_flow))+'</div></div>';
   function calc(){
    const vals={};card.querySelectorAll('input').forEach(i=>vals[i.dataset.key]=Math.max(0,Number(i.value)||0));
-   const fee=price*commission/100+acq+first+delivery;
-   const tax=price*vals.tax/100;
-   const profit=price-fee-vals.cost-vals.pack-vals.ads-vals.transit-vals.other-tax;
-   const margin=price?profit/price*100:0;
-   card.querySelector('[data-out=profit]').textContent=missingTariffs?'Нужны тарифы':price?money(profit):'Нет цены';
-   const out=card.querySelector('[data-out=margin]');out.textContent=missingTariffs?'Неполные данные':price?(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%':'—';out.style.color=missingTariffs?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
+   const calculation=window.OzonProfitCalculator.calculateProfit({fulfillmentType:'FBS',unitPrice:price,product:p,expenses:vals});
+   const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
+   card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
+   const out=card.querySelector('[data-out=margin]');out.textContent=!valid?'Неполные данные':(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%';out.style.color=!valid?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
    const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
-   card.dataset.profit=missingTariffs?'':String(profit);card.dataset.margin=missingTariffs?'':String(margin);
+   card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    updatePeriodProfit();
   }
   card.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));calc();return card;
