@@ -63,6 +63,11 @@
    return ar-br||(a.result.daysCover??Infinity)-(b.result.daysCover??Infinity)||a.name.localeCompare(b.name,'ru');
   });
   state.replenishmentItems=items.filter(item=>item.result.ok&&item.result.recommended>0);
+  const totalUnits=state.replenishmentItems.reduce((sum,item)=>sum+item.result.recommended,0);
+  const fboUnits=state.replenishmentItems.filter(item=>item.type==='FBO').reduce((sum,item)=>sum+item.result.recommended,0);
+  const fbsUnits=state.replenishmentItems.filter(item=>item.type==='FBS').reduce((sum,item)=>sum+item.result.recommended,0);
+  const urgentCount=state.replenishmentItems.filter(item=>item.result.priority==='critical'||item.result.priority==='urgent').length;
+  [['replenishmentSkuCount',state.replenishmentItems.length],['replenishmentUnitCount',totalUnits],['replenishmentFboCount',fboUnits],['replenishmentFbsCount',fbsUnits],['replenishmentUrgentCount',urgentCount]].forEach(([id,value])=>{const node=el(id);if(node)node.textContent=number(value)});
   const exportButton=el('replenishmentExport');if(exportButton)exportButton.disabled=state.replenishmentItems.length===0;
   for(const item of items){
    const tr=document.createElement('tr');
