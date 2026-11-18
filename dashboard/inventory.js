@@ -45,7 +45,7 @@
   const recommended=Math.max(0,Math.ceil(dailySales*targetDays-available));
   return {ok:true,available,dailySales,daysCover,targetDays,recommended,priority:available===0?'critical':daysCover<=leadDays?'urgent':daysCover<=targetDays?'soon':'normal'};
  }
- root.OzonInventoryPlanner={calculateReplenishment};
+ root.OzonInventoryPlanner={calculateReplenishment,calculateProcurementBudget};
  function loadSettings(){
   try{const v=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');state.leadDays=Math.max(0,Number(v.leadDays)||0);state.safetyDays=Math.max(0,Number(v.safetyDays)||0)}catch(_){}
   const lead=el('replenishmentLeadDays'),safety=el('replenishmentSafetyDays');
