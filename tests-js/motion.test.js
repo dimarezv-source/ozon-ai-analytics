@@ -1,0 +1,4 @@
+const test=require('node:test');const assert=require('node:assert/strict');const motion=require('../dashboard/motion.js');
+test('motion selectors cover dashboard surfaces',()=>{assert.ok(motion.SELECTORS.includes('.kpis .card'));assert.ok(motion.SELECTORS.includes('.product'));assert.ok(motion.SELECTORS.includes('#financeAccrualPanel'));});
+test('reduced motion preference is detected',()=>{assert.equal(motion.reducedMotion({matchMedia:()=>({matches:true})}),true);assert.equal(motion.reducedMotion({matchMedia:()=>({matches:false})}),false);assert.equal(motion.reducedMotion({}),false);});
+test('selector helper de-duplicates nodes',()=>{const a={},b={};const doc={querySelectorAll:s=>s==='.x'?[a,b]:s==='.y'?[a]:[]};const result=['.x','.y'].flatMap(s=>Array.from(doc.querySelectorAll(s))).filter((node,index,array)=>array.indexOf(node)===index);assert.deepEqual(result,[a,b]);});
