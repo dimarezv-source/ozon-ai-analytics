@@ -5,6 +5,8 @@ import logging
 import secrets
 import time
 from pathlib import Path
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from urllib.parse import parse_qs
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -131,6 +133,88 @@ async def logout():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie("ozon_dashboard_session", path="/")
     return response
+
+
+@app.get("/api/sales", tags=["dashboard"])
+async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Read-only delivered FBO/FBS sales for a selected UTC date range."""
+    raw_from = request.query_params.get("date_from", "")
+    raw_to = request.query_params.get("date_to", "")
+    try:
+        date_from = date.fromisoformat(raw_from)
+        date_to = date.fromisoformat(raw_to)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
+    if date_to < date_from:
+        raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
+    if (date_to - date_from).days > 364:
+        raise HTTPException(status_code=400, detail="Максимальный период одного запроса — 365 дней.")
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    delivered_postings = set()
+    units = 0
+    gmv = Decimal("0")
+    unpriced_units = 0
+    counts = {"FBO": 0, "FBS": 0}
+    try:
+        for schema, path in (("FBO", "/v3/posting/fbo/list"), ("FBS", "/v4/posting/fbs/list")):
+            cursor = ""
+            seen_cursors = set()
+            for _ in range(5000):
+                payload = {"filter": {"since": since, "to": to}, "limit": 100, "cursor": cursor,
+                           "sort_dir": "ASC", "with": {"analytics_data": True, "financial_data": True, "legal_info": False}}
+                if schema == "FBS":
+                    payload["with"]["barcodes"] = False
+                    payload["with"]["translit"] = False
+                operation = "posting_fbo_list" if schema == "FBO" else "posting_fbs_list"
+                response = await client.execute(operation, payload)
+                body = response.get("result", response)
+                if not isinstance(body, dict) or not isinstance(body.get("postings"), list):
+                    raise ValueError(f"Unexpected {schema} postings response.")
+                for posting in body["postings"]:
+                    if not isinstance(posting, dict) or str(posting.get("status") or "").lower() != "delivered":
+                        continue
+                    number = str(posting.get("posting_number") or "")
+                    if not number:
+                        continue
+                    delivered_postings.add(number)
+                    counts[schema] += 1
+                    for product in posting.get("products", []):
+                        if not isinstance(product, dict):
+                            continue
+                        try:
+                            quantity = max(0, int(product.get("quantity") or 0))
+                        except (TypeError, ValueError):
+                            quantity = 0
+                        units += quantity
+                        try:
+                            price = Decimal(str(product.get("price")))
+                            if not price.is_finite() or price < 0:
+                                raise InvalidOperation
+                            gmv += price * quantity
+                        except (InvalidOperation, ValueError, TypeError):
+                            unpriced_units += quantity
+                has_next = body.get("has_next", False)
+                next_cursor = body.get("cursor") or ""
+                if not has_next:
+                    break
+                if not next_cursor or next_cursor == cursor or next_cursor in seen_cursors:
+                    raise ValueError(f"{schema}: invalid pagination cursor.")
+                seen_cursors.add(next_cursor)
+                cursor = next_cursor
+            else:
+                raise ValueError(f"{schema}: pagination safety limit reached.")
+        return {"status": "ok", "mode": "read-only", "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
+                "sales_gmv": float(gmv), "delivered_units": units, "delivered_postings": len(delivered_postings),
+                "fbo_postings": counts["FBO"], "fbs_postings": counts["FBS"], "unpriced_units": unpriced_units,
+                "basis": "Delivered postings at current status; GMV is estimated from item price x quantity before returns and deductions."}
+    except Exception as exc:
+        logger.exception("Could not retrieve Ozon sales for selected period: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось получить продажи из Ozon. Проверьте логи сервера.") from None
 
 
 @app.get("/health", tags=["system"])
