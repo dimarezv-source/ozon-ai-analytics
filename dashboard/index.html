@@ -141,6 +141,7 @@
 .sku-matrix-table tbody tr:hover{background:#f9fbff}
 .sku-matrix-note{font-size:10px;line-height:1.5;margin:10px 0 0}
 @media(max-width:760px){.sku-matrix-panel{padding:14px}.sku-matrix-heading{align-items:flex-start;flex-direction:column;gap:10px}.sku-matrix-actions{width:100%}.sku-matrix-actions button{flex:1}.sku-matrix-table-wrap{max-height:280px}}
+.replenishment-panel{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.replenishment-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.replenishment-head h3{font-size:15px;margin:0}.replenishment-head p{font-size:12px;color:var(--muted);margin:4px 0 0}.replenishment-settings{display:grid;grid-template-columns:repeat(2,minmax(150px,190px)) minmax(220px,1fr);gap:10px;align-items:end;margin:12px 0}.replenishment-settings label{font-size:11px;color:var(--muted);display:grid;gap:6px}.replenishment-settings input{width:100%;min-height:38px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;color:var(--ink);background:#fff}.replenishment-summary{font-size:11px;color:var(--muted);padding:10px 12px;background:#f3f8ff;border-radius:9px}.replenishment-qty{font-weight:800;color:#ff6b35}.replenishment-table{min-width:850px}@media(max-width:650px){.replenishment-settings{grid-template-columns:repeat(2,minmax(0,1fr))}.replenishment-summary{grid-column:1/-1}.replenishment-head{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -169,7 +170,17 @@
   </div>
   <div class="inventory-status" id="inventoryStatus" role="status">Загружаем остатки…</div>
   <div class="inventory-table-wrap"><table class="inventory-table"><thead><tr><th>Товар</th><th>Схема</th><th>В наличии</th><th>Резерв</th><th>Доступно</th><th>Хватит на</th><th>Сигнал</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="7" class="hint">Ожидаем данные Ozon.</td></tr></tbody></table></div>
-  <p class="inventory-note">«Доступно» = в наличии − резерв. Покрытие в днях рассчитывается по продажам выбранного периода и является ориентиром, а не прогнозом спроса. Если продажи за период не загружены, покрытие не рассчитывается.</p>
+  <div class="replenishment-panel">
+   <div class="replenishment-head"><div><h3>Умное пополнение запасов</h3><p>Сколько заказать, чтобы покрыть срок поставки и страховой запас</p></div><span class="tag">FBO / FBS</span></div>
+   <div class="replenishment-settings">
+    <label>Срок поставки, дней<input id="replenishmentLeadDays" type="number" min="0" max="365" step="1" value="0"></label>
+    <label>Страховой запас, дней<input id="replenishmentSafetyDays" type="number" min="0" max="365" step="1" value="0"></label>
+    <div class="replenishment-summary" id="replenishmentSummary">Укажи свои сроки поставки и страховой запас.</div>
+   </div>
+   <div class="inventory-table-wrap"><table class="inventory-table replenishment-table"><thead><tr><th>Товар</th><th>Схема</th><th>Доступно</th><th>Хватит на</th><th>Продажи / день</th><th>Рекомендуем заказать</th><th>Приоритет</th></tr></thead><tbody id="replenishmentRows"><tr><td colspan="7" class="hint">Ожидаем продажи за выбранный период.</td></tr></tbody></table></div>
+   <p class="inventory-note">Рекомендация = продажи в день × (срок поставки + страховой запас) − доступный остаток. Расчёт отдельно для FBO и FBS, округляется вверх до целых штук. Сроки задаёшь сам; спрос не прогнозируется. Ничего не отправляется в Ozon и не меняет остатки.</p>
+  </div>
+  <p class="inventory-note">«Доступно» = в наличии − резерв. Покрытие в днях рассчитывается по продажам выбранного периода и является ориентиром, а не прогнозом спроса.</p>
  </section>
 
  <section class="grid kpis">
