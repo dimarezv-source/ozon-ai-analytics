@@ -55,6 +55,13 @@
   el('stockReserved').textContent=number(totals.reserved);el('stockEmpty').textContent=number(totals.empty);
   const days=periodDays();
   el('inventoryStatus').textContent='Обновлено: '+new Date().toLocaleString('ru-RU')+' · товаров: '+products.length+' · '+(days?'скорость продаж рассчитана за '+days+' дн.':'загрузи продажи за период для оценки покрытия');
+  root.dispatchEvent(new CustomEvent('ozon:inventory-updated',{detail:{
+   items:display.filter(item=>item.level==='critical'||item.level==='warning').map(item=>({
+    name:item.name,type:item.type,sku:item.sku,available:item.available,coverage:item.coverage,level:item.level
+   })),
+   totals:{FBO:totals.FBO,FBS:totals.FBS,reserved:totals.reserved,empty:totals.empty},
+   updatedAt:new Date().toISOString()
+  }}));
  }
  async function load(){
   if(state.loading)return;state.loading=true;
