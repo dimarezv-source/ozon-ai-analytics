@@ -423,8 +423,7 @@
     simProfit.textContent=money(scenario.scenario.profit);
     simMargin.textContent=(scenario.scenario.marginPercent>=0?'+':'')+scenario.scenario.marginPercent.toFixed(1).replace('.',',')+'%';
     simDelta.textContent=(scenario.deltaProfitPerUnit>0?'+':'')+money(scenario.deltaProfitPerUnit);
-    [simProfit,simMargin,simDelta].forEach(node=>node.classList.toggle('positive',Number(node.textContent.replace(/[^0-9,.-]/g,'').replace(',','.'))>=0));
-    simDelta.classList.toggle('negative',scenario.deltaProfitPerUnit<0);
+    [simProfit,simMargin,simDelta].forEach(node=>{const value=Number(node.textContent.replace(/[^0-9,.-]/g,'').replace(',','.'));node.classList.toggle('positive',value>=0);node.classList.toggle('negative',value<0)});
     simStatus.textContent='Изменение прибыли на единицу; спрос и объём продаж не прогнозируются. Цена в кабинете Ozon не меняется.';
    }else{
     simProfit.textContent='—';simMargin.textContent='—';simDelta.textContent='—';
