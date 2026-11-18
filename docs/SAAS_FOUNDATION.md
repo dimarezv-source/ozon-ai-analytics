@@ -26,3 +26,12 @@ The production `main` branch remains the working single-owner dashboard. A check
 6. Monitoring, backups, privacy policy, terms, deletion/export flows and production deployment.
 
 Do not merge this branch into `main` or enable registration until database provisioning, migrations, credential encryption, and tenant authorization are complete.
+
+
+## Product-cost persistence layer
+- app/repositories/product_costs.py provides workspace-scoped list/get/upsert/delete operations.
+- Editable values are allow-listed (cost, pack, ads, transit, other, tax) and validated as finite, non-negative numbers.
+- Repository functions do not commit transactions; the authenticated API layer must authorize the workspace first and own commit/rollback.
+- Unit tests cover persistence across sessions, tenant separation, updates, deletion, and invalid input rejection.
+
+This repository layer is not yet exposed as a public API. It must remain behind authenticated workspace membership checks when routes are added.
