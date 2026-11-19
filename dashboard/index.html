@@ -308,8 +308,8 @@ button:active{transform:translateY(1px)}
 <section class="sku-matrix-panel" id="skuMatrixPanel" data-module="reconciliation">
  <div class="sku-matrix-heading"><div class="sku-matrix-title"><h2>Сверка продаж и начислений по SKU</h2><p class="hint">Точное сопоставление по SKU и FBO/FBS · валюты раздельно</p></div><div class="sku-matrix-actions"><button id="skuMatrixLoad" type="button">Собрать матрицу</button><button class="secondary" id="skuMatrixExport" type="button" disabled>Экспорт CSV</button></div></div>
  <p id="skuMatrixStatus" class="hint sku-matrix-status" aria-live="polite">Выбери период в блоке финансовой сверки выше и нажми «Собрать матрицу SKU».</p>
- <div class="sku-matrix-table-wrap"><table class="sku-matrix-table"><thead><tr><th>SKU</th><th>Схема</th><th>Продано</th><th>GMV · оценка</th><th>Возвраты</th><th>Начисления по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
- <p class="hint sku-matrix-note">GMV — оценка по цене товара и количеству. Возвраты и начисления показаны отдельно; это не чистая прибыль и не сумма к выплате.</p>
+ <div class="sku-matrix-table-wrap"><table class="sku-matrix-table"><thead><tr><th>SKU</th><th>Схема</th><th>Продано</th><th>GMV · оценка</th><th>Возвраты · точное совпадение</th><th>Начисления по валютам</th><th>Фин. строк</th></tr></thead><tbody id="skuMatrixRows"><tr><td colspan="7" class="hint">Матрица ещё не загружена.</td></tr></tbody></table></div>
+ <p class="hint sku-matrix-note">GMV — оценка по цене товара и количеству. Возвраты в матрице учитываются только при точном совпадении номера отправления и SKU. Несопоставленные возвраты остаются отдельно; начисления показаны по валютам. Это не чистая прибыль и не сумма к выплате.</p>
 </section>
 
 <section class="card accrual-panel" id="financeAccrualPanel" data-module="accruals">
