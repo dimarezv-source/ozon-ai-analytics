@@ -28,6 +28,7 @@ app = FastAPI(
 
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
 MOTION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "motion.js"
+ASSISTANT_CENTER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "assistant-center.js"
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
 LOSS_ALERTS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "loss-alerts.js"
@@ -665,6 +666,11 @@ async def health() -> dict[str, str]:
 async def dashboard(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(DASHBOARD_FILE, media_type="text/html")
 
+
+
+@app.get("/dashboard/assistant-center.js", tags=["dashboard"], include_in_schema=False)
+async def assistant_center_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(ASSISTANT_CENTER_FILE, media_type="application/javascript")
 
 
 @app.get("/dashboard/motion.js", tags=["dashboard"], include_in_schema=False)
