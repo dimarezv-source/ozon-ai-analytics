@@ -45,3 +45,27 @@ test('negative and nonnumeric tax bases are rejected',()=>{
  assert.equal(tax.calculateTaxPerUnit({profile:{taxpayerType:'ip',regime:'usn_income'},revenuePerUnit:-1}).reason,'invalid_tax_base');
  assert.equal(tax.calculateTaxPerUnit({profile:{taxpayerType:'ip',regime:'usn_income'},revenuePerUnit:'bad'}).reason,'invalid_tax_base');
 });
+
+
+test('default Russian profile stays explicitly undetermined and does not invent a tax rate',()=>{
+ const profile=tax.createDefaultProfile();
+ assert.equal(profile.country,'RU');
+ assert.equal(profile.region,null);
+ assert.equal(profile.taxpayerType,null);
+ assert.equal(profile.regime,null);
+ assert.equal(profile.profileStatus,'undetermined');
+ assert.equal(tax.validateProfile(profile).reason,'profile_not_configured');
+});
+test('tax calculation is unavailable until taxpayer type and regime are selected',()=>{
+ const r=tax.calculateTaxPerUnit({profile:tax.createDefaultProfile(),revenuePerUnit:1000,deductibleExpensesPerUnit:500});
+ assert.equal(r.ok,false);
+ assert.equal(r.status,'not_configured');
+ assert.equal(r.taxCalculationAvailable,false);
+ assert.equal(r.taxPerUnit,null);
+});
+test('a completed profile can be based on the undetermined template',()=>{
+ const profile=tax.createDefaultProfile({region:'Москва',taxpayerType:'ip',regime:'usn_income',rate:6,profileStatus:'configured'});
+ const r=tax.calculateTaxPerUnit({profile,revenuePerUnit:1000,deductibleExpensesPerUnit:500});
+ assert.equal(r.ok,true);
+ assert.equal(r.taxPerUnit,60);
+});
