@@ -18,11 +18,15 @@
     {value:'usn_5',label:'НДС 5% · УСН, без вычетов',rate:5,deductInputVat:false},
     {value:'usn_7',label:'НДС 7% · УСН, без вычетов',rate:7,deductInputVat:false}
   ];
+  function createDefaultProfile(overrides={}){
+    return {country:'RU',region:null,taxpayerType:null,regime:null,rate:null,vatMode:null,taxYear:2026,profileStatus:'undetermined',...overrides};
+  }
   function getRegimeOptions(taxpayerType){
     return Object.entries(regimes).filter(([,r])=>r.taxpayerTypes.includes(taxpayerType)).map(([id,r])=>({id,...r}));
   }
   function validateProfile(profile){
-    if(!profile||!regimes[profile.regime])return {ok:false,reason:'unknown_regime'};
+    if(!profile||profile.profileStatus==='undetermined'||!profile.taxpayerType||!profile.regime)return {ok:false,reason:'profile_not_configured',status:'not_configured'};
+    if(!regimes[profile.regime])return {ok:false,reason:'unknown_regime'};
     const rule=regimes[profile.regime];
     if(!rule.taxpayerTypes.includes(profile.taxpayerType))return {ok:false,reason:'incompatible_taxpayer'};
     if(profile.regime==='npd'&&profile.businessModel==='resale')return {ok:false,reason:'npd_resale_prohibited'};
@@ -38,7 +42,7 @@
   function calculateTaxPerUnit(input){
     const profile=input&&input.profile||{};
     const valid=validateProfile(profile);
-    if(!valid.ok)return {ok:false,reason:valid.reason};
+    if(!valid.ok)return {ok:false,reason:valid.reason,status:valid.status||'invalid_profile',taxPerUnit:null,taxCalculationAvailable:false,warning:'Налоговый профиль не определён или содержит несовместимые параметры. Налог не подставляется автоматически.'};
     const revenue=Number(input.revenuePerUnit),deductible=Number(input.deductibleExpensesPerUnit||0);
     if(!Number.isFinite(revenue)||revenue<0||!Number.isFinite(deductible)||deductible<0)return {ok:false,reason:'invalid_tax_base'};
     const base=valid.rule.base==='revenue'?revenue:Math.max(0,revenue-deductible);
@@ -47,6 +51,6 @@
     const tax=Math.max(ordinary,minimum);
     return {ok:true,regime:profile.regime,taxpayerType:profile.taxpayerType,baseType:valid.rule.base,basePerUnit:base,rate:valid.rate,taxPerUnit:Math.round(tax*100)/100,ordinaryTaxPerUnit:Math.round(ordinary*100)/100,minimumTaxPerUnit:Math.round(minimum*100)/100,minimumTaxApplied:minimum>ordinary,vatMode:profile.vatMode||'not_configured',vatSeparate:true,warning:'Оценка на единицу товара. Итоговый налог зависит от налогового периода, совокупных доходов/расходов, вычетов, взносов и региональных условий.'};
   }
-  root.OzonTaxEngine={TAX_RULES_VERSION,regimes,vatOptions,getRegimeOptions,validateProfile,calculateTaxPerUnit};
+  root.OzonTaxEngine={TAX_RULES_VERSION,regimes,vatOptions,createDefaultProfile,getRegimeOptions,validateProfile,calculateTaxPerUnit};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.OzonTaxEngine;
 })(typeof globalThis!=='undefined'?globalThis:this);
