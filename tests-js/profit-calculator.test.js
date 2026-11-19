@@ -76,3 +76,14 @@ test('monetary profit and simulator difference are rounded to whole rubles',()=>
  const sim=simulatePrice({fulfillmentType:'FBO',currentPrice:1000.49,scenarioPrice:1100.49,product,expenses:{cost:500.25}});
  assert.equal(sim.ok,true);assert.equal(Number.isInteger(sim.deltaProfitPerUnit),true);
 });
+
+
+test('legacy tax percentage is explicitly identified as a manual expense, not statutory tax',()=>{
+ const r=calculateProfit({fulfillmentType:'FBO',unitPrice:1000,product,expenses:{cost:500,tax:6}});
+ assert.equal(r.ok,true);
+ assert.equal(r.deductions.tax,60);
+ assert.equal(r.manualTaxAdjustment,60);
+ assert.equal(r.statutoryTax,null);
+ assert.equal(r.statutoryTaxCalculated,false);
+ assert.equal(r.taxTreatment,'manual_legacy_expense');
+});
