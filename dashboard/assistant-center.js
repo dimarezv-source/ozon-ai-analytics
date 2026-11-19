@@ -38,6 +38,58 @@
     const normalized = query.toLocaleLowerCase('ru');
     return destinations.find(item => item.keys.some(key => normalized.includes(key))) || null;
   }
+  const live = { sales: null, ranking: null, inventory: null, updatedAt: {} };
+  const money = value => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Number(value) || 0) + ' ₽';
+  const number = value => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(Number(value) || 0);
+  function metric(label, value, note) {
+    const card = document.createElement('div');
+    card.className = 'assistant-live-metric';
+    const caption = document.createElement('small'); caption.textContent = label;
+    const strong = document.createElement('strong'); strong.textContent = value;
+    card.append(caption, strong);
+    if (note) { const hint = document.createElement('span'); hint.textContent = note; card.append(hint); }
+    right.append(card);
+  }
+  function renderLiveData(item) {
+    right.replaceChildren();
+    if (!item) return;
+    if (item.panel === 'sales') {
+      const d = live.sales;
+      if (!d) { metric('Продажи', 'Нет данных', 'Выбери период и загрузи продажи в классической панели.'); return; }
+      metric('Оборот доставленных заказов', money(d.sales_gmv), 'До возвратов');
+      metric('Продано единиц', number(d.delivered_units) + ' шт.', (d.delivered_postings || 0) + ' отправлений');
+      metric('Период', (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—'), 'UTC');
+      const note = document.createElement('p'); note.textContent = 'Разбивка строится по доставленным отправлениям Ozon. Это оборот до возвратов, не чистая прибыль.'; right.append(note);
+    } else if (item.panel === 'products') {
+      const d = live.ranking;
+      if (!d) { metric('Экономика товаров', 'Нет расчёта', 'Сначала загрузи продажи и каталог; для прибыли нужна заполненная себестоимость и тарифы.'); return; }
+      metric('Расчётная прибыль', d.includedUnits ? money(d.estimatedProfit) : '—', 'Только товары с полными исходными данными');
+      metric('Покрытие', number(d.coveragePercent) + '%', (d.includedUnits || 0) + ' из ' + (d.totalUnits || 0) + ' шт.');
+      metric('Товаров в рейтинге', number((d.items || []).length), 'На основе доступной юнит-экономики');
+      (d.items || []).slice(0, 5).forEach(row => metric(row.name || ('SKU ' + (row.sku ?? '—')), money(row.profit), 'Маржа ' + number(row.marginPercent) + '% · ' + row.fulfillmentType));
+      const note = document.createElement('p'); note.textContent = 'Это предварительная расчётная прибыль, не фактическая выплата Ozon. Исключённые продажи и ограничения указаны в разделе экономики.'; right.append(note);
+    } else if (item.panel === 'inventory') {
+      const d = live.inventory;
+      if (!d) { metric('Остатки', 'Нет данных', 'Обнови остатки Ozon в разделе «Остатки и склад».'); return; }
+      metric('Позиций с сигналом', number((d.items || []).length), 'Критические и предупреждающие позиции');
+      if (d.frozen) metric('Заморожено в остатках', money(d.frozen.knownValue), 'Оценка по заполненной себестоимости');
+      (d.items || []).slice(0, 5).forEach(row => metric(row.name || ('SKU ' + (row.sku ?? '—')), number(row.available) + ' шт.', row.level === 'critical' ? 'Критический остаток' : 'Низкий запас'));
+      const note = document.createElement('p'); note.textContent = 'Остатки — снимок на момент последней загрузки. Стоимость залежавшегося товара является оценкой, не гарантированной суммой возврата.'; right.append(note);
+    } else {
+      const note = document.createElement('p'); note.textContent = 'Для этого раздела пока нет отдельной сводки в AI-центре. Открой рабочий раздел, чтобы увидеть первичные данные.'; right.append(note);
+    }
+    const updated = live.updatedAt[item.panel];
+    if (updated) { const stamp = document.createElement('small'); stamp.className = 'assistant-data-stamp'; stamp.textContent = 'Получено в этой сессии: ' + updated.toLocaleTimeString('ru-RU'); right.append(stamp); }
+  }
+  function remember(panel, data) {
+    live[panel] = data;
+    live.updatedAt[panel] = new Date();
+    if (activeTarget && activeTarget.panel === panel) renderLiveData(activeTarget);
+  }
+  window.addEventListener('ozon:sales-loaded', event => remember('sales', event.detail || null));
+  window.addEventListener('ozon:ranking-updated', event => remember('ranking', event.detail || null));
+  window.addEventListener('ozon:inventory-updated', event => remember('inventory', event.detail || null));
+
   function speak(text) {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -59,8 +111,9 @@
     left.append(heading, detail);
     const source = document.createElement('div');
     source.className = 'assistant-source';
-    source.textContent = item ? 'Источник: существующий модуль Ozon AI Analytics. Данные откроются в рабочем разделе.' : 'Доступны команды навигации по существующим разделам.';
+    source.textContent = item ? 'Источник: данные текущей сессии из существующих модулей Ozon AI Analytics.' : 'Доступны команды навигации по существующим разделам.';
     right.append(source);
+    if (item) renderLiveData(item);
     if (item) {
       const open = document.createElement('button');
       open.type = 'button';
