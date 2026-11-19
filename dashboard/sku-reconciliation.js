@@ -6,7 +6,7 @@
   const map=new Map();
   const get=(schema,sku)=>{const key=String(schema||'')+':'+String(sku||'');if(!map.has(key))map.set(key,{schema:String(schema||'—'),sku:String(sku||''),units:0,gmv:0,returns:0,fees:new Map(),feeRecords:0});return map.get(key)};
   for(const row of (sales&&sales.products)||[]){if(!row||row.sku==null||row.sku==='')continue;const item=get(row.fulfillment_type,row.sku);item.units+=Math.max(0,Number(row.units)||0);item.gmv+=Math.max(0,Number(row.sales_gmv)||0)}
-  for(const row of (finance&&finance.returns_summary)||[]){if(!row||row.sku==null||row.sku==='')continue;const item=get(row.fulfillment_type,row.sku);item.returns+=Math.max(0,Number(row.quantity)||0)}
+  for(const row of (finance&&finance.returns_attribution&&finance.returns_attribution.summary)||[]){if(!row||row.sku==null||row.sku==='')continue;const schema=String(row.fulfillment_type||'').toUpperCase();if(schema!=='FBO'&&schema!=='FBS')continue;const item=get(schema,row.sku);item.returns+=Math.max(0,Number(row.quantity)||0)}
   let unmatchedFinance=0;
   for(const row of (finance&&finance.posting_product_summary)||[]){
    if(!row||!row.sku)continue;
@@ -16,7 +16,7 @@
    item.fees.set(currency,(item.fees.get(currency)||0)+amount);item.feeRecords+=Number(row.records)||0;
   }
   const rows=[...map.values()].sort((a,b)=>a.schema.localeCompare(b.schema)||a.sku.localeCompare(b.sku,undefined,{numeric:true}));
-  return {rows,unmatchedFinance};
+  return {rows,unmatchedFinance,unmatchedReturns:Math.max(0,Number(finance&&finance.returns_attribution&&finance.returns_attribution.unmatched_count)||0)};
  }
  function toCsv(matrix,period){
   const currencies=[...new Set((matrix.rows||[]).flatMap(item=>[...item.fees.keys()]))].sort((a,b)=>a.localeCompare(b));
@@ -59,7 +59,7 @@
    const data=await Promise.all(responses.map(async response=>{const body=await response.json();if(!response.ok)throw new Error(body.detail||'Ошибка загрузки данных Ozon');return body}));
    const matrix=buildMatrix(data[0],data[1]);lastMatrix=matrix;lastPeriod={date_from:from.value,date_to:to.value};render(matrix);if(exportButton)exportButton.disabled=!matrix.rows.length;
    const matched=matrix.rows.filter(row=>row.feeRecords>0).length;
-   status.textContent='Готово · SKU в матрице: '+matrix.rows.length+' · SKU с финансовыми строками: '+matched+' · групп начислений без точного FBO/FBS совпадения: '+matrix.unmatchedFinance+'. GMV — оценка по цене товара; начисления показаны отдельно по валютам.';
+   status.textContent='Готово · SKU в матрице: '+matrix.rows.length+' · SKU с финансовыми строками: '+matched+' · групп начислений без точного FBO/FBS совпадения: '+matrix.unmatchedFinance+' · возвратов без точного совпадения: '+matrix.unmatchedReturns+'. Возвраты в матрице — только точные совпадения по отправлению и SKU. GMV — оценка; начисления отдельно по валютам.';
   }catch(error){status.textContent=String(error.message||'Не удалось собрать сверку');status.classList.add('error')}
   finally{button.disabled=false;button.textContent='Собрать матрицу SKU'}
  }
