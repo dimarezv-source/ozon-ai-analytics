@@ -29,6 +29,20 @@
   const next=normalizeSettings(settings);next.enabled[id]=Boolean(enabled);return next;
  }
  function countEnabled(settings){const s=normalizeSettings(settings);return MODULES.filter(m=>s.enabled[m.id]).length}
+ function applyOrder(doc,order){
+  const main=doc.querySelector('.main');
+  if(!main||!Array.isArray(order))return [];
+  const current=Array.from(main.children).filter(node=>node.tagName==='SECTION'&&node.id);
+  const byId=new Map(current.map(node=>[node.id,node]));
+  const seen=new Set();
+  const desired=[];
+  order.forEach(id=>{const node=byId.get(id);if(node&&!seen.has(id)){desired.push(node);seen.add(id)}});
+  current.forEach(node=>{if(!seen.has(node.id))desired.push(node)});
+  desired.forEach((node,index)=>{const at=Array.from(main.children).filter(item=>item.tagName==='SECTION'&&item.id)[index];if(at&&at!==node)main.insertBefore(node,at)});
+  const finalOrder=Array.from(main.children).filter(node=>node.tagName==='SECTION'&&node.id).map(node=>node.id);
+  try{doc.defaultView.localStorage.setItem('ozon-ai-analytics-layout-v1',JSON.stringify(finalOrder))}catch(_){}
+  return finalOrder;
+ }
  function mount(doc){
   const trigger=doc.getElementById('moduleManagerOpen'),dialog=doc.getElementById('moduleManagerDialog'),list=doc.getElementById('moduleManagerList'),count=doc.getElementById('moduleManagerCount');
   if(!trigger||!dialog||!list||trigger.dataset.ready==='true')return;
@@ -56,7 +70,7 @@
    const bar=doc.createElement('div');bar.id='dashboardPresetBar';bar.className='dashboard-presets';
    bar.innerHTML='<div class="dashboard-presets-copy"><b>Рабочий режим</b><small>Быстро переключай фокус панели</small></div><div class="dashboard-preset-buttons">'+Object.entries(PRESETS).map(([id,p])=>'<button type="button" data-preset="'+id+'">'+p.label+'</button>').join('')+'</div>';
    const period=main.querySelector('.periodbar');if(period)main.insertBefore(bar,period);else main.insertBefore(bar,main.firstChild);
-   bar.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{const preset=PRESETS[btn.dataset.preset];settings=defaults();MODULES.forEach(m=>{if(typeof preset.enabled[m.id]==='boolean')settings.enabled[m.id]=preset.enabled[m.id]});apply();bar.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===btn));try{doc.defaultView.localStorage.setItem('ozon-ai-analytics-preset-v1',btn.dataset.preset)}catch(_){} }));
+   bar.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{const preset=PRESETS[btn.dataset.preset];settings=defaults();MODULES.forEach(m=>{if(typeof preset.enabled[m.id]==='boolean')settings.enabled[m.id]=preset.enabled[m.id]});apply();applyOrder(doc,preset.order);bar.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===btn));try{doc.defaultView.localStorage.setItem('ozon-ai-analytics-preset-v1',btn.dataset.preset)}catch(_){} }));
    try{const saved=doc.defaultView.localStorage.getItem('ozon-ai-analytics-preset-v1');if(saved&&PRESETS[saved])bar.querySelector('[data-preset="'+saved+'"]').click()}catch(_){}
   }
   trigger.addEventListener('click',()=>{render();if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','')});
@@ -65,5 +79,5 @@
   if(reset)reset.addEventListener('click',()=>{settings=defaults();apply();render()});
   render();apply();
  }
- return {MODULES,PRESETS,STORAGE_KEY,defaults,normalizeSettings,setEnabled,countEnabled,mount};
+ return {MODULES,PRESETS,STORAGE_KEY,defaults,normalizeSettings,setEnabled,countEnabled,applyOrder,mount};
 });
