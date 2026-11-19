@@ -36,3 +36,12 @@ test('assistant script is served behind dashboard authentication', () => {
   assert.match(app, /async def assistant_center_script\(_: None = Depends\(require_dashboard_auth\)\)/);
   assert.match(app, /ASSISTANT_CENTER_FILE/);
 });
+
+test('AI center renders live data from existing dashboard events', () => {
+  assert.match(script, /ozon:sales-loaded/);
+  assert.match(script, /ozon:ranking-updated/);
+  assert.match(script, /ozon:inventory-updated/);
+  assert.match(script, /renderLiveData/);
+  assert.match(script, /Только товары с полными исходными данными/);
+  assert.match(script, /не фактическая выплата Ozon/);
+});
