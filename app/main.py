@@ -489,7 +489,12 @@ async def _fetch_delivered_posting_refs(client: OzonReadOnlyClient, date_from: d
                     continue
                 number = posting.get("posting_number")
                 if number not in (None, ""):
-                    refs.append({"posting_number": str(number), "fulfillment_type": schema})
+                    skus = sorted({
+                        str(product.get("sku"))
+                        for product in posting.get("products", [])
+                        if isinstance(product, dict) and product.get("sku") not in (None, "")
+                    })
+                    refs.append({"posting_number": str(number), "fulfillment_type": schema, "skus": skus})
             has_next = body.get("has_next", False)
             next_cursor = body.get("cursor") or ""
             if not has_next:
@@ -638,12 +643,15 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         from app.analytics.finance_posting_attribution import normalize_posting_accruals
         product_attribution = normalize_posting_accruals(posting_accrual_rows, dictionary, delivered_postings)
         return_records = await _fetch_returns(client, date_from, date_to)
+        from app.analytics.returns_attribution import attribute_returns_to_delivered_postings
+        return_attribution = attribute_returns_to_delivered_postings(return_records, delivered_postings)
         normalized = normalize_accrual_records(records, dictionary, delivered_postings)
         return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
                 "source_records":len(records), "delivered_posting_count":len(delivered_postings),
                 "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
+                "returns_attribution":return_attribution,
                 **product_attribution, "dictionary":dictionary, **normalized,
-                "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated. Returns are summarized separately by logistic return date and are not subtracted from profit automatically."}
+                "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated. Return attribution requires exact posting-number and SKU matches. Returned product-price value is not a confirmed refund or seller loss and is not subtracted from profit automatically."}
     except Exception as exc:
         logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
