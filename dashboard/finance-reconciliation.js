@@ -17,6 +17,8 @@
    ['Комиссии с SKU',data.product_fee_summary||[],r=>[r.fulfillment_type,r.sku,r.offer_id,r.label,r.type_id,r.currency,r.amount,r.components]],
    ['Начисления по отправлениям',data.posting_product_summary||[],r=>[r.fulfillment_type,r.sku,r.label,r.type_id,r.currency,r.amount,r.records,r.reported_quantity]],
    ['Возвраты',data.returns_summary||[],r=>[r.name,r.fulfillment_type,r.sku,r.return_type,r.quantity,r.currency,r.returned_value,r.priced_quantity]],
+   ['Возвраты — точное сопоставление',data.returns_attribution?.summary||[],r=>[r.fulfillment_type,r.sku,r.return_type,r.quantity,r.currency,r.returned_value,r.priced_quantity,r.return_records]],
+   ['Возвраты — без сопоставления',data.returns_attribution?.unmatched_events||[],r=>[r.return_id,r.posting_number,r.sku,r.unmatched_reason,r.quantity,r.currency,r.returned_value]],
    ['Исходные компоненты',data.components||[],r=>[r.posting_number,r.fulfillment_type,r.sku,r.label,r.type_id,r.currency,r.amount,r.posting_match]]
   ];
   for(const [section,items,project] of groups){add(section,['','','']);for(const item of items)add(section,project(item))}
@@ -57,6 +59,15 @@
    const returnRows=document.getElementById('reconReturnRows');returnRows.replaceChildren();
    for(const item of (d.returns_summary||[])){const tr=document.createElement('tr');cell(tr,item.name||'Товар без названия');cell(tr,item.fulfillment_type);cell(tr,item.sku,'muted');cell(tr,item.return_type);cell(tr,item.quantity);cell(tr,item.currency||'Неизвестна');cell(tr,fmt(item.returned_value)+' · цена для '+fmt(item.priced_quantity)+'/'+fmt(item.quantity)+' шт.','amount');returnRows.appendChild(tr)}
    if(!(d.returns_summary||[]).length){const tr=document.createElement('tr');cell(tr,'Возвраты за период не найдены.');tr.firstChild.colSpan=7;returnRows.appendChild(tr)}
+   const attribution=d.returns_attribution||{},matchCounts=document.getElementById('reconReturnMatchCounts');
+   if(matchCounts)matchCounts.textContent='Точно сопоставлено: '+fmt(attribution.matched_count)+' · Требуют проверки: '+fmt(attribution.unmatched_count);
+   const attributedRows=document.getElementById('reconAttributedReturnRows');if(attributedRows)attributedRows.replaceChildren();
+   for(const item of (attribution.summary||[])){const tr=document.createElement('tr');cell(tr,item.fulfillment_type);cell(tr,item.sku,'muted');cell(tr,item.return_type);cell(tr,item.quantity);cell(tr,item.currency||'Не указана');cell(tr,fmt(item.returned_value)+' · цена для '+fmt(item.priced_quantity)+' шт.','amount');cell(tr,item.return_records);attributedRows?.appendChild(tr)}
+   if(attributedRows&&!(attribution.summary||[]).length){const tr=document.createElement('tr');cell(tr,'Нет возвратов с точным совпадением отправления и SKU.');tr.firstChild.colSpan=7;attributedRows.appendChild(tr)}
+   const unmatchedReturnRows=document.getElementById('reconUnmatchedReturnRows');if(unmatchedReturnRows)unmatchedReturnRows.replaceChildren();
+   const reasonLabels={missing_posting_number:'Нет номера отправления',missing_sku:'Нет SKU',posting_not_in_delivered_period:'Отправление не найдено среди доставленных за период',sku_not_in_posting:'SKU отсутствует в составе отправления'};
+   for(const item of (attribution.unmatched_events||[])){const tr=document.createElement('tr');cell(tr,item.return_id||'—');cell(tr,item.posting_number||'—');cell(tr,item.sku||'—','muted');cell(tr,reasonLabels[item.unmatched_reason]||item.unmatched_reason||'Причина не указана');cell(tr,item.quantity);cell(tr,item.currency||'Не указана');cell(tr,item.returned_value===null?'Нет цены':fmt(item.returned_value),'amount');unmatchedReturnRows?.appendChild(tr)}
+   if(unmatchedReturnRows&&!(attribution.unmatched_events||[]).length){const tr=document.createElement('tr');cell(tr,'Несопоставленных возвратов нет.');tr.firstChild.colSpan=7;unmatchedReturnRows.appendChild(tr)}
    document.getElementById('reconReturnCount').textContent=fmt(d.return_record_count);
    const moneyRows=document.getElementById('reconMoneyRows');moneyRows.replaceChildren();
    const moneyMetrics=d.metrics||{},totalByCurrency=moneyMetrics.total_component_amount_by_currency||{},knownByCurrency=moneyMetrics.known_type_amount_by_currency||{},unknownByCurrency=moneyMetrics.unknown_type_amount_by_currency||{},matchedByCurrency=moneyMetrics.matched_amount_by_currency||{};
