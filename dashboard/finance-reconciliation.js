@@ -42,7 +42,8 @@
   lastData=null;if(exportBtn)exportBtn.disabled=true;btn.disabled=true;btn.textContent='Сверяю…';status.classList.remove('error');status.textContent='Последовательно запрашиваю финансовый API Ozon…';
   try{
    const r=await fetch('/api/finance/reconciliation?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}}),d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка финансового API');
-   lastData=d;if(exportBtn)exportBtn.disabled=false;\n   rows.replaceChildren();
+   lastData=d;if(exportBtn)exportBtn.disabled=false;
+   rows.replaceChildren();
    for(const item of (d.summary||[])){const tr=document.createElement('tr');cell(tr,item.label||'Неизвестный тип');cell(tr,item.type_id,'muted');cell(tr,item.currency||'Неизвестна');cell(tr,fmt(item.amount),'amount');cell(tr,item.records);rows.appendChild(tr)}
    if(!d.summary?.length){const tr=document.createElement('tr');cell(tr,'Компоненты за период не найдены.');tr.firstChild.colSpan=5;rows.appendChild(tr)}
    const fboRows=document.getElementById('reconFulfillmentRows'),unmatchedRows=document.getElementById('reconUnmatchedRows');fboRows.replaceChildren();unmatchedRows.replaceChildren();
