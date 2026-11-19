@@ -31,3 +31,10 @@ test('invalid or old settings fall back to safe defaults',()=>{
  assert.equal(countEnabled(normalizeSettings({version:99,enabled:{}})),MODULES.length);
  assert.equal(countEnabled(normalizeSettings(null)),MODULES.length);
 });
+
+test('preset order is applied and persisted for layout restoration',()=>{
+ const source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../dashboard/module-manager.js'),'utf8');
+ assert.match(source,/applyOrder\(doc,preset\.order\)/);
+ assert.match(source,/ozon-ai-analytics-layout-v1/);
+ assert.match(source,/function applyOrder\(doc,order\)/);
+});
