@@ -2,11 +2,11 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {buildMatrix,toCsv}=require('../dashboard/sku-reconciliation.js');
 
-test('joins sales, returns and posting accruals by exact SKU and fulfillment scheme',()=>{
+test('joins sales, exact matched returns and posting accruals by SKU and fulfillment scheme',()=>{
  const result=buildMatrix({products:[
   {sku:'100',fulfillment_type:'FBO',units:3,sales_gmv:300},
   {sku:'100',fulfillment_type:'FBS',units:2,sales_gmv:180}
- ]},{returns_summary:[
+ ]},{returns_attribution:{summary:[
   {sku:'100',fulfillment_type:'FBO',quantity:1}
  ],unmatched_count:2},posting_product_summary:[
   {sku:'100',fulfillment_type:'FBO',currency:'RUB',amount:'-20',records:2}
@@ -35,8 +35,8 @@ test('does not guess SKU from product name or include rows without explicit SKU'
  const result=buildMatrix({products:[{name:'same name',units:5,sales_gmv:500,fulfillment_type:'FBO'}]},
   {returns_summary:[{name:'same name',quantity:2,fulfillment_type:'FBO'}],returns_attribution:{summary:[],unmatched_count:1}});
  assert.equal(result.rows.length,0);
+ assert.equal(result.unmatchedReturns,1);
 });
-
 
 test('exports Excel-compatible UTF-8 CSV with separate currency columns',()=>{
  const matrix={rows:[
