@@ -176,6 +176,52 @@ button:active{transform:translateY(1px)}
 @media(prefers-reduced-motion:reduce){.motion-item{opacity:1;transform:none;transition:none}button,.nav a,.tag{transition:none}}
 
 .dashboard-presets{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;margin:0 0 15px;border:1px solid #e5e9f2;border-radius:15px;background:linear-gradient(115deg,#fff 0%,#fff7f1 55%,#f0fbfc 100%);box-shadow:0 7px 20px #202b500b}.dashboard-presets-copy b{display:block;font-size:13px}.dashboard-presets-copy small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.dashboard-preset-buttons{display:flex;flex-wrap:wrap;gap:7px}.dashboard-preset-buttons button{border:1px solid #e2e6ef;background:#fff;color:var(--ink);border-radius:9px;padding:8px 12px;font:inherit;font-size:11px;font-weight:750;cursor:pointer;transition:.18s}.dashboard-preset-buttons button:hover{border-color:#ffb58c;transform:translateY(-1px)}.dashboard-preset-buttons button.active{background:linear-gradient(110deg,var(--orange),var(--orange2));border-color:transparent;color:#2c2330;box-shadow:0 4px 12px #ff6b3526}@media(max-width:650px){.dashboard-presets{align-items:flex-start;flex-direction:column}.dashboard-preset-buttons{width:100%}.dashboard-preset-buttons button{flex:1}}
+
+/* Voice-first assistant workspace */
+.assistant-mode .main> :not(.top):not(.assistant-center){display:none!important}
+.assistant-mode .main{max-width:1680px;min-height:100vh}
+.assistant-mode .top{margin-bottom:18px}
+.assistant-mode .top h1{font-size:clamp(22px,3vw,32px)}
+.assistant-center{display:none;min-height:calc(100vh - 150px);grid-template-columns:minmax(220px,1fr) minmax(260px,.92fr) minmax(220px,1fr);gap:18px;align-items:center;padding:22px 0 34px}
+.assistant-mode .assistant-center{display:grid}
+.assistant-panel{min-height:300px;align-self:center;padding:22px;border:1px solid #e2e8f3;border-radius:22px;background:linear-gradient(150deg,#ffffffed,#f8f9ffed 70%,#effbfd);box-shadow:0 18px 50px #222b5010;position:relative;overflow:hidden}
+.assistant-panel:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--orange),var(--violet),var(--cyan))}
+.assistant-panel-label{font-size:10px;letter-spacing:1.5px;color:#858ba0;font-weight:850;text-transform:uppercase}
+.assistant-panel h2{font-size:19px;margin:10px 0 12px;letter-spacing:-.4px}
+.assistant-panel p{color:#737b91;line-height:1.65;font-size:13px;margin:8px 0}
+.assistant-panel-content{margin-top:18px;color:#343b59;font-size:13px;line-height:1.65}
+.assistant-source{font-size:11px;color:#7a8297;border-top:1px solid #e9edf5;padding-top:12px;margin-top:15px}
+.assistant-open-section{margin-top:15px;border:0;border-radius:11px;padding:11px 14px;background:linear-gradient(110deg,var(--orange),var(--orange2));color:#2b2330;font-weight:800;cursor:pointer}
+.assistant-core{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.assistant-avatar{width:clamp(170px,19vw,245px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;position:relative;margin:4px auto 22px;background:radial-gradient(circle at 50% 48%,#fff 0 21%,#e8f8ff 22% 35%,#d7e5ff 36% 49%,#e8e2ff 50% 62%,#fff0e8 63% 70%,transparent 71%);filter:drop-shadow(0 20px 35px #7a8bc533)}
+.assistant-avatar:before,.assistant-avatar:after{content:"";position:absolute;inset:5%;border:1px solid #8b7cf666;border-radius:50%;animation:assistantOrbit 12s linear infinite}
+.assistant-avatar:after{inset:14%;border-color:#26c6da77;animation-direction:reverse;animation-duration:9s}
+.assistant-orb{width:44%;height:44%;border-radius:42% 58% 55% 45%;background:radial-gradient(circle at 36% 28%,#fff 0 5%,#a8f1ff 12%,#63c8e8 34%,#8275e9 66%,#403c88 100%);box-shadow:inset -12px -15px 26px #28285c66,0 0 35px #6ed8f188,0 0 75px #8b7cf655;position:relative;animation:assistantFloat 4s ease-in-out infinite}
+.assistant-orb:before{content:"";position:absolute;inset:19% 22%;border-radius:50%;background:radial-gradient(ellipse,#fff9 0 8%,#d7fbff77 36%,transparent 70%);filter:blur(5px)}
+.assistant-mode #assistantCenter[data-state="listening"] .assistant-orb{box-shadow:0 0 0 13px #26c6da19,0 0 55px #26c6daaa,0 0 100px #8b7cf677}
+.assistant-mode #assistantCenter[data-state="thinking"] .assistant-orb{animation-duration:1.3s;box-shadow:0 0 55px #8b7cf6bb}
+.assistant-mode #assistantCenter[data-state="speaking"] .assistant-orb{box-shadow:0 0 0 16px #ff9b5420,0 0 55px #ff9b54aa,0 0 100px #26c6da66}
+@keyframes assistantOrbit{to{transform:rotate(360deg)}}@keyframes assistantFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.025)}}
+.assistant-name{font-size:12px;letter-spacing:2px;font-weight:900;color:#343b59}
+.assistant-status{font-size:12px;color:#7a8297;margin:7px 0 15px;min-height:18px}
+.assistant-controls{display:flex;justify-content:center;gap:10px;align-items:center}
+.assistant-mic{width:54px;height:54px;border:0;border-radius:18px;background:linear-gradient(135deg,var(--orange),var(--orange2));color:#2b2330;font-size:22px;box-shadow:0 9px 22px #ff6b3540;cursor:pointer}
+.assistant-mic:disabled{opacity:.4;cursor:not-allowed}
+.assistant-stop{height:42px;border:1px solid #e2e6ef;border-radius:13px;background:#fff;color:#545c72;padding:0 13px;cursor:pointer;font-weight:700}
+.assistant-inputrow{display:flex;gap:7px;width:min(100%,390px);margin-top:13px}
+.assistant-inputrow input{min-width:0;flex:1;border:1px solid #dfe4ee;border-radius:12px;padding:12px 13px;font:inherit;font-size:12px;outline:none;background:#fff}
+.assistant-inputrow input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #26c6da22}
+.assistant-inputrow button{border:0;border-radius:12px;background:#242943;color:#fff;padding:0 15px;font-weight:800;cursor:pointer}
+.assistant-examples{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:14px;max-width:440px}
+.assistant-example{border:1px solid #e3e7f0;border-radius:30px;background:#ffffffc9;color:#626b82;padding:7px 10px;font-size:10px;cursor:pointer}
+.assistant-transcript{display:grid;gap:8px;max-height:110px;overflow:auto;width:min(100%,390px);margin-top:12px;text-align:left}
+.assistant-message{font-size:11px;line-height:1.45;padding:8px 10px;border-radius:11px;background:#f1f3fa;color:#505a73}
+.assistant-message.user{background:#fff0e7;color:#76452f;margin-left:24px}
+.assistant-highlight{outline:3px solid #26c6da!important;outline-offset:4px;transition:outline-color .3s}
+@media(max-width:980px){.assistant-center{grid-template-columns:1fr 1fr;align-items:stretch}.assistant-core{grid-column:1/-1;grid-row:1}.assistant-panel{min-height:190px}.assistant-avatar{width:170px}}
+@media(max-width:620px){.assistant-center{grid-template-columns:1fr;gap:11px;padding-top:12px}.assistant-core{grid-column:auto;grid-row:auto}.assistant-panel{min-height:150px;padding:17px}.assistant-avatar{width:145px;margin-bottom:12px}.assistant-examples{gap:5px}.assistant-example{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.assistant-avatar:before,.assistant-avatar:after,.assistant-orb{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -186,7 +232,20 @@ button:active{transform:translateY(1px)}
  <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
 </aside>
 <main class="main">
- <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Предварительный расчёт</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div class="status"><i class="dot"></i>Подключение к Ozon…</div></header>
+ <header class="top" id="overview"><div><div class="eyebrow">Панель продавца / Предварительный расчёт</div><h1>Экономика магазина<span class="accent">.</span></h1></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button id="assistantMode" class="secondary" type="button" aria-pressed="true">Классическая панель</button><div class="status"><i class="dot"></i>Подключение к Ozon…</div></div></header>
+  <section class="assistant-center" id="assistantCenter" aria-label="Голосовой AI-помощник" data-state="ready">
+   <aside class="assistant-panel"><div class="assistant-panel-label">Левая панель · Контекст</div><h2 id="assistantLeftTitle">Что посмотрим?</h2><div class="assistant-panel-content" id="assistantLeftContent"><p>Спроси про продажи, финансы, товары или остатки — я подготовлю нужный раздел.</p></div></aside>
+   <div class="assistant-core">
+    <div class="assistant-avatar" aria-hidden="true"><div class="assistant-orb"></div></div>
+    <div class="assistant-name">OZON AI · ПОМОЩНИК</div>
+    <div class="assistant-status" id="assistantStatus" role="status" aria-live="polite">Готова слушать</div>
+    <div class="assistant-controls"><button class="assistant-mic" id="assistantMic" type="button" aria-label="Начать голосовой запрос" title="Говорить">🎙</button><button class="assistant-stop" id="assistantStop" type="button">Стоп</button></div>
+    <div class="assistant-inputrow"><input id="assistantInput" type="text" autocomplete="off" placeholder="Или напиши вопрос…" aria-label="Текстовый запрос"><button id="assistantSend" type="button">Спросить</button></div>
+    <div class="assistant-examples"><button class="assistant-example" type="button">Покажи продажи</button><button class="assistant-example" type="button">Открой финансы</button><button class="assistant-example" type="button">Покажи остатки</button><button class="assistant-example" type="button">Какие товары прибыльнее?</button></div>
+    <div class="assistant-transcript" id="assistantTranscript" aria-live="polite"></div>
+   </div>
+   <aside class="assistant-panel"><div class="assistant-panel-label">Правая панель · Результат</div><h2>Аналитика по запросу</h2><div class="assistant-panel-content" id="assistantRightContent"><p>Здесь будут появляться выбранные показатели, графики и расшифровки. Пока без демонстрационных цифр — только проверенные данные.</p></div></aside>
+  </section>
  <dialog class="module-manager-dialog" id="moduleManagerDialog" aria-labelledby="moduleManagerTitle"><div class="module-manager-head"><div><div class="eyebrow">КОНСТРУКТОР РАБОЧЕГО ПРОСТРАНСТВА</div><h2 id="moduleManagerTitle">Мои модули</h2><p>Включай только те разделы, которые нужны для твоих задач. Настройки сохраняются в этом браузере.</p></div><button type="button" class="module-manager-close" data-module-close aria-label="Закрыть">×</button></div><div class="module-manager-list" id="moduleManagerList"></div><div class="module-manager-footer"><button type="button" class="secondary" data-module-reset>Вернуть все модули</button><button type="button" data-module-close>Готово</button></div></dialog>
  <div class="periodbar">
   <div><b>Период продаж</b><small>Выбери любые даты · данные Ozon в UTC</small></div>
@@ -373,6 +432,7 @@ button:active{transform:translateY(1px)}
  </section>
  <div class="footer"><span>* Без налога и неподтверждённых удержаний. Эквайринг показан отдельно согласно ответу API.</span><span>OZON AI ANALYTICS · READ ONLY</span></div>
 </main></div>
+<script src="/dashboard/assistant-center.js"></script>
 <script src="/dashboard/motion.js"></script>
 <script src="/dashboard/module-manager.js"></script>
 <script src="/dashboard/layout-manager.js"></script>
