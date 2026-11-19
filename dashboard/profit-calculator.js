@@ -42,7 +42,9 @@
       ok:true,fulfillmentType:type,unitPrice:price,deductions,
       returnFlowTariff:returnFlow!==null&&Number.isFinite(returnFlow)?returnFlow:null,
       returnFlowIncluded:false,
-      profit,marginPercent:Math.round(profit/price*10000)/100
+      profit,marginPercent:Math.round(profit/price*10000)/100,
+      manualTaxAdjustment:tax,statutoryTax:null,statutoryTaxCalculated:false,
+      taxTreatment:'manual_legacy_expense'
     };
   }
   function simulatePrice(input){
