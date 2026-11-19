@@ -16,7 +16,7 @@
 
   const destinations = [
     { keys: ['продаж','выруч','оборот','заказ'], title: 'Продажи', description: 'Продажи за выбранный период и разбивка по товарам.', selector: '#salesBreakdown', panel: 'sales' },
-    { keys: ['финанс','комисс','удержан','начислен','сверк'], title: 'Финансы', description: 'Финансовая сверка, начисления и структура удержаний.', selector: '#financeReconciliation', panel: 'finance' },
+    { keys: ['финанс','комисс','удержан','начислен','сверк'], title: 'Финансы', description: 'Финансовая сверка, начисления и структура удержаний.', selector: '#reconciliationPanel', panel: 'finance' },
     { keys: ['остат','склад','запас','fbo','fbs'], title: 'Остатки и склад', description: 'Наличие, резерв, оборачиваемость и рекомендации по пополнению.', selector: '#inventory', panel: 'inventory' },
     { keys: ['товар','артикул','sku','маржин','прибыл','себестоим'], title: 'Товары и экономика', description: 'Юнит-экономика, прибыльность и сравнение товарных позиций.', selector: '#productGrid', panel: 'products' },
     { keys: ['тариф','логистик','эквайринг'], title: 'Тарифы и расходы', description: 'Комиссии, логистика и известные удержания.', selector: '#fees', panel: 'fees' },
