@@ -100,6 +100,35 @@
     utterance.onend = () => setStatus('Готова слушать', 'ready');
     window.speechSynthesis.speak(utterance);
   }
+  function answerFor(item) {
+    if (!item) return 'Не удалось определить тему. Спроси про продажи, прибыль, товары или остатки.';
+    if (item.panel === 'sales') {
+      const d = live.sales;
+      if (!d) return 'Продажи за период ещё не загружены. Открой классическую панель, выбери даты и нажми «Показать».';
+      const period = (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—');
+      return 'За период ' + period + ' оборот доставленных заказов составил ' + money(d.sales_gmv) + ', продано ' + number(d.delivered_units) + ' шт. в ' + number(d.delivered_postings) + ' отправлениях. Важно: это оборот до возвратов, не чистая прибыль.';
+    }
+    if (item.panel === 'products') {
+      const d = live.ranking;
+      if (!d) return 'Расчёт экономики товаров ещё не готов. Сначала загрузи каталог и продажи, затем проверь себестоимость и тарифы.';
+      if (!d.includedUnits) return 'Пока нет продаж с полными исходными данными для расчёта прибыли. Заполни себестоимость и тарифы; неполные позиции не буду выдавать за прибыль.';
+      return 'Предварительная расчётная прибыль по учтённым товарам — ' + money(d.estimatedProfit) + '. В расчёт вошло ' + number(d.includedUnits) + ' из ' + number(d.totalUnits) + ' проданных единиц (' + number(d.coveragePercent) + '% покрытия). Это оценка по юнит-экономике, не фактическая выплата Ozon.';
+    }
+    if (item.panel === 'inventory') {
+      const d = live.inventory;
+      if (!d) return 'Актуальные остатки ещё не загружены. Открой раздел «Остатки и склад» и нажми «Обновить остатки».';
+      const totals = d.totals || {};
+      const alerts = Array.isArray(d.items) ? d.items : [];
+      const critical = alerts.filter(row => row.level === 'critical');
+      const warning = alerts.filter(row => row.level === 'warning');
+      let reply = 'По последнему снимку: FBO — ' + number(totals.FBO) + ' шт., FBS — ' + number(totals.FBS) + ' шт., в резерве — ' + number(totals.reserved) + ' шт. Позиций с сигналами: ' + number(alerts.length) + ' (критических — ' + number(critical.length) + ', предупреждений — ' + number(warning.length) + ').';
+      if (alerts.length) reply += ' В первую очередь проверь: ' + alerts.slice(0, 3).map(row => (row.name || 'Товар') + ' — ' + number(row.available) + ' шт.').join('; ') + '.';
+      reply += ' Это снимок на момент последнего обновления.';
+      return reply;
+    }
+    return 'Сводка для раздела «' + item.title + '» пока не подключена к ответам помощника. Могу открыть раздел с исходными данными.';
+  }
+
   function showDestination(item, query) {
     activeTarget = item;
     left.replaceChildren();
@@ -132,7 +161,7 @@
       });
       right.append(open);
     }
-    const reply = item ? 'Нашла раздел «' + item.title + '». Открыть его с данными?' : 'Я пока не распознала нужный раздел. Скажи, например: покажи продажи, финансы, товары или остатки.';
+    const reply = answerFor(item) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
     addMessage(reply, 'assistant');
     setStatus('Запрос обработан', 'ready');
     if (root.dataset.voiceReply === 'on') speak(reply);
