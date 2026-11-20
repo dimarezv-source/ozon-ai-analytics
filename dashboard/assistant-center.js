@@ -38,7 +38,7 @@
     const normalized = query.toLocaleLowerCase('ru');
     return destinations.find(item => item.keys.some(key => normalized.includes(key))) || null;
   }
-  const live = { sales: null, ranking: null, inventory: null, updatedAt: {} };
+  const live = { sales: null, ranking: null, inventory: null, finance: null, updatedAt: {} };
   const money = value => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Number(value) || 0) + ' ₽';
   const number = value => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(Number(value) || 0);
   function metric(label, value, note) {
@@ -60,6 +60,21 @@
       metric('Продано единиц', number(d.delivered_units) + ' шт.', (d.delivered_postings || 0) + ' отправлений');
       metric('Период', (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—'), 'UTC');
       const note = document.createElement('p'); note.textContent = 'Разбивка строится по доставленным отправлениям Ozon. Это оборот до возвратов, не чистая прибыль.'; right.append(note);
+    } else if (item.panel === 'finance') {
+      const d = live.finance;
+      if (!d) { metric('Финансовая сверка', 'Нет данных', 'Открой раздел «Финансы» и загрузи сверку за нужный период.'); return; }
+      const m = d.metrics || {};
+      const totals = m.total_component_amount_by_currency || {};
+      const currencies = Object.keys(totals);
+      metric('Период сверки', (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—'), 'Данные начислений Ozon');
+      metric('Денежные компоненты', number(m.component_count), 'Из исходных записей начислений');
+      metric('Точное сопоставление', number(m.posting_match_count) + ' · ' + number(m.posting_match_percent) + '%', number(m.posting_unmatched_count) + ' без совпадения с доставленным отправлением');
+      metric('Типы начислений', number(m.known_type_count) + ' известных', number(m.unknown_type_count) + ' неизвестных — не классифицированы');
+      if (currencies.length) currencies.forEach(currency => metric('Компоненты · ' + currency, number(totals[currency]) + ' ' + currency, 'Сумма с исходным знаком; валюты не смешиваются'));
+      (d.summary || []).slice(0, 4).forEach(row => metric(row.label || ('Неизвестный тип ID ' + row.type_id), number(row.amount) + ' ' + (row.currency || 'валюта не указана'), number(row.records) + ' компонентов'));
+      const attribution = d.returns_attribution || {};
+      metric('Возвраты', number(d.return_record_count), 'Точно сопоставлено: ' + number(attribution.matched_count) + ' · требуют проверки: ' + number(attribution.unmatched_count));
+      const note = document.createElement('p'); note.textContent = 'Это классифицированные исходные начисления и удержания, не чистая выплата и не подтверждённая прибыль. Стоимость товара в возвратах не считается автоматически подтверждённым возвратом денег или убытком.'; right.append(note);
     } else if (item.panel === 'products') {
       const d = live.ranking;
       if (!d) { metric('Экономика товаров', 'Нет расчёта', 'Сначала загрузи продажи и каталог; для прибыли нужна заполненная себестоимость и тарифы.'); return; }
@@ -89,6 +104,7 @@
   window.addEventListener('ozon:sales-loaded', event => remember('sales', event.detail || null));
   window.addEventListener('ozon:ranking-updated', event => remember('ranking', event.detail || null));
   window.addEventListener('ozon:inventory-updated', event => remember('inventory', event.detail || null));
+  window.addEventListener('ozon:finance-reconciliation-loaded', event => remember('finance', event.detail || null));
 
   function speak(text) {
     if (!('speechSynthesis' in window)) return;
@@ -107,6 +123,20 @@
       if (!d) return 'Продажи за период ещё не загружены. Открой классическую панель, выбери даты и нажми «Показать».';
       const period = (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—');
       return 'За период ' + period + ' оборот доставленных заказов составил ' + money(d.sales_gmv) + ', продано ' + number(d.delivered_units) + ' шт. в ' + number(d.delivered_postings) + ' отправлениях. Важно: это оборот до возвратов, не чистая прибыль.';
+    }
+    if (item.panel === 'finance') {
+      const d = live.finance;
+      if (!d) return 'Финансовая сверка ещё не загружена. Открой раздел «Финансы», выбери даты и нажми «Сверить период».';
+      const m = d.metrics || {}, totals = m.total_component_amount_by_currency || {};
+      const totalText = Object.keys(totals).length
+        ? Object.entries(totals).map(([currency, amount]) => number(amount) + ' ' + currency).join('; ')
+        : 'денежных компонентов за период нет';
+      const top = (d.summary || []).slice(0, 3).map(row => (row.label || ('неизвестный тип ID ' + row.type_id)) + ': ' + number(row.amount) + ' ' + (row.currency || 'валюта не указана')).join('; ');
+      const returns = d.returns_attribution || {};
+      let reply = 'Финансовая сверка за ' + (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—') + '. Денежные компоненты по валютам: ' + totalText + '. Всего компонентов: ' + number(m.component_count) + '; точное сопоставление с доставленными отправлениями: ' + number(m.posting_match_count) + ' (' + number(m.posting_match_percent) + '%), без совпадения: ' + number(m.posting_unmatched_count) + '. Известных типов: ' + number(m.known_type_count) + ', неизвестных: ' + number(m.unknown_type_count) + '.';
+      if (top) reply += ' Крупные группы по исходной сводке: ' + top + '.';
+      reply += ' Возвратов: ' + number(d.return_record_count) + '; точно сопоставлено: ' + number(returns.matched_count) + ', требуют проверки: ' + number(returns.unmatched_count) + '. Это исходные начисления и удержания, не чистая выплата Ozon и не фактическая прибыль. Стоимость товара в возврате не является подтверждённым возвратом денег или убытком.';
+      return reply;
     }
     if (item.panel === 'products') {
       const d = live.ranking;
