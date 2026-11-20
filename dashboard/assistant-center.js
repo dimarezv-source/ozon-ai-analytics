@@ -161,7 +161,7 @@
       });
       right.append(open);
     }
-    const reply = answerFor(item) + (item ? '\\n\\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
+    const reply = answerFor(item) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
     addMessage(reply, 'assistant');
     setStatus('Запрос обработан', 'ready');
     if (root.dataset.voiceReply === 'on') speak(reply);
