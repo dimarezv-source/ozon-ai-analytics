@@ -70,6 +70,15 @@
       metric('Денежные компоненты', number(m.component_count), 'Из исходных записей начислений');
       metric('Точное сопоставление', number(m.posting_match_count) + ' · ' + number(m.posting_match_percent) + '%', number(m.posting_unmatched_count) + ' без совпадения с доставленным отправлением');
       metric('Типы начислений', number(m.known_type_count) + ' известных', number(m.unknown_type_count) + ' неизвестных — не классифицированы');
+      const fulfillmentRows = d.fulfillment_summary || [];
+      for (const fulfillment of ['FBO', 'FBS']) {
+        const rows = fulfillmentRows.filter(row => row.fulfillment_type === fulfillment);
+        if (!rows.length) {
+          metric('Компоненты ' + fulfillment, 'Нет точных совпадений', 'За период нет компонентов, сопоставленных с доставленными отправлениями.');
+          continue;
+        }
+        rows.slice(0, 5).forEach(row => metric(fulfillment + ' · ' + (row.label || ('тип ID ' + row.type_id)), number(row.amount) + ' ' + (row.currency || 'валюта не указана'), number(row.components) + ' компонентов'));
+      }
       if (currencies.length) currencies.forEach(currency => metric('Компоненты · ' + currency, number(totals[currency]) + ' ' + currency, 'Сумма с исходным знаком; валюты не смешиваются'));
       (d.summary || []).slice(0, 4).forEach(row => metric(row.label || ('Неизвестный тип ID ' + row.type_id), number(row.amount) + ' ' + (row.currency || 'валюта не указана'), number(row.records) + ' компонентов'));
       const attribution = d.returns_attribution || {};
@@ -135,6 +144,15 @@
       const returns = d.returns_attribution || {};
       let reply = 'Финансовая сверка за ' + (d.period?.date_from || '—') + ' — ' + (d.period?.date_to || '—') + '. Денежные компоненты по валютам: ' + totalText + '. Всего компонентов: ' + number(m.component_count) + '; точное сопоставление с доставленными отправлениями: ' + number(m.posting_match_count) + ' (' + number(m.posting_match_percent) + '%), без совпадения: ' + number(m.posting_unmatched_count) + '. Известных типов: ' + number(m.known_type_count) + ', неизвестных: ' + number(m.unknown_type_count) + '.';
       if (top) reply += ' Крупные группы по исходной сводке: ' + top + '.';
+      const fulfillmentRows = d.fulfillment_summary || [];
+      for (const fulfillment of ['FBO', 'FBS']) {
+        const rows = fulfillmentRows.filter(row => row.fulfillment_type === fulfillment).slice(0, 4);
+        if (rows.length) {
+          reply += ' Разбивка ' + fulfillment + ' по точно сопоставленным отправлениям: ' + rows.map(row => (row.label || ('тип ID ' + row.type_id)) + ' — ' + number(row.amount) + ' ' + (row.currency || 'валюта не указана') + ' (' + number(row.components) + ' компонентов)').join('; ') + '.';
+        } else {
+          reply += ' Для ' + fulfillment + ' нет компонентов с точным сопоставлением за период.';
+        }
+      }
       reply += ' Возвратов: ' + number(d.return_record_count) + '; точно сопоставлено: ' + number(returns.matched_count) + ', требуют проверки: ' + number(returns.unmatched_count) + '. Это исходные начисления и удержания, не чистая выплата Ozon и не фактическая прибыль. Стоимость товара в возврате не является подтверждённым возвратом денег или убытком.';
       return reply;
     }
