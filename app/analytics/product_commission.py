@@ -23,8 +23,8 @@ def _decimal(value):
 
 def _currency(*values):
     for value in values:
-        if isinstance(value, dict) and value.get("currency"):
-            return str(value["currency"])
+        if isinstance(value, dict) and (value.get("currency") or value.get("currency_code")):
+            return str(value.get("currency") or value.get("currency_code"))
     return ""
 
 
