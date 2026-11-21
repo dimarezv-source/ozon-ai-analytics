@@ -78,6 +78,7 @@
    if(!currencies.length){const tr=document.createElement('tr');cell(tr,'Нет денежных компонентов за выбранный период.');tr.firstChild.colSpan=6;moneyRows.appendChild(tr)}
    const m=d.metrics||{};document.getElementById('reconCount').textContent=fmt(m.component_count);document.getElementById('reconKnown').textContent=fmt(m.known_type_count);document.getElementById('reconUnknown').textContent=fmt(m.unknown_type_count);document.getElementById('reconRecords').textContent=fmt(d.source_records);document.getElementById('reconMatch').textContent=fmt(m.posting_match_percent)+'%';document.getElementById('reconUnmatched').textContent=fmt(m.posting_unmatched_count);document.getElementById('reconSku').textContent=fmt(m.sku_attributed_count);
    status.textContent='Получено · '+d.period.date_from+' — '+d.period.date_to+' · доставленных отправлений: '+fmt(d.delivered_posting_count)+' · типы из справочника: '+Object.keys(d.dictionary||{}).length;
+   window.dispatchEvent(new CustomEvent('ozon:finance-reconciliation-loaded',{detail:d}));
   }catch(e){status.textContent=e.message;status.classList.add('error')}
   finally{btn.disabled=false;btn.textContent='Сверить период'}
  }
