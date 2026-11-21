@@ -44,4 +44,7 @@ test('AI center renders live data from existing dashboard events', () => {
   assert.match(script, /renderLiveData/);
   assert.match(script, /Только товары с полными исходными данными/);
   assert.match(script, /не фактическая выплата Ozon/);
+  assert.match(script, /fulfillment_summary/);
+  assert.match(script, /Разбивка /);
+  assert.match(script, /точно сопоставленным отправлениям/);
 });
