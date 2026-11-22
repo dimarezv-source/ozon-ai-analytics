@@ -68,3 +68,25 @@ test('keeps missing sales prices out of zero-valued GMV and exposes partial cove
  assert.equal(unknown.revenue,null);
  assert.equal(unknown.coverage.sales,'no_usable_price');
 });
+
+test('exposes profit readiness without presenting incomplete inputs as profit',()=>{
+ const completeSales={...sales,products:[{sku:'5005',fulfillment_type:'FBS',units:2,sales_gmv:2000}]};
+ const finance={period:sales.period,
+  product_commission_summary:[{sku:'5005',fulfillment_type:'FBS',currency:'RUB',sale_commission:'-200',records:2}],
+  posting_product_summary:[{sku:'5005',fulfillment_type:'FBS',currency:'RUB',amount:'-40',records:1}],
+  returns_attribution:{summary:[{sku:'5005',fulfillment_type:'FBS',currency:'RUB',quantity:1,priced_quantity:1,returned_value:'1000',return_records:1}]}
+ };
+ const row=buildSkuFinancialLedger(completeSales,finance).rows[0];
+ assert.equal(row.profit_readiness.status,'insufficient_data');
+ assert.equal(row.profit_readiness.can_calculate_profit,false);
+ assert.deepEqual(row.profit_readiness.verified_components,['sales_revenue','actual_sale_commission']);
+ assert.deepEqual(row.profit_readiness.missing_components,['cost_of_goods']);
+ assert.deepEqual(row.profit_readiness.review_components,['unclassified_service_accruals','return_value_is_not_a_confirmed_refund']);
+});
+
+test('marks missing sales price and commission as unresolved profit inputs',()=>{
+ const row=buildSkuFinancialLedger({period:sales.period,products:[{sku:'6006',fulfillment_type:'FBO',units:1,sales_gmv:0,unpriced_units:1}]},{period:sales.period}).rows[0];
+ assert.equal(row.profit_readiness.can_calculate_profit,false);
+ assert.deepEqual(row.profit_readiness.verified_components,[]);
+ assert.ok(row.profit_readiness.review_components.includes('service_accrual_source_missing'));
+});

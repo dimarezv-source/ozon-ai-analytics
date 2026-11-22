@@ -78,6 +78,22 @@
    if(row.commission_actual_rub!==null)row.commission_actual_rub=Math.round(row.commission_actual_rub*100)/100;
    if(row.service_fee_raw_rub!==null)row.service_fee_raw_rub=Math.round(row.service_fee_raw_rub*100)/100;
    if(row.return_value_rub!==null)row.return_value_rub=Math.round(row.return_value_rub*100)/100;
+   // Profit is deliberately not calculated from incomplete or semantically ambiguous inputs.
+   // Cost of goods is not part of this ledger; raw accruals and return values are not
+   // treated as expenses/refunds without verified source semantics.
+   row.profit_readiness={
+    status:'insufficient_data',
+    can_calculate_profit:false,
+    verified_components:[
+     ...((row.unpriced_units===0&&row.known_price_units>0)?['sales_revenue']:[]),
+     ...(row.commission_actual_rub!==null?['actual_sale_commission']:[])
+    ],
+    missing_components:['cost_of_goods'],
+    review_components:[
+     ...(row.service_fee_raw_rub!==null?['unclassified_service_accruals']:['service_accrual_source_missing']),
+     ...(row.return_records>0?['return_value_is_not_a_confirmed_refund']:[])
+    ]
+   };
    row.coverage={
     sales:row.unpriced_units>0?(row.known_price_units>0?'partial_price_coverage':'no_usable_price'):'complete_price_coverage',
     commission:row.commission_actual_rub===null?'no_source_row':'matched',
