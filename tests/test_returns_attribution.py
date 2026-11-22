@@ -36,6 +36,24 @@ def test_return_price_is_not_invented_when_missing_or_invalid():
         [{"posting_number": "P-1", "fulfillment_type": "FBS", "skus": ["S"]}],
     )
     assert result["matched_count"] == 1
-    assert result["summary"][0]["returned_value"] == "0"
+    assert result["summary"][0]["returned_value"] is None
     assert result["summary"][0]["priced_quantity"] == 0
     assert result["matched_events"][0]["returned_value"] is None
+
+
+def test_mixed_priced_and_unpriced_returns_expose_only_partial_value():
+    rows = [
+        {"id": 6, "posting_number": "P-1", "type": "ClientReturn",
+         "product": {"sku": "S", "quantity": 2,
+                     "price": {"price": "10.50", "currency_code": "RUB"}}},
+        {"id": 7, "posting_number": "P-1", "type": "ClientReturn",
+         "product": {"sku": "S", "quantity": 1,
+                     "price": {"price": "NaN", "currency_code": "RUB"}}},
+    ]
+    result = attribute_returns_to_delivered_postings(
+        rows, [{"posting_number": "P-1", "fulfillment_type": "FBS", "skus": ["S"]}]
+    )
+    summary = result["summary"][0]
+    assert summary["quantity"] == 3
+    assert summary["priced_quantity"] == 2
+    assert summary["returned_value"] == "21.00"

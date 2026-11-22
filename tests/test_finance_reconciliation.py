@@ -124,3 +124,30 @@ def test_unknown_type_amounts_are_reported_separately_by_currency():
     assert result["metrics"]["known_type_amount_by_currency"] == {"RUB": "-12.50"}
     assert result["metrics"]["unknown_type_amount_by_currency"] == {"KZT": "4.00", "RUB": "-3.25"}
     assert result["metrics"]["total_component_amount_by_currency"] == {"KZT": "4.00", "RUB": "-15.75"}
+
+
+def test_named_dictionary_types_remain_unclassified_until_verified_mapping():
+    result = normalize_accrual_records([
+        {"fee": {"type_id": 7, "accrued": {"amount": "-12.50", "currency": "RUB"}}},
+        {"fee": {"type_id": 8, "accrued": {"amount": "4.00", "currency": "RUB"}}},
+        {"fee": {"type_id": 999, "accrued": {"amount": "-3.00", "currency": "RUB"}}},
+    ], {
+        "7": {"name": "Delivery"},
+        "8": {"name": "Compensation"},
+    })
+    assert all(row["semantic_classification"] == "unclassified" for row in result["components"])
+    assert [row["classification_status"] for row in result["components"]] == [
+        "needs_review", "needs_review", "missing_dictionary_entry"
+    ]
+    assert result["metrics"]["semantically_classified_count"] == 0
+    assert result["metrics"]["named_but_unclassified_count"] == 2
+    assert result["metrics"]["missing_dictionary_entry_count"] == 1
+    assert result["metrics"]["classification_review_count"] == 3
+    assert result["classification_coverage"] == [
+        {"type_id": "7", "label": "Delivery", "currency": "RUB",
+         "status": "needs_review", "amount": "-12.50", "records": 1},
+        {"type_id": "8", "label": "Compensation", "currency": "RUB",
+         "status": "needs_review", "amount": "4.00", "records": 1},
+        {"type_id": "999", "label": None, "currency": "RUB",
+         "status": "missing_dictionary_entry", "amount": "-3.00", "records": 1},
+    ]
