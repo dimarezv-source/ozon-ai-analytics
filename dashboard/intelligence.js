@@ -78,7 +78,7 @@
       const key=commissionKey(fulfillment,product.sku??sale.sku);
       const actualTotal=actualCommissionTotals.get(key),totalSalesGmv=salesGmvTotals.get(key)||0;
       const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0&&typeof calculator.calculateProfitWithActualCommission==='function';
-      const actualForRow=hasActualCommission?actualTotal*(revenue/totalSalesGmv):null;
+      const actualForRow=hasActualCommission?actualTotal*(revenue/totalSalesGmv)/units:null;
       const result=hasActualCommission
         ?calculator.calculateProfitWithActualCommission({fulfillmentType:fulfillment,unitPrice:price,product,expenses,actualCommission:actualForRow})
         :calculate({fulfillmentType:fulfillment,unitPrice:price,product,expenses});
