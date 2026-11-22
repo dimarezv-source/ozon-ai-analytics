@@ -409,6 +409,19 @@ button:active{transform:translateY(1px)}
   <button id="exportEconomics" class="secondary" type="button">Экспорт CSV</button>
   <button id="clearCosts" class="secondary" type="button">Сбросить расходы</button>
  </div>
+ <section class="grid bottom" id="productFactsPanels" data-module="unit-economics" style="margin:0 0 18px">
+  <div class="card">
+   <div class="sectionhead" style="margin:0"><div><h2>Фактические начисления по SKU</h2><p>Исходные сервисные начисления Ozon, отдельно от тарифной оценки</p></div><span class="tag">ФАКТ</span></div>
+   <p id="productFactsFeeStatus" class="hint" aria-live="polite">Нужны продажи и финансовая сверка за одинаковый период.</p>
+   <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>SKU</th><th>FBO/FBS</th><th>Тип начисления</th><th>Сумма</th><th>Валюта</th><th>Компоненты</th></tr></thead><tbody id="productFactsFeeRows"><tr><td colspan="6" class="hint">Ожидаем данные.</td></tr></tbody></table></div>
+  </div>
+  <div class="card">
+   <div class="sectionhead" style="margin:0"><div><h2>Возвраты по товарам</h2><p>Только точное совпадение отправления и SKU</p></div><span class="tag">СВЕРКА</span></div>
+   <p id="productFactsReturnStatus" class="hint" aria-live="polite">Нужны продажи и финансовая сверка за одинаковый период.</p>
+   <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>SKU</th><th>FBO/FBS</th><th>Тип возврата</th><th>Кол-во</th><th>Стоимость товара*</th><th>Валюта</th></tr></thead><tbody id="productFactsReturnRows"><tr><td colspan="6" class="hint">Ожидаем данные.</td></tr></tbody></table></div>
+   <p class="accrual-caveat">* Стоимость по цене товара — справочный показатель, не подтверждённый возврат денег, компенсация или убыток продавца. Несопоставленные возвраты показаны отдельно в финансовой сверке.</p>
+  </div>
+ </section>
  <section class="grid products" id="productGrid" data-module="unit-economics"></section>
  <section class="grid bottom">
   <div class="card" id="fees" data-module="fees"><div class="sectionhead" style="margin:0"><div><h2>Структура известных удержаний</h2><p>Расчёт от текущей цены; транзит показан диапазоном.</p></div></div>
@@ -437,6 +450,7 @@ button:active{transform:translateY(1px)}
 <script src="/dashboard/module-manager.js"></script>
 <script src="/dashboard/layout-manager.js"></script>
 <script src="/dashboard/profit-calculator.js"></script>
+<script src="/dashboard/product-facts.js"></script>
 <script src="/dashboard/intelligence.js"></script>
 <script src="/dashboard/action-prioritizer.js"></script>
 <script src="/dashboard/loss-alerts.js"></script>
