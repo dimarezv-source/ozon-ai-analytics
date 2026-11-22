@@ -1,6 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {buildProductRanking}=require('../dashboard/intelligence.js');
+const {classificationKey}=require('../dashboard/accrual-classification.js');
 const {calculateProfit}=require('../dashboard/profit-calculator.js');
 const product={
  product_id:101,sku:9001,offer_id:'A-1',name:'Товар А',
@@ -128,4 +129,40 @@ test('ignores actual commission from mismatched finance periods',()=>{
  const result=buildProductRanking({...sales,period:{date_from:'2026-11-01',date_to:'2026-11-07'}},[product],costs,calculator,finance);
  assert.equal(result.actualCommissionUnits,0);
  assert.equal(result.tariffCommissionUnits,3);
+});
+
+test('applies only manually confirmed non-commission signed accruals to product ranking',()=>{
+ const period={date_from:'2026-11-01',date_to:'2026-11-07'};
+ const finance={period,product_commission_summary:[{sku:'9001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'-30',records:2}],posting_product_summary:[
+  {sku:'9001',fulfillment_type:'FBS',currency:'RUB',type_id:'77',amount:'-20',records:2},
+  {sku:'9001',fulfillment_type:'FBS',currency:'RUB',type_id:'78',amount:'5',records:1},
+  {sku:'9001',fulfillment_type:'FBS',currency:'RUB',type_id:'79',amount:'-30',records:2}
+ ]};
+ const map={
+  [classificationKey('77','RUB')]:{category:'expense',commission_confirmed_not_duplicate:true},
+  [classificationKey('78','RUB')]:{category:'income',commission_confirmed_not_duplicate:true},
+  [classificationKey('79','RUB')]:{category:'commission',commission_confirmed_not_duplicate:false}
+ };
+ const original=global.localStorage;
+ global.localStorage={getItem:()=>JSON.stringify(map)};
+ try{
+  const calculator={calculateProfit,calculateProfitWithActualCommission:require('../dashboard/profit-calculator.js').calculateProfitWithActualCommission};
+  const result=buildProductRanking({...sales,period},[product],costs,calculator,finance);
+  const base=buildProductRanking({...sales,period},[product],costs,calculator,{...finance,posting_product_summary:[]});
+  assert.equal(result.includedUnits,base.includedUnits);
+  assert.equal(result.items.length,base.items.length);
+  assert.ok(Math.abs((result.estimatedProfit-base.estimatedProfit)-(-15))<0.02);
+  assert.equal(result.classifiedAccrualMetrics.included_records,3);
+ }finally{global.localStorage=original;}
+});
+test('unconfirmed accrual classification never changes ranked profit',()=>{
+ const period={date_from:'2026-11-01',date_to:'2026-11-07'};
+ const finance={period,posting_product_summary:[{sku:'9001',fulfillment_type:'FBS',currency:'RUB',type_id:'88',amount:'-999',records:1}]};
+ const original=global.localStorage;
+ global.localStorage={getItem:()=>JSON.stringify({[classificationKey('88','RUB')]:{category:'expense',commission_confirmed_not_duplicate:false}})};
+ try{
+  const result=buildProductRanking({...sales,period},[product],costs,{calculateProfit},finance);
+  const base=buildProductRanking({...sales,period},[product],costs,{calculateProfit},{...finance,posting_product_summary:[]});
+  assert.equal(result.estimatedProfit,base.estimatedProfit);
+ }finally{global.localStorage=original;}
 });
