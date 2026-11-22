@@ -75,10 +75,10 @@
    const ads=values.ads??0,transit=values.transit??0;
    const accrualTotal=classifiedAccruals.totals.get(key)||0;
    const accrualRevenue=salesGmvTotals.get(key)||0;
-   const classifiedOther=accrualRevenue>0?-(accrualTotal*(salesGmv/accrualRevenue)/units):0;
-   const other=Number(values.other??0)+classifiedOther,taxRate=values.tax??0;
+   const classifiedAccrualAdjustment=accrualRevenue>0?(accrualTotal*(salesGmv/accrualRevenue)/units):0;
+   const other=values.other??0,taxRate=values.tax??0;
    const actualForRow=hasActualCommission?actualTotal*(salesGmv/totalSalesGmv)/units:null;
-   const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate}};
+   const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate},accrualAdjustment:classifiedAccrualAdjustment};
    const calculation=hasActualCommission
     ?window.OzonProfitCalculator.calculateProfitWithActualCommission({...input,actualCommission:actualForRow})
     :window.OzonProfitCalculator.calculateProfit(input);
