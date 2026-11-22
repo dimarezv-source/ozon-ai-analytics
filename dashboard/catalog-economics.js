@@ -71,7 +71,7 @@
    const actualTotal=actualCommissionTotals.get(key);
    const totalSalesGmv=salesGmvTotals.get(key)||0;
    const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0;
-   const actualForRow=hasActualCommission?actualTotal*(salesGmv/totalSalesGmv):null;
+   const actualForRow=hasActualCommission?actualTotal*(salesGmv/totalSalesGmv)/units:null;
    const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate}};
    const calculation=hasActualCommission
     ?window.OzonProfitCalculator.calculateProfitWithActualCommission({...input,actualCommission:actualForRow})
