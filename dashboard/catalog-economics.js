@@ -130,10 +130,10 @@
   returnBody.replaceChildren();
   for(const item of result.returnRows){
    const tr=document.createElement('tr');
-   [item.sku,item.fulfillment_type||'—',item.return_type,String(item.quantity),item.returned_value===null?'Нет цены':fmt(item.returned_value),item.currency||'Не указана'].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td)});
+   [item.sku,item.fulfillment_type||'—',({ClientReturn:'Возврат клиента',FullReturn:'Полный возврат',PartialReturn:'Частичный возврат',Cancellation:'Отмена'})[item.return_type]||item.return_type,String(item.quantity),item.returned_value===null?'Нет цены':fmt(item.returned_value),String(item.priced_quantity),item.currency||'Не указана'].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td)});
    returnBody.appendChild(tr);
   }
-  if(!result.returnRows.length)returnBody.innerHTML=empty;
+  if(!result.returnRows.length)returnBody.innerHTML=empty.replace('colspan="6"','colspan="7"');
   returnStatus.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · точно сопоставлено возвратов: '+result.matchedReturnRecords+' · требуют проверки: '+result.unmatchedReturnRecords+'. Стоимость товара не считается убытком.';
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderProductFactsPanels()});
