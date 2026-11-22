@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculateProfit, simulatePrice } = require('../dashboard/profit-calculator.js');
+const { calculateProfit, calculateProfitWithActualCommission, simulatePrice } = require('../dashboard/profit-calculator.js');
 const product={
  sales_percent_fbo:12,sales_percent_fbs:15,acquiring:2,
  delivery_to_customer:30,first_mile_min:10,first_mile_max:20,
@@ -86,4 +86,17 @@ test('legacy tax percentage is explicitly identified as a manual expense, not st
  assert.equal(r.statutoryTax,null);
  assert.equal(r.statutoryTaxCalculated,false);
  assert.equal(r.taxTreatment,'manual_legacy_expense');
+});
+
+
+test('uses signed actual Ozon commission instead of tariff percentage',()=>{
+ const r=calculateProfitWithActualCommission({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500,pack:10,ads:20,transit:7,other:5,tax:6},actualCommission:-125});
+ assert.equal(r.ok,true);assert.equal(r.deductions.commission,0);assert.equal(r.actualCommission,-125);
+ assert.equal(r.profitExact,211);assert.equal(r.profit,211);assert.equal(r.commissionSource,'ozon_signed_actual');
+});
+
+test('preserves positive signed commission adjustments and rejects missing actual amount',()=>{
+ const credit=calculateProfitWithActualCommission({fulfillmentType:'FBO',unitPrice:1000,product,expenses:{cost:500},actualCommission:25});
+ assert.equal(credit.profitExact,498);assert.equal(credit.actualCommission,25);
+ assert.equal(calculateProfitWithActualCommission({fulfillmentType:'FBO',unitPrice:1000,product}).reason,'invalid_actual_commission');
 });

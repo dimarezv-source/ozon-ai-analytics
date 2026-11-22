@@ -23,7 +23,7 @@ test('ranks FBO and FBS separately and computes estimated profit from saved cost
  assert.equal(result.includedUnits,3);
  assert.equal(result.coveragePercent,100);
  assert.equal(result.isActualProfit,false);
- assert.equal(result.source,'delivered_sales_and_user_costs');
+ assert.equal(result.source,'delivered_sales_user_costs_and_actual_commission_when_matched');
  assert.ok(Number.isFinite(result.estimatedProfit));
 });
 
@@ -104,4 +104,28 @@ test('aggregates exact unit profit before rounding SKU totals',()=>{
  const expected=calculateProfit({fulfillmentType:'FBS',unitPrice:300.99/3,product:fractionalProduct,expenses:{cost:50.25,pack:2.25,ads:3.25,transit:0,other:0,tax:0}});
  assert.equal(result.includedUnits,3);
  assert.equal(result.items[0].profit,Math.round(expected.profitExact*3*100)/100);
+});
+
+
+test('uses signed actual Ozon commission in intelligence ranking when periods and SKU match',()=>{
+ const finance={period:{date_from:'2026-11-01',date_to:'2026-11-07'},product_commission_summary:[
+  {sku:'9001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'-30',records:2},
+  {sku:'9001',fulfillment_type:'FBO',currency:'RUB',sale_commission:'-5',records:1}
+ ]};
+ const calculator={calculateProfit,calculateProfitWithActualCommission:require('../dashboard/profit-calculator.js').calculateProfitWithActualCommission};
+ const result=buildProductRanking({...sales,period:finance.period},[product],costs,calculator,finance);
+ assert.equal(result.actualCommissionUnits,3);
+ assert.equal(result.tariffCommissionUnits,0);
+ assert.equal(result.items.every(item=>item.dataStatus==='actual_commission_plus_estimated_costs'),true);
+ const fbs=result.items.find(item=>item.fulfillmentType==='FBS');
+ const baseline=calculateProfit({fulfillmentType:'FBS',unitPrice:100,product,expenses:{cost:50,pack:2,ads:3,transit:0,other:0,tax:0}});
+ assert.equal(fbs.profit,Math.round((baseline.profitExact+12-15)*2*100)/100);
+});
+
+test('ignores actual commission from mismatched finance periods',()=>{
+ const finance={period:{date_from:'2026-10-01',date_to:'2026-10-07'},product_commission_summary:[{sku:'9001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'-30'}]};
+ const calculator={calculateProfit,calculateProfitWithActualCommission:require('../dashboard/profit-calculator.js').calculateProfitWithActualCommission};
+ const result=buildProductRanking({...sales,period:{date_from:'2026-11-01',date_to:'2026-11-07'}},[product],costs,calculator,finance);
+ assert.equal(result.actualCommissionUnits,0);
+ assert.equal(result.tariffCommissionUnits,3);
 });

@@ -48,6 +48,19 @@
       taxTreatment:'manual_legacy_expense'
     };
   }
+  function calculateProfitWithActualCommission(input){
+    const amount=Number(input.actualCommission);
+    if(input.actualCommission===null||input.actualCommission===undefined||input.actualCommission===''||!Number.isFinite(amount))return {ok:false,reason:'invalid_actual_commission'};
+    const type=String(input.fulfillmentType||'').toUpperCase();
+    const commissionField=type==='FBO'?'sales_percent_fbo':'sales_percent_fbs';
+    const product={...(input.product||{}),[commissionField]:0};
+    const base=calculateProfit({...input,product});
+    if(!base.ok)return base;
+    const profitExact=base.profitExact+amount;
+    return {...base,deductions:{...base.deductions,commission:0},profit:Math.round(profitExact),profitExact,
+      marginPercent:Math.round(profitExact/base.unitPrice*10000)/100,
+      actualCommission:amount,commissionSource:'ozon_signed_actual',commissionIncluded:true};
+  }
   function simulatePrice(input){
     const currentPrice=Number(input.currentPrice),scenarioPrice=Number(input.scenarioPrice);
     const common={fulfillmentType:input.fulfillmentType,product:input.product,expenses:input.expenses};
@@ -62,6 +75,6 @@
       scenarioAssumption:'same_costs_and_tariffs_no_demand_response'
     };
   }
-  root.OzonProfitCalculator={calculateProfit,simulatePrice};
+  root.OzonProfitCalculator={calculateProfit,calculateProfitWithActualCommission,simulatePrice};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.OzonProfitCalculator;
 })(typeof globalThis!=='undefined'?globalThis:this);
