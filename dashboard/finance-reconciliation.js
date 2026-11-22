@@ -2,6 +2,33 @@
  const from=document.getElementById('reconFrom'),to=document.getElementById('reconTo'),btn=document.getElementById('reconLoad'),status=document.getElementById('reconStatus'),rows=document.getElementById('reconRows');
  if(!from||!to||!btn)return;
  const exportBtn=document.getElementById('reconExport');let lastData=null;
+ const reviewPanel=document.createElement('div');
+ reviewPanel.className='accrual-summary-wrap';
+ reviewPanel.style.marginTop='16px';
+ reviewPanel.innerHTML='<h3 style="margin:0 0 7px;font-size:15px">Контроль классификации начислений</h3><p class="hint" style="margin:0 0 9px">Справочник Ozon помогает назвать тип операции, но сам по себе не доказывает, является ли сумма расходом, компенсацией или корректировкой. До проверки экономического смысла суммы не включаются в прибыль.</p><p id="reconClassificationStatus" class="hint" aria-live="polite">Ожидаем финансовую сверку.</p><div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Операция</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Строк</th><th>Статус проверки</th></tr></thead><tbody id="reconClassificationRows"><tr><td colspan="6" class="hint">Ожидаем загрузку данных.</td></tr></tbody></table></div>';
+ const baseTable=rows.closest('.accrual-table-wrap');
+ if(baseTable)baseTable.after(reviewPanel);
+ const reviewRows=reviewPanel.querySelector('#reconClassificationRows');
+ const reviewStatus=reviewPanel.querySelector('#reconClassificationStatus');
+ function renderClassificationCoverage(data){
+  const items=Array.isArray(data.classification_coverage)?data.classification_coverage:[];
+  reviewRows.replaceChildren();
+  const statusLabel=value=>value==='needs_review'?'Название есть · смысл не подтверждён':'Нет записи в справочнике';
+  for(const item of items){
+   const tr=document.createElement('tr');
+   cell(tr,item.label||'Неизвестная операция');
+   cell(tr,item.type_id,'muted');
+   cell(tr,item.currency||'Не указана');
+   cell(tr,fmt(item.amount),'amount');
+   cell(tr,item.records);
+   cell(tr,statusLabel(item.status),item.status==='needs_review'?'muted':'amount');
+   reviewRows.appendChild(tr);
+  }
+  if(!items.length){const tr=document.createElement('tr');cell(tr,'Компоненты для проверки не найдены.');tr.firstChild.colSpan=6;reviewRows.appendChild(tr);}
+  const named=items.filter(item=>item.status==='needs_review').length;
+  const missing=items.filter(item=>item.status==='missing_dictionary_entry').length;
+  reviewStatus.textContent='Групп типов и валют: '+items.length+' · с названием, но без подтверждённого смысла: '+named+' · отсутствуют в справочнике: '+missing+'. Семантически подтверждённых категорий: 0.';
+ }
  function csvCell(value){return '"'+String(value??'').replace(/"/g,'""')+'"'}
  function buildCsv(data){
   const lines=[['Раздел','Поле 1','Поле 2','Поле 3','Поле 4','Поле 5','Поле 6','Поле 7','Поле 8']];
@@ -12,6 +39,7 @@
   add('Показатели',['Совпало компонентов',m.posting_match_count,'Без совпадения',m.posting_unmatched_count,'С явным SKU',m.sku_attributed_count,'Без SKU',m.sku_unattributed_count]);
   const groups=[
    ['Сводка по типам',data.summary||[],r=>[r.label,r.type_id,r.currency,r.amount,r.records,r.matched_records,r.unmatched_records]],
+   ['Контроль классификации',data.classification_coverage||[],r=>[r.label,r.type_id,r.currency,r.amount,r.records,r.status,'Семантическая категория не подтверждена']],
    ['По схеме FBO/FBS',data.fulfillment_summary||[],r=>[r.fulfillment_type,r.label,r.type_id,r.currency,r.amount,r.components]],
    ['Без распределения',data.unmatched_summary||[],r=>[r.label,r.type_id,r.currency,r.amount,r.components]],
    ['Комиссии с SKU',data.product_fee_summary||[],r=>[r.fulfillment_type,r.sku,r.offer_id,r.label,r.type_id,r.currency,r.amount,r.components]],
@@ -43,6 +71,7 @@
   try{
    const r=await fetch('/api/finance/reconciliation?date_from='+encodeURIComponent(from.value)+'&date_to='+encodeURIComponent(to.value),{headers:{Accept:'application/json'}}),d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка финансового API');
    lastData=d;if(exportBtn)exportBtn.disabled=false;
+   renderClassificationCoverage(d);
    rows.replaceChildren();
    for(const item of (d.summary||[])){const tr=document.createElement('tr');cell(tr,item.label||'Неизвестный тип');cell(tr,item.type_id,'muted');cell(tr,item.currency||'Неизвестна');cell(tr,fmt(item.amount),'amount');cell(tr,item.records);rows.appendChild(tr)}
    if(!d.summary?.length){const tr=document.createElement('tr');cell(tr,'Компоненты за период не найдены.');tr.firstChild.colSpan=5;rows.appendChild(tr)}
