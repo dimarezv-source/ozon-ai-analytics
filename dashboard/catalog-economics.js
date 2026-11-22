@@ -59,18 +59,19 @@
     const value=sale[field];if(value!==null&&value!==undefined&&String(value)!==''){product=catalogById.get(field+':'+String(value));if(product)break;}
    }
    if(!product){unmatchedUnits+=units;continue;}
-   const required=type==='FBO'?['sales_percent_fbo','acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['sales_percent_fbs','acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
-   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))){missingTariffUnits+=units;continue;}
+   const key=commissionKey(type,sale.sku);
+   const actualTotal=actualCommissionTotals.get(key);
+   const totalSalesGmv=salesGmvTotals.get(key)||0;
+   const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0;
+   const required=type==='FBO'?['acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
+   const commissionField=type==='FBO'?'sales_percent_fbo':'sales_percent_fbs';
+   if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))||(!hasActualCommission&&(product[commissionField]===null||product[commissionField]===undefined||!Number.isFinite(Number(product[commissionField]))))){missingTariffUnits+=units;continue;}
    const unitPrice=salesGmv/units,values=saved[safeKey(product)]||{};
    const costKnown=values.costConfigured===true||(values.cost!==null&&values.cost!==undefined&&values.cost!==''&&Number(values.cost)>0);
    if(!costKnown){missingCostUnits+=units;continue;}
    const cost=values.cost??0,pack=values.pack??0;
    const ads=values.ads??0,transit=values.transit??0;
    const other=values.other??0,taxRate=values.tax??0;
-   const key=commissionKey(type,sale.sku);
-   const actualTotal=actualCommissionTotals.get(key);
-   const totalSalesGmv=salesGmvTotals.get(key)||0;
-   const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0;
    const actualForRow=hasActualCommission?actualTotal*(salesGmv/totalSalesGmv)/units:null;
    const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate}};
    const calculation=hasActualCommission
