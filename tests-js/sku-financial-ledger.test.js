@@ -8,7 +8,7 @@ const sales={period:{date_from:'2026-11-01',date_to:'2026-11-07'},products:[
 test('joins actual commission, posting service accruals and returns by SKU and fulfillment',()=>{
  const finance={period:sales.period,
   product_commission_summary:[{sku:'1001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'-450',records:3}],
-  posting_product_summary:[{sku:'1001',fulfillment_type:'FBS',currency:'RUB',amount:'-90',records:2}],
+  posting_product_summary:[{sku:'1001',fulfillment_type:'FBS',currency:'RUB',type_id:'11',label:'Доставка',amount:'-60',records:1},{sku:'1001',fulfillment_type:'FBS',currency:'RUB',type_id:'22',label:'Обработка',amount:'-30',records:1}],
   product_fee_summary:[{sku:'1001',fulfillment_type:'FBS',currency:'RUB',amount:'-90',components:2}],
   returns_attribution:{summary:[{sku:'1001',fulfillment_type:'FBS',currency:'RUB',quantity:1,priced_quantity:1,returned_value:'1000',return_records:1}]}
  };
@@ -17,6 +17,7 @@ test('joins actual commission, posting service accruals and returns by SKU and f
  assert.equal(row.revenue,3000);
  assert.equal(row.commission_actual_rub,-450);
  assert.equal(row.service_fee_raw_rub,-90);
+ assert.deepEqual(row.service_fee_breakdown.map(x=>[x.type_id,x.label,x.amount]),[['11','Доставка',-60],['22','Обработка',-30]]);
  assert.equal(row.return_quantity,1);
  assert.equal(row.return_value_rub,1000);
  assert.equal(result.metrics.commission_matched_skus,1);
