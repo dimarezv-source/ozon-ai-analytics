@@ -85,7 +85,7 @@
     status:'insufficient_data',
     can_calculate_profit:false,
     verified_components:[
-     ...(row.coverage.sales==='complete_price_coverage'?['sales_revenue']:[]),
+     ...((row.unpriced_units===0&&row.known_price_units>0)?['sales_revenue']:[]),
      ...(row.commission_actual_rub!==null?['actual_sale_commission']:[])
     ],
     missing_components:['cost_of_goods'],
