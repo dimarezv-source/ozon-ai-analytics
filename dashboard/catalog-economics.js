@@ -56,7 +56,7 @@
     expenses:{cost,pack,ads,transit,other,tax:taxRate}
    });
    if(!calculation.ok){missingTariffUnits+=units;continue;}
-   totals[type].profit+=calculation.profit*units;totals[type].revenue+=salesGmv;totals[type].units+=units;
+   totals[type].profit+=(calculation.profitExact??calculation.profit)*units;totals[type].revenue+=salesGmv;totals[type].units+=units;
   }
   const profit=totals.FBO.profit+totals.FBS.profit,revenue=totals.FBO.revenue+totals.FBS.revenue;
   const includedUnits=totals.FBO.units+totals.FBS.units,margin=revenue?profit/revenue*100:0;

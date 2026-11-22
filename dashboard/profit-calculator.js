@@ -35,14 +35,15 @@
       additionalTransit:normalized.transit,other:normalized.other,tax
     };
     const total=Object.values(deductions).reduce((sum,value)=>sum+value,0);
-    const profit=Math.round(price-total);
+    const profitExact=price-total;
+    const profit=Math.round(profitExact);
     const returnFlowRaw=type==='FBO'?product.fbo_return_flow:product.return_flow;
     const returnFlow=returnFlowRaw===null||returnFlowRaw===undefined||returnFlowRaw===''?null:Number(returnFlowRaw);
     return {
       ok:true,fulfillmentType:type,unitPrice:price,deductions,
       returnFlowTariff:returnFlow!==null&&Number.isFinite(returnFlow)?returnFlow:null,
       returnFlowIncluded:false,
-      profit,marginPercent:Math.round(profit/price*10000)/100,
+      profit,profitExact,marginPercent:Math.round(profitExact/price*10000)/100,
       manualTaxAdjustment:tax,statutoryTax:null,statutoryTaxCalculated:false,
       taxTreatment:'manual_legacy_expense'
     };
