@@ -32,6 +32,7 @@ ASSISTANT_CENTER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "ass
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
 LOSS_ALERTS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "loss-alerts.js"
+RISK_READINESS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "risk-readiness.js"
 INVENTORY_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "inventory.js"
 MODULE_MANAGER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "module-manager.js"
 ACTION_PRIORITIZER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "action-prioritizer.js"
@@ -727,6 +728,11 @@ async def intelligence_script(_: None = Depends(require_dashboard_auth)) -> File
 @app.get("/dashboard/loss-alerts.js", tags=["dashboard"], include_in_schema=False)
 async def loss_alerts_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(LOSS_ALERTS_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/risk-readiness.js", tags=["dashboard"], include_in_schema=False)
+async def risk_readiness_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(RISK_READINESS_FILE, media_type="application/javascript")
 
 
 

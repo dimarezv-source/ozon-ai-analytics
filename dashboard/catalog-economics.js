@@ -126,7 +126,7 @@
   if(!ranking.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.className='hint';td.textContent='Пока нет товаров с полными тарифами и заполненной себестоимостью.';tr.appendChild(td);rows.appendChild(tr)}
   window.dispatchEvent(new CustomEvent('ozon:ranking-updated',{detail:ranking}));
   const ex=ranking.excluded;
-  set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · фактическая комиссия Ozon: '+(ranking.actualCommissionUnits||0)+' шт. · тарифная оценка комиссии: '+(ranking.tariffCommissionUnits||0)+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Остальные логистические начисления пока не включены в прибыль.');
+  set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · фактическая комиссия Ozon: '+(ranking.actualCommissionUnits||0)+' шт. · тарифная оценка комиссии: '+(ranking.tariffCommissionUnits||0)+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Подтверждённые прочие начисления: '+((ranking.classifiedAccrualMetrics||{}).included_records||0)+' строк; неподтверждённые начисления исключены из прибыли.');
  }
  function renderSkuFinancialLedger(){
   const statusEl=document.getElementById('skuLedgerStatus'),body=document.getElementById('skuLedgerRows');
