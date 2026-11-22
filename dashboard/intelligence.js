@@ -62,7 +62,8 @@
       };
       const result=calculate({fulfillmentType:fulfillment,unitPrice:price,product,expenses});
       if(!result.ok){excluded.missingTariff+=units;continue;}
-      const lineProfit=Math.round(result.profit*units*100)/100;
+      const unitProfitExact=result.profitExact??result.profit;
+      const lineProfit=Math.round(unitProfitExact*units*100)/100;
       const margin=result.marginPercent;
       const targetMargin=margin<0?0:15;
       const targetPrice=margin<15?priceForMargin(product,expenses,fulfillment,result,targetMargin):null;
@@ -71,7 +72,7 @@
         if(targetPrice!==null){
           const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses});
           if(targetResult.ok){
-            targetProfit=Math.round(targetResult.profit*units*100)/100;
+            targetProfit=Math.round((targetResult.profitExact??targetResult.profit)*units*100)/100;
             scenarioLift=Math.round((targetProfit-lineProfit)*100)/100;
             recommendation='Убыток: безубыточная цена ≈ '+money(targetPrice)+'; сценарный эффект '+(scenarioLift>0?'+':'')+money(scenarioLift)+' при тех же продажах';
           }
@@ -93,7 +94,7 @@
         offerId:product.offer_id??null,name:product.name||sale.name||'Товар без названия',
         fulfillmentType:fulfillment,units,revenue:Math.round(revenue*100)/100,
         unitPrice:Math.round(price*100)/100,profit:lineProfit,
-        profitPerUnit:result.profit,marginPercent:margin,recommendation,
+        profitPerUnit:result.profit,profitPerUnitExact:unitProfitExact,marginPercent:margin,recommendation,
         targetPrice:targetPrice===null?null:Math.round(targetPrice*100)/100,
         targetMarginPercent:targetPrice===null?null:targetMargin,
         scenarioProfit:targetProfit,scenarioProfitLift:scenarioLift,
