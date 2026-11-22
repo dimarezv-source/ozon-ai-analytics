@@ -1,8 +1,7 @@
 """Persistent, per-dashboard-user storage for product cost assumptions."""
 from __future__ import annotations
 
-import os
-from datetime import datetime
+from app.config import get_settings
 from typing import Any
 
 import psycopg
@@ -15,7 +14,7 @@ class PersistenceNotConfigured(RuntimeError):
 
 
 def _database_url() -> str:
-    value = os.getenv("DATABASE_URL", "").strip()
+    value = (get_settings().database_url or "").strip()
     if not value:
         raise PersistenceNotConfigured("DATABASE_URL is not configured.")
     # Render may provide postgres:// while psycopg accepts both schemes.
