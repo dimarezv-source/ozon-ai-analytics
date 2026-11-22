@@ -100,3 +100,21 @@ test('preserves positive signed commission adjustments and rejects missing actua
  assert.equal(credit.profitExact,498);assert.equal(credit.actualCommission,25);
  assert.equal(calculateProfitWithActualCommission({fulfillmentType:'FBO',unitPrice:1000,product}).reason,'invalid_actual_commission');
 });
+
+test('preserves signed accrual expenses and income as a separate profit adjustment',()=>{
+ const base=calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500}});
+ const expense=calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500},accrualAdjustment:-20});
+ const income=calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500},accrualAdjustment:5});
+ assert.equal(expense.ok,true);assert.equal(expense.profitExact,base.profitExact-20);
+ assert.equal(expense.deductions.classifiedAccrualAdjustment,20);
+ assert.equal(income.ok,true);assert.equal(income.profitExact,base.profitExact+5);
+ assert.equal(income.deductions.classifiedAccrualAdjustment,-5);
+});
+test('combines actual signed sale commission and verified accrual adjustment without changing manual expenses',()=>{
+ const r=calculateProfitWithActualCommission({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500,other:5},actualCommission:-125,accrualAdjustment:12});
+ assert.equal(r.ok,true);
+ assert.equal(r.profitExact,baseProfitForTest()-125+12);
+});
+function baseProfitForTest(){
+ return calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500,other:5}}).profitExact;
+}
