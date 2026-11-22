@@ -76,17 +76,17 @@
       const commissionBucketKey=commissionKey(fulfillment,product.sku??sale.sku);
       const accrualTotal=classifiedAccruals.totals.get(commissionBucketKey)||0;
       const accrualRevenue=salesGmvTotals.get(commissionBucketKey)||0;
-      const classifiedOther=accrualRevenue>0?-(accrualTotal*(revenue/accrualRevenue)/units):0;
+      const classifiedAccrualAdjustment=accrualRevenue>0?(accrualTotal*(revenue/accrualRevenue)/units):0;
       const expenses={
         cost:expense.cost,pack:expense.pack??0,ads:expense.ads??0,transit:expense.transit??0,
-        other:Number(expense.other??0)+classifiedOther,tax:expense.tax??0
+        other:expense.other??0,tax:expense.tax??0
       };
       const actualTotal=actualCommissionTotals.get(commissionBucketKey),totalSalesGmv=salesGmvTotals.get(commissionBucketKey)||0;
       const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0&&typeof calculator.calculateProfitWithActualCommission==='function';
       const actualForRow=hasActualCommission?actualTotal*(revenue/totalSalesGmv)/units:null;
       const result=hasActualCommission
-        ?calculator.calculateProfitWithActualCommission({fulfillmentType:fulfillment,unitPrice:price,product,expenses,actualCommission:actualForRow})
-        :calculate({fulfillmentType:fulfillment,unitPrice:price,product,expenses});
+        ?calculator.calculateProfitWithActualCommission({fulfillmentType:fulfillment,unitPrice:price,product,expenses,actualCommission:actualForRow,accrualAdjustment:classifiedAccrualAdjustment})
+        :calculate({fulfillmentType:fulfillment,unitPrice:price,product,expenses,accrualAdjustment:classifiedAccrualAdjustment});
       if(!result.ok){excluded.missingTariff+=units;continue;}
       if(hasActualCommission)actualCommissionUnits+=units;else tariffCommissionUnits+=units;
       const unitProfitExact=result.profitExact??result.profit;
@@ -98,7 +98,7 @@
       if(margin<0){
         if(hasActualCommission){recommendation='Убыток с учётом фактической комиссии Ozon: проверь себестоимость и остальные расходы';}
         else if(targetPrice!==null){
-          const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses});
+          const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses,accrualAdjustment:classifiedAccrualAdjustment});
           if(targetResult.ok){
             targetProfit=Math.round((targetResult.profitExact??targetResult.profit)*units*100)/100;
             scenarioLift=Math.round((targetProfit-lineProfit)*100)/100;
