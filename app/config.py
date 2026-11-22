@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ozon_api_base_url: str = "https://api-seller.ozon.ru"
     dashboard_username: str | None = None
     dashboard_password: str | None = None
+    database_url: str | None = None
 
 
 @lru_cache
