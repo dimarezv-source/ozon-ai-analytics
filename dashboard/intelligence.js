@@ -19,7 +19,7 @@
     if(!Number.isFinite(raw)||raw<=0)return null;
     return Math.ceil(raw*100)/100;
   }
-  function buildProductRanking(sales, products, savedCosts, calculator){
+  function buildProductRanking(sales, products, savedCosts, calculator, finance){
     const rows=Array.isArray(sales&&sales.products)?sales.products:[];
     const catalog=Array.isArray(products)?products:[];
     const costs=savedCosts&&typeof savedCosts==='object'?savedCosts:{};
@@ -35,7 +35,6 @@
     const ranked=[],excluded={unmatched:0,missingCost:0,missingTariff:0,unpriced:0,unknownFulfillment:0};
     const commissionKey=(type,sku)=>type+'|'+String(sku??'');
     const actualCommissionTotals=new Map(),salesGmvTotals=new Map();
-    const finance=arguments.length>4?arguments[4]:null;
     const samePeriod=!!(finance&&finance.period&&sales&&sales.period&&finance.period.date_from===sales.period.date_from&&finance.period.date_to===sales.period.date_to);
     if(samePeriod){
       for(const row of Array.isArray(finance.product_commission_summary)?finance.product_commission_summary:[]){
