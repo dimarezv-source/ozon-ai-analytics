@@ -232,6 +232,7 @@
         const records = Math.max(1, Number(row.records) || 1);
         const valid = row.sku !== null && row.sku !== undefined && (row.fulfillment_type === 'FBO' || row.fulfillment_type === 'FBS') && String(row.currency || '').toUpperCase() === 'RUB';
         if (fulfillment && row.fulfillment_type !== fulfillment) continue;
+        if (sku && String(row.sku) !== sku) continue;
         const mapping = api && valid ? mappings[api.classificationKey(row.type_id, row.currency)] : null;
         if (mapping && mapping.category === 'expense' && mapping.commission_confirmed_not_duplicate === true && Number.isFinite(Number(row.amount))) {
           const key = row.fulfillment_type + ' · RUB';
@@ -244,9 +245,9 @@
           reviewRecords += records;
         }
       }
-      if (!totals.size) return 'Пока нет расходов, которые вручную подтверждены по типу начисления, RUB, SKU и схеме FBO/FBS. Открой «Финансы» и классифицируй типы начислений; неизвестные и неподтверждённые суммы я не буду автоматически называть расходами.';
+      if (!totals.size) return 'Пока нет расходов, которые вручную подтверждены по типу начисления, RUB, SKU и схеме FBO/FBS' + (sku ? ' для SKU ' + sku : '') + (fulfillment ? ' (' + fulfillment + ')' : '') + '. Открой «Финансы» и классифицируй типы начислений; неизвестные и неподтверждённые суммы я не буду автоматически называть расходами.';
       const details = [...totals.entries()].map(([key, value]) => key + ': ' + signedMoney(value.amount) + ' (' + value.records + ' записей)').join('; ');
-      return 'Подтверждённые вручную расходы по начислениям: ' + details + '. Суммы сохранены с исходным знаком Ozon. Учтено записей: ' + confirmedRecords + '; других строк, требующих проверки: ' + reviewRecords + '. Это не полный список всех расходов магазина.';
+      return 'Подтверждённые вручную расходы по начислениям' + (sku ? ' для SKU ' + sku : '') + (fulfillment ? ' (' + fulfillment + ')' : '') + ': ' + details + '. Суммы сохранены с исходным знаком Ozon. Учтено записей: ' + confirmedRecords + '; других строк, требующих проверки: ' + reviewRecords + '. Это не полный список всех расходов магазина.';
     }
     if (asksProfit) {
       const r = live.ranking;
