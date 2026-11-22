@@ -176,7 +176,7 @@
   statusEl.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · сопоставлено SKU/FBO/FBS: '+result.matched+' · без пары: '+result.unmatched+' · без SKU/тарифа в продажах: '+result.estimated_unmatched_units+' шт. · фактических строк без схемы/SKU: '+result.actual_unmatched_records+' · исключено не-RUB: '+result.non_rub_records+' · без суммы: '+result.missing_amount_records+'.';
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderCommissionComparison();renderProductFactsPanels();renderSkuFinancialLedger()});
- window.addEventListener('ozon:finance-reconciliation-loaded',event=>{financeReconciliation=event.detail;renderCommissionComparison();renderProductFactsPanels()});
+ window.addEventListener('ozon:finance-reconciliation-loaded',event=>{financeReconciliation=event.detail;renderCommissionComparison();renderProductFactsPanels();renderSkuFinancialLedger()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;
