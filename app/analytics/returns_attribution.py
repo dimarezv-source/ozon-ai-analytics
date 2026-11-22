@@ -85,7 +85,7 @@ def attribute_returns_to_delivered_postings(return_rows, delivered_postings):
                 item["priced_quantity"] += quantity
 
     summary = [
-        {**item, "returned_value": str(item["returned_value"])}
+        {**item, "returned_value": str(item["returned_value"]) if item["priced_quantity"] else None}
         for _, item in sorted(totals.items(), key=lambda pair: pair[0])
     ]
     return {
