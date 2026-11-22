@@ -29,10 +29,13 @@
     const transitMax=Number(type==='FBO'?product.fbo_transit_max:product.transit_max);
     const marketplaceTransit=(transitMin+transitMax)/2;
     const tax=price*normalized.tax/100;
+    const accrualAdjustment=Number(input.accrualAdjustment||0);
+    if(!Number.isFinite(accrualAdjustment))return {ok:false,reason:'invalid_accrual_adjustment'};
     const deductions={
       commission,acquiring,firstMile,delivery,marketplaceTransit,
       cost:normalized.cost,pack:normalized.pack,ads:normalized.ads,
-      additionalTransit:normalized.transit,other:normalized.other,tax
+      additionalTransit:normalized.transit,other:normalized.other,tax,
+      classifiedAccrualAdjustment:-accrualAdjustment
     };
     const total=Object.values(deductions).reduce((sum,value)=>sum+value,0);
     const profitExact=price-total;

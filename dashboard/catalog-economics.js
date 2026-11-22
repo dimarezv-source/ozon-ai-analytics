@@ -46,6 +46,8 @@
     if((type==='FBO'||type==='FBS')&&sku!==null&&sku!==undefined&&Number.isFinite(gmv)&&gmv>0){const key=commissionKey(type,sku);salesGmvTotals.set(key,(salesGmvTotals.get(key)||0)+gmv);}
    }
   }
+  const accrualApi=window.OzonAccrualClassification;
+  const classifiedAccruals=sameFinancePeriod&&accrualApi?accrualApi.buildClassifiedAccruals(financeReconciliation,accrualApi.loadClassifications()):{totals:new Map(),metrics:{}};
   let actualCommissionUnits=0,tariffCommissionUnits=0;
   let unmatchedUnits=0,missingCostUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
   for(const sale of rows){
@@ -71,9 +73,12 @@
    if(!costKnown){missingCostUnits+=units;continue;}
    const cost=values.cost??0,pack=values.pack??0;
    const ads=values.ads??0,transit=values.transit??0;
+   const accrualTotal=classifiedAccruals.totals.get(key)||0;
+   const accrualRevenue=salesGmvTotals.get(key)||0;
+   const classifiedAccrualAdjustment=accrualRevenue>0?(accrualTotal*(salesGmv/accrualRevenue)/units):0;
    const other=values.other??0,taxRate=values.tax??0;
    const actualForRow=hasActualCommission?actualTotal*(salesGmv/totalSalesGmv)/units:null;
-   const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate}};
+   const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate},accrualAdjustment:classifiedAccrualAdjustment};
    const calculation=hasActualCommission
     ?window.OzonProfitCalculator.calculateProfitWithActualCommission({...input,actualCommission:actualForRow})
     :window.OzonProfitCalculator.calculateProfit(input);
@@ -93,7 +98,7 @@
   set('periodProfitFbs',totals.FBS.units?((totals.FBS.profit>0?'+':'')+money(totals.FBS.profit)):'Нет данных');
   set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
   let note='Комиссия Ozon: фактическая сумма из Seller API при совпадении периода, SKU, схемы FBO/FBS и RUB; если строки нет — тарифная оценка. Фактическая комиссия учитывается с исходным знаком Ozon. Эквайринг, доставка, первая миля и транзит пока оцениваются по тарифам (транзит — среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и ручное налоговое удержание берутся из карточек товара. Это не расчёт законного налога.';
-  note+=' Учтено с фактической комиссией: '+actualCommissionUnits+' шт.; с тарифной оценкой комиссии: '+tariffCommissionUnits+' шт. Сырые начисления и возвраты не включены, чтобы не задвоить комиссии и не принять неразмеченные операции за расходы.';
+  note+=' Учтено с фактической комиссией: '+actualCommissionUnits+' шт.; с тарифной оценкой комиссии: '+tariffCommissionUnits+' шт. прочие начисления учитываются только после ручной классификации и подтверждения, что это не комиссия продажи; неразмеченные операции исключены. Возвраты не считаются расходом без подтверждённого возврата денег.';
   const excluded=unmatchedUnits+missingCostUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
   if(excluded)note+=' Исключено: '+excluded+' шт. — без себестоимости: '+missingCostUnits+', без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
   set('periodProfitNote',note);
@@ -213,6 +218,7 @@
  }
  window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderCommissionComparison();renderProductFactsPanels();renderSkuFinancialLedger()});
  window.addEventListener('ozon:finance-reconciliation-loaded',event=>{financeReconciliation=event.detail;renderCommissionComparison();renderProductFactsPanels();renderSkuFinancialLedger()});
+ window.addEventListener('ozon:accrual-classifications-updated',()=>{updatePeriodProfit();renderIntelligence();renderSkuFinancialLedger()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;

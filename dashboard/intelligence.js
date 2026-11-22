@@ -47,6 +47,8 @@
         if((type==='FBO'||type==='FBS')&&sku!==null&&sku!==undefined&&Number.isFinite(revenue)&&revenue>0){const key=commissionKey(type,sku);salesGmvTotals.set(key,(salesGmvTotals.get(key)||0)+revenue);}
       }
     }
+    const accrualApi=root.OzonAccrualClassification;
+    const classifiedAccruals=samePeriod&&accrualApi?accrualApi.buildClassifiedAccruals(finance,accrualApi.loadClassifications()):{totals:new Map(),metrics:{}};
     let actualCommissionUnits=0,tariffCommissionUnits=0;
     let totalUnits=0,includedUnits=0,includedRevenue=0,totalProfit=0;
     for(const sale of rows){
@@ -71,17 +73,20 @@
         excluded.missingCost+=units;continue;
       }
       const price=revenue/units;
+      const commissionBucketKey=commissionKey(fulfillment,product.sku??sale.sku);
+      const accrualTotal=classifiedAccruals.totals.get(commissionBucketKey)||0;
+      const accrualRevenue=salesGmvTotals.get(commissionBucketKey)||0;
+      const classifiedAccrualAdjustment=accrualRevenue>0?(accrualTotal*(revenue/accrualRevenue)/units):0;
       const expenses={
         cost:expense.cost,pack:expense.pack??0,ads:expense.ads??0,transit:expense.transit??0,
         other:expense.other??0,tax:expense.tax??0
       };
-      const commissionBucketKey=commissionKey(fulfillment,product.sku??sale.sku);
       const actualTotal=actualCommissionTotals.get(commissionBucketKey),totalSalesGmv=salesGmvTotals.get(commissionBucketKey)||0;
       const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0&&typeof calculator.calculateProfitWithActualCommission==='function';
       const actualForRow=hasActualCommission?actualTotal*(revenue/totalSalesGmv)/units:null;
       const result=hasActualCommission
-        ?calculator.calculateProfitWithActualCommission({fulfillmentType:fulfillment,unitPrice:price,product,expenses,actualCommission:actualForRow})
-        :calculate({fulfillmentType:fulfillment,unitPrice:price,product,expenses});
+        ?calculator.calculateProfitWithActualCommission({fulfillmentType:fulfillment,unitPrice:price,product,expenses,actualCommission:actualForRow,accrualAdjustment:classifiedAccrualAdjustment})
+        :calculate({fulfillmentType:fulfillment,unitPrice:price,product,expenses,accrualAdjustment:classifiedAccrualAdjustment});
       if(!result.ok){excluded.missingTariff+=units;continue;}
       if(hasActualCommission)actualCommissionUnits+=units;else tariffCommissionUnits+=units;
       const unitProfitExact=result.profitExact??result.profit;
@@ -93,7 +98,7 @@
       if(margin<0){
         if(hasActualCommission){recommendation='Убыток с учётом фактической комиссии Ozon: проверь себестоимость и остальные расходы';}
         else if(targetPrice!==null){
-          const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses});
+          const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses,accrualAdjustment:classifiedAccrualAdjustment});
           if(targetResult.ok){
             targetProfit=Math.round((targetResult.profitExact??targetResult.profit)*units*100)/100;
             scenarioLift=Math.round((targetProfit-lineProfit)*100)/100;
@@ -132,6 +137,7 @@
       items:ranked,totalUnits,includedUnits,includedRevenue:Math.round(includedRevenue*100)/100,
       estimatedProfit:Math.round(totalProfit*100)/100,
       actualCommissionUnits,tariffCommissionUnits,
+      classifiedAccrualMetrics:classifiedAccruals.metrics||{},
       coveragePercent:totalUnits?Math.round(includedUnits/totalUnits*10000)/100:0,
       excluded,source:'delivered_sales_user_costs_and_actual_commission_when_matched',isActualProfit:false
     };

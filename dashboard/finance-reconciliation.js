@@ -5,7 +5,7 @@
  const reviewPanel=document.createElement('div');
  reviewPanel.className='accrual-summary-wrap';
  reviewPanel.style.marginTop='16px';
- reviewPanel.innerHTML='<h3 style="margin:0 0 7px;font-size:15px">Контроль классификации начислений</h3><p class="hint" style="margin:0 0 9px">Справочник Ozon помогает назвать тип операции, но сам по себе не доказывает, является ли сумма расходом, компенсацией или корректировкой. До проверки экономического смысла суммы не включаются в прибыль.</p><p id="reconClassificationStatus" class="hint" aria-live="polite">Ожидаем финансовую сверку.</p><div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Операция</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Строк</th><th>Статус проверки</th></tr></thead><tbody id="reconClassificationRows"><tr><td colspan="6" class="hint">Ожидаем загрузку данных.</td></tr></tbody></table></div>';
+ reviewPanel.innerHTML='<h3 style="margin:0 0 7px;font-size:15px">Контроль классификации начислений</h3><p class="hint" style="margin:0 0 9px">Справочник Ozon помогает назвать тип операции, но сам по себе не доказывает, является ли сумма расходом, компенсацией или корректировкой. До проверки экономического смысла суммы не включаются в прибыль.</p><p id="reconClassificationStatus" class="hint" aria-live="polite">Ожидаем финансовую сверку.</p><div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>Операция</th><th>ID</th><th>Валюта</th><th>Сумма</th><th>Строк</th><th>Статус проверки</th><th>Категория</th><th>Подтверждение: не комиссия</th></tr></thead><tbody id="reconClassificationRows"><tr><td colspan="6" class="hint">Ожидаем загрузку данных.</td></tr></tbody></table></div>';
  const baseTable=rows.closest('.accrual-table-wrap');
  if(baseTable)baseTable.after(reviewPanel);
  const reviewRows=reviewPanel.querySelector('#reconClassificationRows');
@@ -14,6 +14,8 @@
   const items=Array.isArray(data.classification_coverage)?data.classification_coverage:[];
   reviewRows.replaceChildren();
   const statusLabel=value=>value==='needs_review'?'Название есть · смысл не подтверждён':'Нет записи в справочнике';
+  const api=window.OzonAccrualClassification,map=api?api.loadClassifications():{};
+  const categoryLabels={unclassified:'Не классифицировано',expense:'Расход',income:'Доход / компенсация',adjustment:'Корректировка',neutral:'Не учитывать',commission:'Комиссия уже учтена'};
   for(const item of items){
    const tr=document.createElement('tr');
    cell(tr,item.label||'Неизвестная операция');
@@ -22,12 +24,42 @@
    cell(tr,fmt(item.amount),'amount');
    cell(tr,item.records);
    cell(tr,statusLabel(item.status),item.status==='needs_review'?'muted':'amount');
+   const mappingKey=api?api.classificationKey(item.type_id,item.currency):String(item.type_id)+'|'+String(item.currency||'').toUpperCase();
+   const mapping=map[mappingKey]||{};
+   const select=document.createElement('select');
+   select.setAttribute('aria-label','Классификация типа '+String(item.type_id));
+   for(const value of ['unclassified','expense','income','adjustment','neutral','commission']){
+    const option=document.createElement('option');option.value=value;option.textContent=categoryLabels[value];select.appendChild(option);
+   }
+   select.value=categoryLabels[mapping.category]?mapping.category:'unclassified';
+   select.style.minWidth='170px';select.style.maxWidth='210px';
+   const confirm=document.createElement('input');confirm.type='checkbox';confirm.checked=mapping.commission_confirmed_not_duplicate===true;
+   confirm.setAttribute('aria-label','Подтверждаю, что начисление не является комиссией продажи');
+   confirm.disabled=['unclassified','neutral','commission'].includes(select.value);
+   confirm.title='Комиссия продажи уже учитывается отдельно. Включай начисление только после проверки, что это другой тип операции.';
+   const save=()=>{
+    const next={...map};
+    const category=select.value;
+    if(category==='unclassified')delete next[mappingKey];
+    else next[mappingKey]={category,commission_confirmed_not_duplicate:confirm.checked};
+    if(api)api.saveClassifications(next);
+    Object.keys(map).forEach(key=>delete map[key]);Object.assign(map,next);
+    confirm.disabled=['unclassified','neutral','commission'].includes(category);
+    window.dispatchEvent(new CustomEvent('ozon:accrual-classifications-updated'));
+    const included=Object.values(map).filter(value=>['expense','income','adjustment'].includes(value.category)&&value.commission_confirmed_not_duplicate===true).length;
+    reviewStatus.textContent='Сохранено в этом браузере · подтверждено типов без дублирования комиссии: '+included+'. Настройки пока не синхронизируются между браузерами.';
+   };
+   select.addEventListener('change',()=>{if(select.value!=='unclassified'&&!map[mappingKey])confirm.checked=false;save()});
+   confirm.addEventListener('change',save);
+   const categoryCell=document.createElement('td');categoryCell.appendChild(select);tr.appendChild(categoryCell);
+   const confirmCell=document.createElement('td');confirmCell.appendChild(confirm);tr.appendChild(confirmCell);
    reviewRows.appendChild(tr);
   }
-  if(!items.length){const tr=document.createElement('tr');cell(tr,'Компоненты для проверки не найдены.');tr.firstChild.colSpan=6;reviewRows.appendChild(tr);}
+  if(!items.length){const tr=document.createElement('tr');cell(tr,'Компоненты для проверки не найдены.');tr.firstChild.colSpan=8;reviewRows.appendChild(tr);}
   const named=items.filter(item=>item.status==='needs_review').length;
   const missing=items.filter(item=>item.status==='missing_dictionary_entry').length;
-  reviewStatus.textContent='Групп типов и валют: '+items.length+' · с названием, но без подтверждённого смысла: '+named+' · отсутствуют в справочнике: '+missing+'. Семантически подтверждённых категорий: 0.';
+  const included=Object.values(map).filter(value=>value&&['expense','income','adjustment'].includes(value.category)&&value.commission_confirmed_not_duplicate===true).length;
+  reviewStatus.textContent='Групп типов и валют: '+items.length+' · с названием, но без подтверждённого смысла: '+named+' · отсутствуют в справочнике: '+missing+' · вручную подтверждено без дублирования комиссии: '+included+'. Выбор категории и подтверждение хранятся только в этом браузере.';
  }
  function csvCell(value){return '"'+String(value??'').replace(/"/g,'""')+'"'}
  function buildCsv(data){
