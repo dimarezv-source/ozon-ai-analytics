@@ -82,7 +82,7 @@
         if(targetPrice!==null){
           const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses});
           if(targetResult.ok){
-            targetProfit=Math.round(targetResult.profit*units*100)/100;
+            targetProfit=Math.round((targetResult.profitExact??targetResult.profit)*units*100)/100;
             scenarioLift=Math.round((targetProfit-lineProfit)*100)/100;
             recommendation='Цена для маржи 15%: ≈ '+money(targetPrice)+'; сценарный эффект '+(scenarioLift>0?'+':'')+money(scenarioLift);
           }
