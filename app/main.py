@@ -936,3 +936,8 @@ async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
             status_code=502,
             detail="Could not retrieve a complete dashboard snapshot from Ozon. Check server logs and API access.",
         ) from None
+
+
+@app.get("/dashboard/settings-backup.js", tags=["dashboard"], include_in_schema=False)
+async def settings_backup_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(Path(__file__).resolve().parents[1] / "dashboard" / "settings-backup.js", media_type="application/javascript")
