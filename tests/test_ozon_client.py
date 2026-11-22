@@ -44,3 +44,98 @@ def test_client_rejects_unapproved_operation_before_network_access() -> None:
 def test_client_rejects_untrusted_base_url(base_url: str) -> None:
     with pytest.raises(ValueError, match="approved HTTPS Ozon host"):
         OzonReadOnlyClient("client-id", "secret", base_url)
+
+
+def test_client_retries_rate_limit_and_honors_retry_after(monkeypatch) -> None:
+    import asyncio
+
+    calls = []
+    delays = []
+
+    class FakeResponse:
+        def __init__(self, status_code, headers=None, body=None):
+            self.status_code = status_code
+            self.headers = headers or {}
+            self.body = body or {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(f"HTTP {self.status_code}")
+
+        def json(self):
+            return self.body
+
+    class FakeAsyncClient:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def request(self, *args, **kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                return FakeResponse(429, {"Retry-After": "2"})
+            return FakeResponse(200, body={"status": "ok"})
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    monkeypatch.setattr("app.ozon.client.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.ozon.client.asyncio.sleep", fake_sleep)
+
+    client = OzonReadOnlyClient("client-id", "secret", "https://api-seller.ozon.ru")
+    result = asyncio.run(client.execute("finance_accrual_postings", {"posting_numbers": ["P-1"]}))
+
+    assert result == {"status": "ok"}
+    assert len(calls) == 2
+    assert delays == [2.0]
+
+
+def test_client_uses_backoff_when_retry_after_is_missing(monkeypatch) -> None:
+    import asyncio
+
+    calls = []
+    delays = []
+
+    class FakeResponse:
+        status_code = 429
+        headers = {}
+
+        def raise_for_status(self):
+            raise RuntimeError("HTTP 429")
+
+    class FakeAsyncClient:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def request(self, *args, **kwargs):
+            calls.append(1)
+            if len(calls) < 3:
+                return FakeResponse()
+            response = FakeResponse()
+            response.status_code = 200
+            response.json = lambda: {"status": "ok"}
+            response.raise_for_status = lambda: None
+            return response
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    monkeypatch.setattr("app.ozon.client.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.ozon.client.asyncio.sleep", fake_sleep)
+
+    client = OzonReadOnlyClient("client-id", "secret", "https://api-seller.ozon.ru")
+    result = asyncio.run(client.execute("finance_accrual_types"))
+
+    assert result == {"status": "ok"}
+    assert delays == [1.0, 2.0]

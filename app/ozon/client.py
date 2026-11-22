@@ -3,6 +3,8 @@
 POST is permitted only for individually reviewed read operations. No write
 operation is registered here.
 """
+import asyncio
+import math
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -78,10 +80,29 @@ class OzonReadOnlyClient:
             headers=self._headers,
             timeout=httpx.Timeout(15.0),
         ) as client:
-            response = await client.request(
-                operation.http_method,
-                operation.path,
-                json=payload or {},
-            )
-            response.raise_for_status()
-            return response.json()
+            # Ozon may temporarily return 429 even when this service is not
+            # issuing requests rapidly (the Client-Id quota is shared with
+            # other integrations). Respect Retry-After instead of failing the
+            # entire finance reconciliation immediately.
+            for attempt in range(4):
+                response = await client.request(
+                    operation.http_method,
+                    operation.path,
+                    json=payload or {},
+                )
+                if response.status_code != 429:
+                    response.raise_for_status()
+                    return response.json()
+                if attempt == 3:
+                    response.raise_for_status()
+
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after)
+                    if not math.isfinite(delay) or delay < 0:
+                        raise ValueError("Invalid Retry-After")
+                except (TypeError, ValueError):
+                    delay = float(2 ** attempt)
+                await asyncio.sleep(delay)
+
+            raise RuntimeError("Ozon API retry loop exited unexpectedly")
