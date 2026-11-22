@@ -40,13 +40,13 @@
     const actuals=new Map();
     let actualUnmatched=0,nonRub=0,missingAmount=0;
     for(const row of Array.isArray(finance.product_commission_summary)?finance.product_commission_summary:[]){
-      const amount=Number(row&&row.sale_commission);
+      const rawAmount=row&&row.sale_commission;\n      const amount=Number(rawAmount);
       const sku=row&&row.sku!==null&&row.sku!==undefined?String(row.sku):'';
       const fulfillment=String(row&&row.fulfillment_type||'').toUpperCase();
       const currency=String(row&&row.currency||'').toUpperCase();
       if(!sku||(fulfillment!=='FBO'&&fulfillment!=='FBS')){actualUnmatched+=Number(row&&row.records)||1;continue;}
       if(currency!=='RUB'){nonRub+=Number(row&&row.records)||1;continue;}
-      if(!Number.isFinite(amount)){missingAmount+=Number(row&&row.records)||1;continue;}
+      if(rawAmount===null||rawAmount===undefined||rawAmount===''||!Number.isFinite(amount)){missingAmount+=Number(row&&row.records)||1;continue;}
       const key=[fulfillment,sku].join('|');
       const current=actuals.get(key)||{fulfillment_type:fulfillment,sku,currency:'RUB',actual_commission:0,records:0};
       current.actual_commission+=amount;
