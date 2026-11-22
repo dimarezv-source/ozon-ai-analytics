@@ -6,6 +6,7 @@
  const storageKey='ozon-ai-analytics-costs-v1';
  let products=[];
  let periodSales=null;
+ let financeReconciliation=null;
  function loadCosts(){try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(_){return {}}}
  function saveCosts(){try{localStorage.setItem(storageKey,JSON.stringify(loadCosts()))}catch(_){}}
  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -99,7 +100,44 @@
   const ex=ranking.excluded;
   set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
  }
- window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
+ function renderProductFactsPanels(){
+  const feeStatus=document.getElementById('productFactsFeeStatus'),returnStatus=document.getElementById('productFactsReturnStatus');
+  const feeBody=document.getElementById('productFactsFeeRows'),returnBody=document.getElementById('productFactsReturnRows');
+  if(!feeStatus||!returnStatus||!feeBody||!returnBody)return;
+  const empty='<tr><td colspan="6" class="hint">Нет данных для отображения.</td></tr>';
+  if(!periodSales||!financeReconciliation||!window.OzonProductFacts){
+   feeStatus.textContent='Загрузи продажи и финансовую сверку за один и тот же период.';
+   returnStatus.textContent='Загрузи продажи и финансовую сверку за один и тот же период.';
+   feeBody.innerHTML=empty;returnBody.innerHTML=empty;return;
+  }
+  const result=window.OzonProductFacts.buildProductFacts(periodSales,financeReconciliation);
+  if(!result.ok){
+   const message='Периоды продаж и финансовой сверки различаются. Выбери одинаковые даты в обоих разделах.';
+   feeStatus.textContent=message;returnStatus.textContent=message;feeBody.innerHTML=empty;returnBody.innerHTML=empty;return;
+  }
+  const fmt=value=>{
+   if(value===null||value===undefined||value==='')return '—';
+   const n=Number(value);return Number.isFinite(n)?new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n):'—';
+  };
+  feeBody.replaceChildren();
+  for(const item of result.feeRows){
+   const tr=document.createElement('tr');
+   [item.sku,item.fulfillment_type||'Не сопоставлено',item.label,fmt(item.amount),item.currency||'Не указана',String(item.components)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td)});
+   feeBody.appendChild(tr);
+  }
+  if(!result.feeRows.length)feeBody.innerHTML=empty;
+  feeStatus.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · строк с SKU: '+result.feeRows.length+' · компонентов: '+result.feeComponents+' · без точной FBO/FBS-привязки: '+result.unmatchedFeeComponents+'. Суммы не добавляются повторно к прибыли.';
+  returnBody.replaceChildren();
+  for(const item of result.returnRows){
+   const tr=document.createElement('tr');
+   [item.sku,item.fulfillment_type||'—',item.return_type,String(item.quantity),item.returned_value===null?'Нет цены':fmt(item.returned_value),item.currency||'Не указана'].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td)});
+   returnBody.appendChild(tr);
+  }
+  if(!result.returnRows.length)returnBody.innerHTML=empty;
+  returnStatus.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · точно сопоставлено возвратов: '+result.matchedReturnRecords+' · требуют проверки: '+result.unmatchedReturnRecords+'. Стоимость товара не считается убытком.';
+ }
+ window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderProductFactsPanels()});
+ window.addEventListener('ozon:finance-reconciliation-loaded',event=>{financeReconciliation=event.detail;renderProductFactsPanels()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;
