@@ -231,6 +231,7 @@
       for (const row of rows) {
         const records = Math.max(1, Number(row.records) || 1);
         const valid = row.sku !== null && row.sku !== undefined && (row.fulfillment_type === 'FBO' || row.fulfillment_type === 'FBS') && String(row.currency || '').toUpperCase() === 'RUB';
+        if (fulfillment && row.fulfillment_type !== fulfillment) continue;
         const mapping = api && valid ? mappings[api.classificationKey(row.type_id, row.currency)] : null;
         if (mapping && mapping.category === 'expense' && mapping.commission_confirmed_not_duplicate === true && Number.isFinite(Number(row.amount))) {
           const key = row.fulfillment_type + ' · RUB';
