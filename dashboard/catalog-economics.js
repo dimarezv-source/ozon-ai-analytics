@@ -105,7 +105,7 @@
    set('intelProfit','—');set('intelProducts','—');set('intelCoverage','—');set('intelLosses','—');
    rows.innerHTML='<tr><td colspan="7" class="hint">Загрузи продажи за выбранный период.</td></tr>';return;
   }
-  const ranking=window.OzonIntelligence.buildProductRanking(periodSales,products,loadCosts(),window.OzonProfitCalculator);
+  const ranking=window.OzonIntelligence.buildProductRanking(periodSales,products,loadCosts(),window.OzonProfitCalculator,financeReconciliation);
   set('intelProfit',ranking.includedUnits?((ranking.estimatedProfit>0?'+':'')+money(ranking.estimatedProfit)):'—');
   set('intelProducts',String(ranking.items.length));
   set('intelCoverage',ranking.coveragePercent.toLocaleString('ru-RU',{maximumFractionDigits:1})+'%');
