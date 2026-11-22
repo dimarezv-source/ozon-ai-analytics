@@ -690,6 +690,11 @@ async def action_prioritizer_script(_: None = Depends(require_dashboard_auth)) -
     return FileResponse(ACTION_PRIORITIZER_FILE, media_type="application/javascript")
 
 
+@app.get("/dashboard/sku-financial-ledger.js", tags=["dashboard"], include_in_schema=False)
+async def sku_financial_ledger_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(Path(__file__).resolve().parents[1] / "dashboard" / "sku-financial-ledger.js", media_type="application/javascript")
+
+
 @app.get("/dashboard/catalog-economics.js", tags=["dashboard"], include_in_schema=False)
 async def catalog_economics_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(CATALOG_ECONOMICS_FILE, media_type="application/javascript")
