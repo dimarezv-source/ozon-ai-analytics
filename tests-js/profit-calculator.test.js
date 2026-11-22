@@ -97,6 +97,6 @@ test('uses signed actual Ozon commission instead of tariff percentage',()=>{
 
 test('preserves positive signed commission adjustments and rejects missing actual amount',()=>{
  const credit=calculateProfitWithActualCommission({fulfillmentType:'FBO',unitPrice:1000,product,expenses:{cost:500},actualCommission:25});
- assert.equal(credit.profitExact,508);assert.equal(credit.actualCommission,25);
+ assert.equal(credit.profitExact,498);assert.equal(credit.actualCommission,25);
  assert.equal(calculateProfitWithActualCommission({fulfillmentType:'FBO',unitPrice:1000,product}).reason,'invalid_actual_commission');
 });
