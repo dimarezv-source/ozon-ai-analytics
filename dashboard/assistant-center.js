@@ -16,7 +16,7 @@
 
   const destinations = [
     { keys: ['продаж','выруч','оборот','заказ'], title: 'Продажи', description: 'Продажи за выбранный период и разбивка по товарам.', selector: '#salesBreakdown', panel: 'sales' },
-    { keys: ['финанс','комисс','удержан','начислен','сверк'], title: 'Финансы', description: 'Финансовая сверка, начисления и структура удержаний.', selector: '#reconciliationPanel', panel: 'finance' },
+    { keys: ['финанс','комисс','удержан','начислен','сверк','расход','затрат'], title: 'Финансы', description: 'Финансовая сверка, начисления и структура удержаний.', selector: '#reconciliationPanel', panel: 'finance' },
     { keys: ['остат','склад','запас','fbo','fbs'], title: 'Остатки и склад', description: 'Наличие, резерв, оборачиваемость и рекомендации по пополнению.', selector: '#inventory', panel: 'inventory' },
     { keys: ['товар','артикул','sku','маржин','прибыл','себестоим'], title: 'Товары и экономика', description: 'Юнит-экономика, прибыльность и сравнение товарных позиций.', selector: '#productGrid', panel: 'products' },
     { keys: ['тариф','логистик','эквайринг'], title: 'Тарифы и расходы', description: 'Комиссии, логистика и известные удержания.', selector: '#fees', panel: 'fees' },
@@ -239,7 +239,7 @@
           current.records += records;
           totals.set(key, current);
           confirmedRecords += records;
-        } else if (valid && mapping && mapping.category !== 'neutral' && mapping.category !== 'commission') {
+        } else if (valid && (!mapping || (mapping.category !== 'neutral' && mapping.category !== 'commission'))) {
           reviewRecords += records;
         }
       }
@@ -287,7 +287,7 @@
       });
       right.append(open);
     }
-    const specificReply = item && item.panel === 'finance' ? answerFinanceQuestion(query) : null;\n    const reply = (specificReply || answerFor(item)) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
+    const specificReply = item ? answerFinanceQuestion(query) : null;\n    const reply = (specificReply || answerFor(item)) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
     addMessage(reply, 'assistant');
     setStatus('Запрос обработан', 'ready');
     if (root.dataset.voiceReply === 'on') speak(reply);
