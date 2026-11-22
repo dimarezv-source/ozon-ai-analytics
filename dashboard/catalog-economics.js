@@ -6,6 +6,7 @@
  const storageKey='ozon-ai-analytics-costs-v1';
  let products=[];
  let periodSales=null;
+ let financeReconciliation=null;
  function loadCosts(){try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(_){return {}}}
  function saveCosts(){try{localStorage.setItem(storageKey,JSON.stringify(loadCosts()))}catch(_){}}
  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -99,7 +100,32 @@
   const ex=ranking.excluded;
   set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
  }
- window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit()});
+ function renderCommissionComparison(){
+  const statusEl=document.getElementById('commissionComparisonStatus'),body=document.getElementById('commissionComparisonRows');
+  if(!statusEl||!body)return;
+  if(!periodSales||!financeReconciliation||!window.OzonCommissionComparison){
+   statusEl.textContent='Загрузи продажи и финансовую сверку за один и тот же период.';
+   body.innerHTML='<tr><td colspan="6" class="hint">Недостаточно данных для сверки.</td></tr>';return;
+  }
+  const result=window.OzonCommissionComparison.compareProductCommissions(periodSales,financeReconciliation,products);
+  if(!result.ok){
+   statusEl.textContent=result.reason==='period_mismatch'?'Периоды продаж и финансовой сверки различаются. Выбери одинаковые даты в обоих блоках.':'Недостаточно данных.';
+   body.innerHTML='<tr><td colspan="6" class="hint">Сравнение не выполняется для разных периодов.</td></tr>';return;
+  }
+  const fmt=value=>value===null||value===undefined?'—':new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)+' ₽';
+  body.replaceChildren();
+  for(const item of result.rows){
+   const tr=document.createElement('tr');
+   const values=[item.sku,item.fulfillment_type,fmt(item.estimated_commission),fmt(item.actual_commission),fmt(item.difference),
+    item.status==='comparable'?'Сопоставлено':item.status==='actual_missing'?'Нет фактической строки':'Нет тарифной оценки'];
+   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===4&&item.difference!==null)td.className='amount';tr.appendChild(td)});
+   body.appendChild(tr);
+  }
+  if(!result.rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;td.className='hint';td.textContent='Нет строк для сравнения.';tr.appendChild(td);body.appendChild(tr)}
+  statusEl.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · сопоставлено SKU/FBO/FBS: '+result.matched+' · без пары: '+result.unmatched+' · без SKU/тарифа в продажах: '+result.estimated_unmatched_units+' шт. · фактических строк без схемы/SKU: '+result.actual_unmatched_records+' · исключено не-RUB: '+result.non_rub_records+' · без суммы: '+result.missing_amount_records+'.';
+ }
+ window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderCommissionComparison()});
+ window.addEventListener('ozon:finance-reconciliation-loaded',event=>{financeReconciliation=event.detail;renderCommissionComparison()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
   const firstMin=Number(p.first_mile_min)||0,firstMax=Number(p.first_mile_max)||0;
