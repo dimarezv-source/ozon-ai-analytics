@@ -11,13 +11,15 @@ const catalog=[
 ];
 test('compares actual and tariff commission only for same period, SKU, fulfillment and RUB',()=>{
  const finance={period:{date_from:'2026-11-01',date_to:'2026-11-07'},product_commission_summary:[
-  {sku:'1001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'290',records:2},
-  {sku:'2002',fulfillment_type:'FBO',currency:'RUB',sale_commission:'75',records:1}
+  {sku:'1001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'-290',records:2},
+  {sku:'2002',fulfillment_type:'FBO',currency:'RUB',sale_commission:'-75',records:1}
  ]};
  const result=compareProductCommissions(sales,finance,catalog);
  assert.equal(result.ok,true);
  assert.equal(result.matched,2);
  assert.equal(result.rows.find(x=>x.sku==='1001').estimated_commission,300);
+ assert.equal(result.rows.find(x=>x.sku==='1001').actual_commission,290);
+ assert.equal(result.rows.find(x=>x.sku==='1001').actual_commission_source,-290);
  assert.equal(result.rows.find(x=>x.sku==='1001').difference,-10);
 });
 test('refuses to compare different date windows',()=>{
@@ -42,4 +44,16 @@ test('keeps missing actual or estimated sides explicit',()=>{
  const result=compareProductCommissions(sales,finance,catalog);
  assert.equal(result.rows.find(x=>x.sku==='1001').status,'actual_missing');
  assert.equal(result.rows.find(x=>x.sku==='9999').status,'estimate_missing');
+});
+
+
+test('treats a positive Ozon commission reversal as a negative expense',()=>{
+ const finance={period:sales.period,product_commission_summary:[
+  {sku:'1001',fulfillment_type:'FBS',currency:'RUB',sale_commission:'20',records:1}
+ ]};
+ const result=compareProductCommissions(sales,finance,catalog);
+ const row=result.rows.find(x=>x.sku==='1001');
+ assert.equal(row.actual_commission_source,20);
+ assert.equal(row.actual_commission,-20);
+ assert.equal(row.difference,-320);
 });
