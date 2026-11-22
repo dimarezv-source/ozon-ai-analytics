@@ -155,7 +155,7 @@
     :readinessParts.join(' · ')||'Недостаточно данных';
    const values=[item.sku,item.fulfillment_type,item.revenue===null?'Нет цены':fmt(item.revenue)+(item.unpriced_units?' · частично':'') ,String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage+(item.unpriced_units?' · без цены '+item.unpriced_units+' шт.':''),readinessLabel];
    const tr=document.createElement('tr');
-   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.classList.add('num');tr.appendChild(td)});
+   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.classList.add('num');if(index===5&&item.service_fee_breakdown&&item.service_fee_breakdown.length){td.textContent=value+' · '+item.service_fee_breakdown.length+' типов';td.title=item.service_fee_breakdown.map(fee=>(fee.label||'Тип начисления')+' #'+fee.type_id+': '+fmt(fee.amount)+' ₽ ('+fee.records+' строк)').join('\n');}tr.appendChild(td)});
    body.appendChild(tr);
   }
   if(!result.rows.length)body.innerHTML=empty;
