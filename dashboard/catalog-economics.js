@@ -104,7 +104,7 @@
   const rows=document.getElementById('intelRows');if(!rows)return;
   if(!periodSales||!window.OzonIntelligence||!window.OzonProfitCalculator){
    set('intelProfit','—');set('intelProducts','—');set('intelCoverage','—');set('intelLosses','—');
-   rows.innerHTML='<tr><td colspan="7" class="hint">Загрузи продажи за выбранный период.</td></tr>';return;
+   rows.innerHTML='<tr><td colspan="7" class="hint">Загрузи продажи за выбранный период.</td></tr>';set('intelStatus','Ожидаем продажи и финансовую сверку.');return;
   }
   const ranking=window.OzonIntelligence.buildProductRanking(periodSales,products,loadCosts(),window.OzonProfitCalculator,financeReconciliation);
   set('intelProfit',ranking.includedUnits?((ranking.estimatedProfit>0?'+':'')+money(ranking.estimatedProfit)):'—');
@@ -121,12 +121,12 @@
   if(!ranking.items.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.className='hint';td.textContent='Пока нет товаров с полными тарифами и заполненной себестоимостью.';tr.appendChild(td);rows.appendChild(tr)}
   window.dispatchEvent(new CustomEvent('ozon:ranking-updated',{detail:ranking}));
   const ex=ranking.excluded;
-  set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
+  set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · фактическая комиссия Ozon: '+(ranking.actualCommissionUnits||0)+' шт. · тарифная оценка комиссии: '+(ranking.tariffCommissionUnits||0)+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Остальные логистические начисления пока не включены в прибыль.');
  }
  function renderSkuFinancialLedger(){
   const statusEl=document.getElementById('skuLedgerStatus'),body=document.getElementById('skuLedgerRows');
   if(!statusEl||!body)return;
-  const empty='<tr><td colspan="8" class="hint">Нет строк для отображения.</td></tr>';
+  const empty='<tr><td colspan="9" class="hint">Нет строк для отображения.</td></tr>';
   if(!periodSales||!financeReconciliation||!window.OzonSkuFinancialLedger){
    statusEl.textContent='Загрузи продажи и финансовую сверку за одинаковый период.';body.innerHTML=empty;return;
   }
@@ -140,7 +140,11 @@
     item.coverage.service_fees==='matched'?'начисления ✓':'начисления —',
     item.coverage.returns==='matched'?'возвраты ✓':'возвраты —'
    ].join(' · ');
-   const values=[item.sku,item.fulfillment_type,item.revenue===null?'Нет цены':fmt(item.revenue)+(item.unpriced_units?' · частично':'') ,String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage+(item.unpriced_units?' · без цены '+item.unpriced_units+' шт.':'')];
+   const readiness=item.profit_readiness||{};
+   const missing=(readiness.missing_components||[]).map(value=>value==='cost_of_goods'?'нет себестоимости':value).join(', ');
+   const review=(readiness.review_components||[]).map(value=>({unclassified_service_accruals:'начисления не классифицированы',service_accrual_source_missing:'нет источника начислений',return_value_is_not_a_confirmed_refund:'возврат не подтверждён как выплата'}[value]||value)).join(', ');
+   const readinessLabel=readiness.can_calculate_profit?'Готово к расчёту':([missing,review].filter(Boolean).join(' · ')||'Недостаточно данных');
+   const values=[item.sku,item.fulfillment_type,item.revenue===null?'Нет цены':fmt(item.revenue)+(item.unpriced_units?' · частично':'') ,String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage+(item.unpriced_units?' · без цены '+item.unpriced_units+' шт.':''),readinessLabel];
    const tr=document.createElement('tr');
    values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.classList.add('num');tr.appendChild(td)});
    body.appendChild(tr);
