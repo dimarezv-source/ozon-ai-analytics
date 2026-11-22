@@ -643,6 +643,8 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         posting_accrual_rows = await _fetch_posting_accruals(client, records)
         from app.analytics.finance_posting_attribution import normalize_posting_accruals
         product_attribution = normalize_posting_accruals(posting_accrual_rows, dictionary, delivered_postings)
+        from app.analytics.product_commission import normalize_product_commissions
+        product_commission_data = normalize_product_commissions(records, delivered_postings)
         return_records = await _fetch_returns(client, date_from, date_to)
         from app.analytics.returns_attribution import attribute_returns_to_delivered_postings
         return_attribution = attribute_returns_to_delivered_postings(return_records, delivered_postings)
@@ -651,7 +653,7 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
                 "source_records":len(records), "delivered_posting_count":len(delivered_postings),
                 "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
                 "returns_attribution":return_attribution,
-                **product_attribution, "dictionary":dictionary, **normalized,
+                **product_attribution, **product_commission_data, "dictionary":dictionary, **normalized,
                 "notice":"This is classified source accrual data, not net payout or verified product profit. Only exact delivered posting-number matches are allocated to FBO/FBS; all other components remain unallocated. Return attribution requires exact posting-number and SKU matches. Returned product-price value is not a confirmed refund or seller loss and is not subtracted from profit automatically."}
     except Exception as exc:
         logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
