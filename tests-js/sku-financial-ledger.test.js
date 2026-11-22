@@ -50,3 +50,21 @@ test('refuses to join different date ranges',()=>{
  assert.equal(result.ok,false);
  assert.equal(result.reason,'period_mismatch');
 });
+
+test('keeps missing sales prices out of zero-valued GMV and exposes partial coverage',()=>{
+ const partialSales={...sales,products:[
+  {sku:'3003',fulfillment_type:'FBS',units:3,sales_gmv:100,unpriced_units:2}
+ ]};
+ const result=buildSkuFinancialLedger(partialSales,{period:sales.period});
+ const row=result.rows[0];
+ assert.equal(row.revenue,100);
+ assert.equal(row.known_price_units,1);
+ assert.equal(row.unpriced_units,2);
+ assert.equal(row.coverage.sales,'partial_price_coverage');
+ const unknownSales={...sales,products:[
+  {sku:'4004',fulfillment_type:'FBO',units:2,sales_gmv:0,unpriced_units:2}
+ ]};
+ const unknown=buildSkuFinancialLedger(unknownSales,{period:sales.period}).rows[0];
+ assert.equal(unknown.revenue,null);
+ assert.equal(unknown.coverage.sales,'no_usable_price');
+});
