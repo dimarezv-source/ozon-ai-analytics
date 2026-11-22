@@ -77,3 +77,16 @@ test('finance assistant never labels preliminary product economics as actual net
 test('AI center script parses as valid JavaScript before deployment', () => {
   assert.doesNotThrow(() => new vm.Script(script, { filename: 'assistant-center.js' }));
 });
+
+
+test('finance assistant does not substitute store-wide profit for SKU profit and parses article aliases', () => {
+  assert.match(script, /const asksProfit = \/прибыл\|сколько заработал\//);
+  assert.ok(script.includes('артикул\\s*[:#№-]?\\s*(\\d{3,})'));
+  assert.match(script, /Не буду подменять прибыль конкретного SKU общей прибылью магазина/);
+});
+
+test('finance assistant preserves missing commission values instead of reporting them as zero', () => {
+  assert.match(script, /knownRecords: 0, missingRecords: 0/);
+  assert.match(script, /сумма не указана/);
+  assert.match(script, /без значения:/);
+});
