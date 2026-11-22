@@ -201,8 +201,8 @@
     const asksCommission = /комисс|sale_commission/.test(q);
     const asksExpense = /расход|затрат|удержан/.test(q);
     const asksProfit = /чист(ая|ой) прибыль|фактическ(ая|ой) прибыль|реальн(ая|ой) прибыль|сколько заработал/.test(q);
-    const fulfillment = /\\bfbo\\b|фбо/.test(q) ? 'FBO' : (/\\bfbs\\b|фбс/.test(q) ? 'FBS' : null);
-    const skuMatch = q.match(/\\bsku\\s*[:#№-]?\\s*(\\d{3,})\\b/i);
+    const fulfillment = /\bfbo\b|фбо/.test(q) ? 'FBO' : (/\bfbs\b|фбс/.test(q) ? 'FBS' : null);
+    const skuMatch = q.match(/\bsku\s*[:#№-]?\s*(\d{3,})\b/i);
     const sku = skuMatch ? skuMatch[1] : null;
     const signedMoney = value => new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
     if (asksCommission && (fulfillment || sku)) {
