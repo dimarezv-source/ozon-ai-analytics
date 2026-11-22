@@ -409,6 +409,12 @@ button:active{transform:translateY(1px)}
   <button id="exportEconomics" class="secondary" type="button">Экспорт CSV</button>
   <button id="clearCosts" class="secondary" type="button">Сбросить расходы</button>
  </div>
+ <section class="card" id="commissionComparison" data-module="unit-economics" style="margin:0 0 18px">
+  <div class="sectionhead" style="margin:0"><div><h2>Фактическая комиссия Ozon vs тарифная оценка</h2><p>Сопоставление по одинаковому периоду, SKU, FBO/FBS и RUB</p></div><span class="tag">СВЕРКА</span></div>
+  <p id="commissionComparisonStatus" class="hint" aria-live="polite">Загрузи продажи и финансовую сверку за один и тот же период.</p>
+  <div class="accrual-table-wrap"><table class="accrual-table"><thead><tr><th>SKU</th><th>Схема</th><th>Тарифная оценка</th><th>Комиссия Ozon</th><th>Разница</th><th>Статус</th></tr></thead><tbody id="commissionComparisonRows"><tr><td colspan="6" class="hint">Ожидаем совпадающие данные.</td></tr></tbody></table></div>
+  <p class="accrual-caveat">Фактическая сумма берётся из исходного поля posting.products[].commission.sale_commission. Тарифная оценка рассчитывается от GMV доставленных продаж. Сравниваются только одинаковые даты, SKU, схема и рублёвая валюта. Разница — диагностический сигнал, не подтверждённое удержание, долг или прибыль; строки с неизвестной валютой и без точного совпадения не смешиваются.</p>
+ </section>
  <section class="grid products" id="productGrid" data-module="unit-economics"></section>
  <section class="grid bottom">
   <div class="card" id="fees" data-module="fees"><div class="sectionhead" style="margin:0"><div><h2>Структура известных удержаний</h2><p>Расчёт от текущей цены; транзит показан диапазоном.</p></div></div>
@@ -437,6 +443,7 @@ button:active{transform:translateY(1px)}
 <script src="/dashboard/module-manager.js"></script>
 <script src="/dashboard/layout-manager.js"></script>
 <script src="/dashboard/profit-calculator.js"></script>
+<script src="/dashboard/commission-comparison.js"></script>
 <script src="/dashboard/intelligence.js"></script>
 <script src="/dashboard/action-prioritizer.js"></script>
 <script src="/dashboard/loss-alerts.js"></script>
