@@ -78,6 +78,7 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
     unknown_by_currency = {}
     total_by_currency = {}
     currencies = set()
+    classification_coverage = {}
 
     for record in records or []:
         components = collect_components(record)
@@ -132,10 +133,22 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
                     "amount": Decimal("0"), "components": 0})
                 product_row["amount"] += amount
                 product_row["components"] += 1
+            # A dictionary label identifies the source operation type, but does not
+            # by itself establish whether it is an expense, compensation, or adjustment.
+            semantic_status = "needs_review" if label else "missing_dictionary_entry"
+            coverage_key = (type_id, currency, semantic_status)
+            coverage = classification_coverage.setdefault(coverage_key, {
+                "type_id": type_id, "label": label, "currency": currency,
+                "status": semantic_status, "amount": Decimal("0"), "records": 0,
+            })
+            coverage["amount"] += amount
+            coverage["records"] += 1
             output.append({**component, "label": label,
                 "posting_number": number, "fulfillment_type": fulfillment,
                 "posting_match": "matched" if fulfillment else "unmatched",
-                "classification": "known_type" if label else "unknown_type"})
+                "classification": "known_type" if label else "unknown_type",
+                "semantic_classification": "unclassified",
+                "classification_status": semantic_status})
             currencies.add(currency_bucket)
 
     serialized = _serialize_totals(summary)
@@ -154,6 +167,10 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
         "fulfillment_summary": _serialize_totals(fulfillment_totals),
         "unmatched_summary": _serialize_totals(unmatched_totals),
         "product_fee_summary": _serialize_totals(product_fee_totals),
+        "classification_coverage": [
+            {**item, "amount": str(item["amount"])}
+            for _, item in sorted(classification_coverage.items(), key=lambda pair: pair[0])
+        ],
         "metrics": {
             "component_count": len(output),
             "posting_match_count": matched_count,
@@ -163,6 +180,10 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             "sku_unattributed_count": sum(1 for row in output if row.get("sku") is None),
             "known_type_count": known_count,
             "unknown_type_count": unknown_count,
+            "semantically_classified_count": 0,
+            "named_but_unclassified_count": known_count,
+            "missing_dictionary_entry_count": unknown_count,
+            "classification_review_count": len(output),
             "matched_amount": str(sum(matched_by_currency.values(), Decimal("0"))) if single_currency else None,
             "known_type_amount": str(sum(known_by_currency.values(), Decimal("0"))) if single_currency else None,
             "total_component_amount": str(sum(total_by_currency.values(), Decimal("0"))) if single_currency else None,
@@ -172,5 +193,6 @@ def normalize_accrual_records(records, type_dictionary=None, delivered_postings=
             "total_component_amount_by_currency": amounts(total_by_currency),
             "currencies": sorted(currencies),
         },
+        "classification_basis": "Ozon dictionary names/descriptions identify operation types only. No expense, compensation, adjustment, or neutral category is inferred without a separately verified mapping.",
         "basis": "Raw source components; type labels only from Ozon dictionary. Posting attribution requires exact delivered posting-number match. Amounts are separated by currency.",
     }
