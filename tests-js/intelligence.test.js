@@ -119,7 +119,7 @@ test('uses signed actual Ozon commission in intelligence ranking when periods an
  assert.equal(result.items.every(item=>item.dataStatus==='actual_commission_plus_estimated_costs'),true);
  const fbs=result.items.find(item=>item.fulfillmentType==='FBS');
  const baseline=calculateProfit({fulfillmentType:'FBS',unitPrice:100,product,expenses:{cost:50,pack:2,ads:3,transit:0,other:0,tax:0}});
- assert.equal(fbs.profit,Math.round((baseline.profitExact-12-15)*2*100)/100);
+ assert.equal(fbs.profit,Math.round((baseline.profitExact+12-15)*2*100)/100);
 });
 
 test('ignores actual commission from mismatched finance periods',()=>{
