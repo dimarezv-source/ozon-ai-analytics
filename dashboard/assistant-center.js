@@ -79,6 +79,14 @@
         }
         rows.slice(0, 5).forEach(row => metric(fulfillment + ' · ' + (row.label || ('тип ID ' + row.type_id)), number(row.amount) + ' ' + (row.currency || 'валюта не указана'), number(row.components) + ' компонентов'));
       }
+      const commissionMetrics = d.product_commission_metrics || {};
+      const commissionRows = d.product_commission_summary || [];
+      metric('Исходные комиссии товаров', number(commissionMetrics.record_count), number(commissionMetrics.matched_count) + ' точно сопоставлено · ' + number(commissionMetrics.unmatched_count) + ' без совпадения');
+      commissionRows.slice(0, 6).forEach(row => {
+        const commissionAmount = row.sale_commission === null || row.sale_commission === undefined ? 'нет значения' : number(row.sale_commission);
+        metric((row.fulfillment_type || 'Без схемы') + ' · SKU ' + (row.sku || '—') + ' · комиссия продажи', commissionAmount + ' ' + (row.currency || 'валюта не указана'), number(row.records) + ' записей; исходные данные Ozon');
+      });
+      if (!commissionRows.length) metric('Комиссия продажи по товарам', 'Нет данных', 'В ответе финансовой сверки нет явных строк posting.products[].commission.');
       if (currencies.length) currencies.forEach(currency => metric('Компоненты · ' + currency, number(totals[currency]) + ' ' + currency, 'Сумма с исходным знаком; валюты не смешиваются'));
       (d.summary || []).slice(0, 4).forEach(row => metric(row.label || ('Неизвестный тип ID ' + row.type_id), number(row.amount) + ' ' + (row.currency || 'валюта не указана'), number(row.records) + ' компонентов'));
       const attribution = d.returns_attribution || {};
@@ -153,6 +161,15 @@
           reply += ' Для ' + fulfillment + ' нет компонентов с точным сопоставлением за период.';
         }
       }
+      const commissionMetrics = d.product_commission_metrics || {};
+      const commissionRows = d.product_commission_summary || [];
+      reply += ' Исходные комиссии товаров: ' + number(commissionMetrics.record_count) + ' записей; точно сопоставлено: ' + number(commissionMetrics.matched_count) + ', без совпадения: ' + number(commissionMetrics.unmatched_count) + '.';
+      const commissionText = commissionRows.slice(0, 6).map(row => {
+        const amount = row.sale_commission === null || row.sale_commission === undefined ? 'значение не указано' : number(row.sale_commission) + ' ' + (row.currency || 'валюта не указана');
+        return (row.fulfillment_type || 'без схемы') + ', SKU ' + (row.sku || '—') + ': комиссия продажи ' + amount;
+      }).join('; ');
+      if (commissionText) reply += ' По товарам: ' + commissionText + '.';
+      reply += ' Комиссия продажи взята из отдельного исходного поля Ozon и не суммируется повторно с сервисными компонентами. Она сама по себе не является полной суммой расходов, выплатой или прибылью.';
       reply += ' Возвратов: ' + number(d.return_record_count) + '; точно сопоставлено: ' + number(returns.matched_count) + ', требуют проверки: ' + number(returns.unmatched_count) + '. Это исходные начисления и удержания, не чистая выплата Ozon и не фактическая прибыль. Стоимость товара в возврате не является подтверждённым возвратом денег или убытком.';
       return reply;
     }
