@@ -109,7 +109,7 @@
       }else if(margin<15){
         if(hasActualCommission){recommendation='Маржа ниже 15% с фактической комиссией Ozon: проверь себестоимость и остальные расходы';}
         else if(targetPrice!==null){
-          const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses});
+          const targetResult=calculate({fulfillmentType:fulfillment,unitPrice:targetPrice,product,expenses,accrualAdjustment:classifiedAccrualAdjustment});
           if(targetResult.ok){
             targetProfit=Math.round((targetResult.profitExact??targetResult.profit)*units*100)/100;
             scenarioLift=Math.round((targetProfit-lineProfit)*100)/100;
