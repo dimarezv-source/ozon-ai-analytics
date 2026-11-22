@@ -9,13 +9,14 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from urllib.parse import parse_qs
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import get_settings
 from app.ozon.client import OzonReadOnlyClient
 from app.analytics.inventory import fetch_inventory
+from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
 
 logger = logging.getLogger(__name__)
 security = HTTPBasic(auto_error=False)
@@ -659,6 +660,59 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
     except Exception as exc:
         logger.exception("Reconciliation fetch failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
+
+@app.get("/api/settings/costs", tags=["dashboard"])
+async def get_cost_settings(_: None = Depends(require_dashboard_auth)) -> dict:
+    """Load the authenticated dashboard user's saved per-SKU cost assumptions."""
+    settings = get_settings()
+    tenant_id = settings.dashboard_username
+    if not tenant_id:
+        raise HTTPException(status_code=503, detail="Dashboard user is not configured.")
+    try:
+        saved = load_cost_settings(tenant_id)
+        return {"status": "ok", "source": "postgresql", **saved}
+    except PersistenceNotConfigured:
+        raise HTTPException(status_code=503, detail="PostgreSQL persistence is not configured.") from None
+    except Exception as exc:
+        logger.exception("Could not load persistent cost settings: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Не удалось загрузить сохранённые расходы из базы данных.") from None
+
+
+@app.put("/api/settings/costs", tags=["dashboard"])
+async def put_cost_settings(
+    payload: dict = Body(...),
+    _: None = Depends(require_dashboard_auth),
+) -> dict:
+    """Persist per-SKU cost assumptions for the authenticated dashboard user."""
+    settings = get_settings()
+    tenant_id = settings.dashboard_username
+    costs = payload.get("costs") if isinstance(payload, dict) else None
+    if not tenant_id:
+        raise HTTPException(status_code=503, detail="Dashboard user is not configured.")
+    if not isinstance(costs, dict) or len(costs) > 10000:
+        raise HTTPException(status_code=400, detail="Некорректный формат расходов.")
+    allowed_fields = {"cost", "pack", "ads", "transit", "other", "tax", "costConfigured"}
+    for sku_key, values in costs.items():
+        if not isinstance(sku_key, str) or not sku_key or len(sku_key) > 200 or not isinstance(values, dict):
+            raise HTTPException(status_code=400, detail="Некорректная запись товара.")
+        if set(values) - allowed_fields:
+            raise HTTPException(status_code=400, detail="В записи товара есть неизвестные поля.")
+        for field, value in values.items():
+            if field == "costConfigured":
+                if not isinstance(value, bool):
+                    raise HTTPException(status_code=400, detail="Некорректный признак себестоимости.")
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not Decimal(str(value)).is_finite() or value < 0:
+                raise HTTPException(status_code=400, detail="Расходы должны быть неотрицательными числами.")
+    try:
+        saved = save_cost_settings(tenant_id, costs)
+        return {"status": "ok", "source": "postgresql", **saved}
+    except PersistenceNotConfigured:
+        raise HTTPException(status_code=503, detail="PostgreSQL persistence is not configured.") from None
+    except Exception as exc:
+        logger.exception("Could not save persistent cost settings: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Не удалось сохранить расходы в базе данных.") from None
+
 
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
