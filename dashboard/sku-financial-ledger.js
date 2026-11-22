@@ -14,7 +14,7 @@
    const schema=String(sale&&sale.fulfillment_type||'').toUpperCase();
    if(!sku||(schema!=='FBO'&&schema!=='FBS')){unkeyedSalesUnits+=units;continue;}
    const id=key(schema,sku);
-   const row=rows.get(id)||{sku,fulfillment_type:schema,units:0,revenue:0,known_price_units:0,unpriced_units:0,commission_actual_rub:null,commission_records:0,service_fee_raw_rub:null,service_fee_records:0,return_quantity:0,return_priced_quantity:0,return_records:0,return_value_rub:null,coverage:{}};
+   const row=rows.get(id)||{sku,fulfillment_type:schema,units:0,revenue:0,known_price_units:0,unpriced_units:0,commission_actual_rub:null,commission_records:0,service_fee_raw_rub:null,service_fee_records:0,service_fee_breakdown:[],return_quantity:0,return_priced_quantity:0,return_records:0,return_value_rub:null,coverage:{}};
    row.units+=units;
    if(finite(sale.sales_gmv)){row.revenue+=Number(sale.sales_gmv);row.known_price_units+=Math.max(0,units-Math.max(0,Number(sale.unpriced_units)||0));}
    row.unpriced_units+=Math.max(0,Number(sale.unpriced_units)||0);
@@ -38,7 +38,7 @@
   }
   // Use posting_product_summary only. product_fee_summary is a second view of
   // accrual components and must not be added again.
-  const serviceBuckets=new Map();
+  const serviceBuckets=new Map(),serviceTypeBuckets=new Map();
   for(const item of Array.isArray(finance.posting_product_summary)?finance.posting_product_summary:[]){
    const sku=item&&item.sku!==null&&item.sku!==undefined?String(item.sku):'';
    const schema=String(item&&item.fulfillment_type||'').toUpperCase();
@@ -48,11 +48,21 @@
    if(!finite(item.amount))continue;
    const id=key(schema,sku),bucket=serviceBuckets.get(id)||{amount:0,records:0};
    bucket.amount+=Number(item.amount);bucket.records+=records;serviceBuckets.set(id,bucket);
+   const typeId=String(item.type_id??'UNKNOWN'),typeKey=id+'|'+typeId;
+   const typeBucket=serviceTypeBuckets.get(typeKey)||{sku,schema,type_id:typeId,label:item.label||null,currency:'RUB',amount:0,records:0};
+   typeBucket.amount+=Number(item.amount);typeBucket.records+=records;
+   if(!typeBucket.label&&item.label)typeBucket.label=String(item.label);
+   serviceTypeBuckets.set(typeKey,typeBucket);
   }
   for(const [id,bucket] of serviceBuckets){
    const row=rows.get(id);if(!row)continue;
    row.service_fee_raw_rub=bucket.amount;row.service_fee_records=bucket.records;
   }
+  for(const [typeKey,bucket] of serviceTypeBuckets){
+   const row=rows.get(typeKey.slice(0,typeKey.lastIndexOf('|')));if(!row)continue;
+   row.service_fee_breakdown.push({type_id:bucket.type_id,label:bucket.label,currency:bucket.currency,amount:Math.round(bucket.amount*100)/100,records:bucket.records});
+  }
+  for(const row of rows.values())row.service_fee_breakdown.sort((a,b)=>a.type_id.localeCompare(b.type_id,'ru'));
   const returnBuckets=new Map();
   const returns=finance.returns_attribution||{};
   for(const item of Array.isArray(returns.summary)?returns.summary:[]){
