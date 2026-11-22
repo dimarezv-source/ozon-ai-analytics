@@ -48,3 +48,23 @@ test('AI center renders live data from existing dashboard events', () => {
   assert.match(script, /Разбивка /);
   assert.match(script, /точно сопоставленным отправлениям/);
 });
+
+\ntest('finance assistant answers commission questions by exact FBO/FBS and SKU attribution', () => {
+  assert.match(script, /function answerFinanceQuestion\\(query\\)/);
+  assert.match(script, /product_commission_summary/);
+  assert.match(script, /row\\.fulfillment_type === fulfillment/);
+  assert.match(script, /String\\(row\\.sku\\) === sku/);
+  assert.match(script, /исходный знак Ozon/);
+});
+
+test('finance assistant includes only manually confirmed RUB SKU expenses', () => {
+  assert.match(script, /OzonAccrualClassification/);
+  assert.match(script, /commission_confirmed_not_duplicate === true/);
+  assert.match(script, /String\\(row\\.currency \\|\\| ''\\)\\.toUpperCase\\(\\) === 'RUB'/);
+  assert.match(script, /не буду автоматически называть расходами/);
+});
+
+test('finance assistant never labels preliminary product economics as actual net profit', () => {
+  assert.match(script, /Предварительная расчётная прибыль/);
+  assert.match(script, /не фактическая чистая прибыль/);
+});
