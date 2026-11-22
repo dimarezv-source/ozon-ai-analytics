@@ -23,7 +23,7 @@ test('ranks FBO and FBS separately and computes estimated profit from saved cost
  assert.equal(result.includedUnits,3);
  assert.equal(result.coveragePercent,100);
  assert.equal(result.isActualProfit,false);
- assert.equal(result.source,'delivered_sales_and_user_costs');
+ assert.equal(result.source,'delivered_sales_user_costs_and_actual_commission_when_matched');
  assert.ok(Number.isFinite(result.estimatedProfit));
 });
 
