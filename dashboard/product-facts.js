@@ -1,0 +1,36 @@
+(function(root){
+ function buildProductFacts(sales,finance){
+  const empty={ok:false,reason:'missing_data',feeRows:[],returnRows:[],feeComponents:0,unmatchedFeeComponents:0,matchedReturnRecords:0,unmatchedReturnRecords:0};
+  const sp=sales&&sales.period||{},fp=finance&&finance.period||{};
+  if(!sales||!finance||!sp.date_from||!sp.date_to||sp.date_from!==fp.date_from||sp.date_to!==fp.date_to)
+   return {...empty,reason:'period_mismatch'};
+  const feeRows=(Array.isArray(finance.product_fee_summary)?finance.product_fee_summary:[])
+   .filter(row=>row&&row.sku!==null&&row.sku!==undefined&&String(row.sku)!=='')
+   .map(row=>({
+    sku:String(row.sku),fulfillment_type:row.fulfillment_type==='FBO'||row.fulfillment_type==='FBS'?row.fulfillment_type:null,
+    label:String(row.label||('Тип начисления '+(row.type_id??'неизвестен'))),
+    type_id:String(row.type_id??''),currency:String(row.currency||''),
+    amount:row.amount===null||row.amount===undefined?null:String(row.amount),
+    components:Number(row.components)||0
+   }));
+  const returns=finance.returns_attribution||{};
+  const returnRows=(Array.isArray(returns.summary)?returns.summary:[])
+   .filter(row=>row&&row.sku!==null&&row.sku!==undefined&&String(row.sku)!=='')
+   .map(row=>({
+    sku:String(row.sku),fulfillment_type:row.fulfillment_type==='FBO'||row.fulfillment_type==='FBS'?row.fulfillment_type:null,
+    return_type:String(row.return_type||'UNKNOWN'),currency:String(row.currency||''),
+    quantity:Number(row.quantity)||0,returned_value:row.returned_value===null||row.returned_value===undefined?null:String(row.returned_value),
+    priced_quantity:Number(row.priced_quantity)||0,return_records:Number(row.return_records)||0
+   }));
+  return {
+   ok:true,period:{date_from:sp.date_from,date_to:sp.date_to},feeRows,returnRows,
+   feeComponents:feeRows.reduce((sum,row)=>sum+row.components,0),
+   unmatchedFeeComponents:feeRows.filter(row=>!row.fulfillment_type).reduce((sum,row)=>sum+row.components,0),
+   matchedReturnRecords:Number(returns.matched_count)||0,unmatchedReturnRecords:Number(returns.unmatched_count)||0,
+   basis:'Source service-accrual components are displayed separately from tariff estimates. Returns are attributed only by exact delivered posting number and SKU. Returned product-price value is not a confirmed refund, compensation, or seller loss.'
+  };
+ }
+ const api={buildProductFacts};
+ root.OzonProductFacts=api;
+ if(typeof module!=='undefined'&&module.exports)module.exports=api;
+})(typeof globalThis!=='undefined'?globalThis:this);
