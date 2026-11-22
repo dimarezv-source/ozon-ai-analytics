@@ -166,3 +166,22 @@ test('unconfirmed accrual classification never changes ranked profit',()=>{
   assert.equal(result.estimatedProfit,base.estimatedProfit);
  }finally{global.localStorage=original;}
 });
+
+test('keeps verified accrual adjustment in the 15 percent target-price scenario',()=>{
+ const period={date_from:'2026-11-01',date_to:'2026-11-07'};
+ const lowMargin={'101':{cost:60,costConfigured:true,pack:2,ads:3,transit:0,other:0,tax:0}};
+ const finance={period,posting_product_summary:[
+  {sku:'9001',fulfillment_type:'FBS',currency:'RUB',type_id:'77',amount:'-20',records:2}
+ ]};
+ const mapping={[classificationKey('77','RUB')]:{category:'expense',commission_confirmed_not_duplicate:true}};
+ const original=global.localStorage;
+ global.localStorage={getItem:()=>JSON.stringify(mapping)};
+ try{
+  const periodSales={products:[{sku:'9001',units:2,sales_gmv:200,fulfillment_type:'FBS'}],period};
+  const result=buildProductRanking(periodSales,[product],lowMargin,{calculateProfit},finance);
+  const item=result.items[0];
+  const expected=calculateProfit({fulfillmentType:'FBS',unitPrice:item.targetPrice,product,expenses:lowMargin['101'],accrualAdjustment:-10});
+  assert.ok(item.targetPrice>item.unitPrice);
+  assert.equal(item.scenarioProfit,Math.round(expected.profitExact*2*100)/100);
+ }finally{global.localStorage=original;}
+});
