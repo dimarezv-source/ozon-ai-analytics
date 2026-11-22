@@ -75,8 +75,8 @@
         cost:expense.cost,pack:expense.pack??0,ads:expense.ads??0,transit:expense.transit??0,
         other:expense.other??0,tax:expense.tax??0
       };
-      const key=commissionKey(fulfillment,product.sku??sale.sku);
-      const actualTotal=actualCommissionTotals.get(key),totalSalesGmv=salesGmvTotals.get(key)||0;
+      const commissionBucketKey=commissionKey(fulfillment,product.sku??sale.sku);
+      const actualTotal=actualCommissionTotals.get(commissionBucketKey),totalSalesGmv=salesGmvTotals.get(commissionBucketKey)||0;
       const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0&&typeof calculator.calculateProfitWithActualCommission==='function';
       const actualForRow=hasActualCommission?actualTotal*(revenue/totalSalesGmv)/units:null;
       const result=hasActualCommission
@@ -100,7 +100,7 @@
             recommendation='Убыток: безубыточная цена ≈ '+money(targetPrice)+'; сценарный эффект '+(scenarioLift>0?'+':'')+money(scenarioLift)+' при тех же продажах';
           }
         }
-        if(targetPrice===null)recommendation='Убыток: сократить себестоимость и расходы или пересмотреть тарифную схему';
+        if(targetPrice===null&&!hasActualCommission)recommendation='Убыток: сократить себестоимость и расходы или пересмотреть тарифную схему';
       }else if(margin<15){
         if(hasActualCommission){recommendation='Маржа ниже 15% с фактической комиссией Ozon: проверь себестоимость и остальные расходы';}
         else if(targetPrice!==null){
@@ -111,7 +111,7 @@
             recommendation='Цена для маржи 15%: ≈ '+money(targetPrice)+'; сценарный эффект '+(scenarioLift>0?'+':'')+money(scenarioLift);
           }
         }
-        if(targetPrice===null)recommendation='Снизить расходы: при текущих тарифах целевая маржа недостижима';
+        if(targetPrice===null&&!hasActualCommission)recommendation='Снизить расходы: при текущих тарифах целевая маржа недостижима';
       }else if(margin>=25)recommendation=hasActualCommission?'Лидер с фактической комиссией: сохранить экономику':'Лидер: сохранить экономику';
       ranked.push({
         productId:product.product_id??null,sku:product.sku??sale.sku??null,
