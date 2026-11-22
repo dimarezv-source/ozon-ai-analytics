@@ -100,6 +100,32 @@
   const ex=ranking.excluded;
   set('intelStatus','Учтено '+ranking.includedUnits+' из '+ranking.totalUnits+' шт. · исключено: без себестоимости '+ex.missingCost+', без тарифа '+ex.missingTariff+', товар не найден '+ex.unmatched+', без цены '+ex.unpriced+', неизвестная схема '+ex.unknownFulfillment+'. Прибыль предварительная, не фактическая выплата Ozon.');
  }
+ function renderSkuFinancialLedger(){
+  const statusEl=document.getElementById('skuLedgerStatus'),body=document.getElementById('skuLedgerRows');
+  if(!statusEl||!body)return;
+  const empty='<tr><td colspan="8" class="hint">Нет строк для отображения.</td></tr>';
+  if(!periodSales||!financeReconciliation||!window.OzonSkuFinancialLedger){
+   statusEl.textContent='Загрузи продажи и финансовую сверку за одинаковый период.';body.innerHTML=empty;return;
+  }
+  const result=window.OzonSkuFinancialLedger.buildSkuFinancialLedger(periodSales,financeReconciliation);
+  if(!result.ok){statusEl.textContent='Периоды продаж и финансовой сверки различаются. Выбери одинаковые даты.';body.innerHTML=empty;return;}
+  const fmt=value=>value===null||value===undefined?'Нет строки':new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
+  body.replaceChildren();
+  for(const item of result.rows){
+   const coverage=[
+    item.coverage.commission==='matched'?'комиссия ✓':'комиссия —',
+    item.coverage.service_fees==='matched'?'начисления ✓':'начисления —',
+    item.coverage.returns==='matched'?'возвраты ✓':'возвраты —'
+   ].join(' · ');
+   const values=[item.sku,item.fulfillment_type,fmt(item.revenue),String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage];
+   const tr=document.createElement('tr');
+   values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.classList.add('num');tr.appendChild(td)});
+   body.appendChild(tr);
+  }
+  if(!result.rows.length)body.innerHTML=empty;
+  const m=result.metrics;
+  statusEl.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · SKU продаж: '+m.sales_skus+' · с фактической комиссией: '+m.commission_matched_skus+' · с исходными начислениями: '+m.service_fee_skus+' · с возвратами: '+m.return_skus+' · не привязано начислений: '+m.unmatched_service_records+' · исключено не-RUB: комиссия '+m.non_rub_commission_records+', начисления '+m.non_rub_service_records+'.';
+ }
  function renderProductFactsPanels(){
   const feeStatus=document.getElementById('productFactsFeeStatus'),returnStatus=document.getElementById('productFactsReturnStatus');
   const feeBody=document.getElementById('productFactsFeeRows'),returnBody=document.getElementById('productFactsReturnRows');
@@ -149,7 +175,7 @@
   if(!result.rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;td.className='hint';td.textContent='Нет строк для сравнения.';tr.appendChild(td);body.appendChild(tr)}
   statusEl.textContent='Период '+result.period.date_from+' — '+result.period.date_to+' · сопоставлено SKU/FBO/FBS: '+result.matched+' · без пары: '+result.unmatched+' · без SKU/тарифа в продажах: '+result.estimated_unmatched_units+' шт. · фактических строк без схемы/SKU: '+result.actual_unmatched_records+' · исключено не-RUB: '+result.non_rub_records+' · без суммы: '+result.missing_amount_records+'.';
  }
- window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderCommissionComparison();renderProductFactsPanels()});
+ window.addEventListener('ozon:sales-loaded',event=>{periodSales=event.detail;updatePeriodProfit();renderCommissionComparison();renderProductFactsPanels();renderSkuFinancialLedger()});
  window.addEventListener('ozon:finance-reconciliation-loaded',event=>{financeReconciliation=event.detail;renderCommissionComparison();renderProductFactsPanels()});
  function makeCard(p){
   const key=safeKey(p),costs=loadCosts()[key]||{},price=Number(p.price)||0,commission=Number(p.sales_percent_fbs)||0;
