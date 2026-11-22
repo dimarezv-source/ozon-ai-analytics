@@ -7,8 +7,36 @@
  let products=[];
  let periodSales=null;
  let financeReconciliation=null;
+ let persistenceAvailable=false;
+ let persistenceTimer=null;
  function loadCosts(){try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(_){return {}}}
  function saveCosts(){try{localStorage.setItem(storageKey,JSON.stringify(loadCosts()))}catch(_){}}
+ async function initializeCostPersistence(){
+  try{
+   const response=await fetch('/api/settings/costs',{headers:{Accept:'application/json'}});
+   if(!response.ok)return;
+   const data=await response.json();
+   if(data.status!=='ok'||data.source!=='postgresql'||!data.costs||typeof data.costs!=='object')return;
+   const local=loadCosts(),remote=data.costs;
+   if(!Object.keys(remote).length&&Object.keys(local).length){
+    const migrated=await fetch('/api/settings/costs',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({costs:local})});
+    if(!migrated.ok)return;
+   }else{
+    try{localStorage.setItem(storageKey,JSON.stringify(remote))}catch(_){}
+   }
+   persistenceAvailable=true;
+  }catch(_){persistenceAvailable=false}
+ }
+ function schedulePersistentSave(costs){
+  if(!persistenceAvailable)return;
+  if(persistenceTimer)clearTimeout(persistenceTimer);
+  persistenceTimer=setTimeout(async()=>{
+   try{
+    const response=await fetch('/api/settings/costs',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({costs})});
+    if(!response.ok)persistenceAvailable=false;
+   }catch(_){persistenceAvailable=false}
+  },500);
+ }
  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
  function updatePeriodProfit(){
   const box=document.getElementById('periodProfit');
@@ -238,7 +266,7 @@
    const valid=calculation.ok,profit=valid?calculation.profit:0,margin=valid?calculation.marginPercent:0;
    card.querySelector('[data-out=profit]').textContent=!valid?(calculation.reason==='missing_tariff'?'Нужны тарифы':'Проверь расходы'):price?money(profit):'Нет цены';
    const out=card.querySelector('[data-out=margin]');out.textContent=!valid?'Неполные данные':(margin>=0?'+':'')+margin.toFixed(1).replace('.',',')+'%';out.style.color=!valid?'#c58b2b':profit>=0?'#ffb080':'#ff7770';
-   const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}
+   const all=loadCosts();all[key]=vals;try{localStorage.setItem(storageKey,JSON.stringify(all))}catch(_){}schedulePersistentSave(all);
     window.dispatchEvent(new CustomEvent('ozon:costs-updated'));
    card.dataset.profit=valid?String(profit):'';card.dataset.margin=valid?String(margin):'';
    const scenarioInput=card.querySelector('[data-sim-price]'),scenarioPrice=scenarioInput&&scenarioInput.value!==''?Number(scenarioInput.value):NaN;
@@ -266,6 +294,7 @@
   if(!shown)grid.innerHTML='<div class="empty">Ничего не найдено. Измени поисковый запрос.</div>';
  }
  async function refresh(){
+  await initializeCostPersistence();
   status.innerHTML='<i class="dot" style="background:#d39a37"></i>Обновление данных…';
   try{
    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),75000);
@@ -279,12 +308,12 @@
    document.querySelector('[data-commission-average-fbs]').textContent=commissionsFbs.length?pct(commissionsFbs.reduce((a,b)=>a+b,0)/commissionsFbs.length):'—';
    document.querySelector('[data-commission-average-fbo]').textContent=commissionsFbo.length?pct(commissionsFbo.reduce((a,b)=>a+b,0)/commissionsFbo.length):'—';
    status.innerHTML='<i class="dot"></i>Ozon API · данные обновлены';
-   notice.innerHTML='<b>Каталог и тарифы получены из Ozon</b>Расходы и себестоимость хранятся локально в этом браузере. Расчёт прибыли предварительный: первая миля усредняется по диапазону, транзит, возвраты и фактические начисления требуют отдельной сверки.';
+   notice.innerHTML='<b>Каталог и тарифы получены из Ozon</b>'+(persistenceAvailable?'Расходы и себестоимость сохраняются в PostgreSQL и доступны после перезапуска.':'Расходы пока хранятся локально в этом браузере; серверное хранилище не подключено. Расчёт прибыли предварительный:')+' Расчёт прибыли предварительный: первая миля усредняется по диапазону, транзит, возвраты и фактические начисления требуют отдельной сверки.';
   }catch(e){if(e.name==='AbortError')e=new Error('Ozon не ответил за 75 секунд. Проверь статус Render и доступ API.');status.innerHTML='<i class="dot" style="background:#c58b2b"></i>API недоступен';notice.innerHTML='<b>Не удалось обновить каталог</b>'+esc(e.message)+' · проверь соединение и доступ к Ozon API.';grid.innerHTML='<div class="empty">Нет актуальных данных. Обнови страницу позже.</div>'}
  }
  document.getElementById('productSearch').addEventListener('input',render);
  document.getElementById('refreshCatalog').addEventListener('click',refresh);
- document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров в этом браузере?'))return;localStorage.removeItem(storageKey);render()});
+ document.getElementById('clearCosts').addEventListener('click',()=>{if(!confirm('Удалить сохранённые расходы для всех товаров?'))return;localStorage.removeItem(storageKey);schedulePersistentSave({});render()});
  document.getElementById('exportEconomics').addEventListener('click',()=>{
   const rows=[['Товар','SKU','Product ID','Offer ID','Схема','Цена','Комиссия FBS %','Комиссия FBO %','Себестоимость','Упаковка','Реклама','Доп. транзит','Прочее','Налог %','Остаток/шт','Маржа %']];
   for(const card of grid.querySelectorAll('.product')){const p=products.find(x=>safeKey(x)===card.dataset.key);if(!p)continue;const v={};card.querySelectorAll('input[data-key]').forEach(i=>v[i.dataset.key]=Number(i.value)||0);rows.push([p.name,p.sku,p.product_id,p.offer_id,card.querySelector('[data-fulfillment]').value,p.price,p.sales_percent_fbs,p.sales_percent_fbo,v.cost,v.pack,v.ads,v.transit,v.other,v.tax,card.dataset.profit,card.dataset.margin])}
