@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const dashboard = fs.readFileSync(path.join(__dirname, '../dashboard/index.html'), 'utf8');
 const script = fs.readFileSync(path.join(__dirname, '../dashboard/assistant-center.js'), 'utf8');
@@ -68,4 +69,9 @@ test('finance assistant includes only manually confirmed RUB SKU expenses', () =
 test('finance assistant never labels preliminary product economics as actual net profit', () => {
   assert.match(script, /Предварительная расчётная прибыль/);
   assert.match(script, /не фактическая чистая прибыль/);
+});
+
+
+test('AI center script parses as valid JavaScript before deployment', () => {
+  assert.doesNotThrow(() => new vm.Script(script, { filename: 'assistant-center.js' }));
 });
