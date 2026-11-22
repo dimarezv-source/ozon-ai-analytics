@@ -38,9 +38,10 @@ test('keeps fulfillment types separate and excludes non-RUB source rows',()=>{
   ],
   posting_product_summary:[{sku:'1001',fulfillment_type:'FBS',currency:'KZT',amount:'-5',records:1}]
  };
- const result=buildSkuFinancialLedger(sales,finance);
- assert.equal(result.rows.find(x=>x.fulfillment_type==='FBS').commission_actual_rub,null);
- assert.equal(result.rows.find(x=>x.fulfillment_type==='FBO').commission_actual_rub,-20);
+ const splitSales={...sales,products:[...sales.products,{sku:'1001',fulfillment_type:'FBO',units:1,sales_gmv:500}]};
+ const result=buildSkuFinancialLedger(splitSales,finance);
+ assert.equal(result.rows.find(x=>x.sku==='1001'&&x.fulfillment_type==='FBS').commission_actual_rub,null);
+ assert.equal(result.rows.find(x=>x.sku==='1001'&&x.fulfillment_type==='FBO').commission_actual_rub,-20);
  assert.equal(result.metrics.non_rub_commission_records,1);
  assert.equal(result.metrics.non_rub_service_records,1);
 });
