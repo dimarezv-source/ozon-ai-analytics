@@ -33,7 +33,7 @@ test('keeps unknown currency and unmatched SKU outside comparable totals',()=>{
  assert.equal(result.ok,true);
  assert.equal(result.non_rub_records,1);
  assert.equal(result.actual_unmatched_records,2);
- assert.equal(result.rows.find(x=>x.sku==='1001').status,'estimate_missing');
+ assert.equal(result.rows.find(x=>x.sku==='1001').status,'actual_missing');
 });
 test('keeps missing actual or estimated sides explicit',()=>{
  const finance={period:sales.period,product_commission_summary:[
