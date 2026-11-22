@@ -14,9 +14,10 @@
    const schema=String(sale&&sale.fulfillment_type||'').toUpperCase();
    if(!sku||(schema!=='FBO'&&schema!=='FBS')){unkeyedSalesUnits+=units;continue;}
    const id=key(schema,sku);
-   const row=rows.get(id)||{sku,fulfillment_type:schema,units:0,revenue:0,commission_actual_rub:null,commission_records:0,service_fee_raw_rub:null,service_fee_records:0,return_quantity:0,return_priced_quantity:0,return_records:0,return_value_rub:null,coverage:{}};
+   const row=rows.get(id)||{sku,fulfillment_type:schema,units:0,revenue:0,known_price_units:0,unpriced_units:0,commission_actual_rub:null,commission_records:0,service_fee_raw_rub:null,service_fee_records:0,return_quantity:0,return_priced_quantity:0,return_records:0,return_value_rub:null,coverage:{}};
    row.units+=units;
-   if(finite(sale.sales_gmv))row.revenue+=Number(sale.sales_gmv);
+   if(finite(sale.sales_gmv)){row.revenue+=Number(sale.sales_gmv);row.known_price_units+=Math.max(0,units-Math.max(0,Number(sale.unpriced_units)||0));}
+   row.unpriced_units+=Math.max(0,Number(sale.unpriced_units)||0);
    rows.set(id,row);
   }
   let unmatchedServiceRecords=0,nonRubCommissionRecords=0,nonRubServiceRecords=0;
@@ -73,11 +74,12 @@
    row.return_value_rub=bucket.valueKnown?bucket.value:null;
   }
   const result=[...rows.values()].map(row=>{
-   row.revenue=Math.round(row.revenue*100)/100;
+   row.revenue=row.known_price_units?Math.round(row.revenue*100)/100:null;
    if(row.commission_actual_rub!==null)row.commission_actual_rub=Math.round(row.commission_actual_rub*100)/100;
    if(row.service_fee_raw_rub!==null)row.service_fee_raw_rub=Math.round(row.service_fee_raw_rub*100)/100;
    if(row.return_value_rub!==null)row.return_value_rub=Math.round(row.return_value_rub*100)/100;
    row.coverage={
+    sales:row.unpriced_units>0?(row.known_price_units>0?'partial_price_coverage':'no_usable_price'):'complete_price_coverage',
     commission:row.commission_actual_rub===null?'no_source_row':'matched',
     service_fees:row.service_fee_raw_rub===null?'no_source_row':'matched',
     returns:row.return_records?'matched':'no_source_row'
