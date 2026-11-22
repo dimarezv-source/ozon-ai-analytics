@@ -113,8 +113,5 @@ test('preserves signed accrual expenses and income as a separate profit adjustme
 test('combines actual signed sale commission and verified accrual adjustment without changing manual expenses',()=>{
  const r=calculateProfitWithActualCommission({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500,other:5},actualCommission:-125,accrualAdjustment:12});
  assert.equal(r.ok,true);
- assert.equal(r.profitExact,baseProfitForTest()-125+12);
+ assert.equal(r.profitExact,calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product:{...product,sales_percent_fbs:0},expenses:{cost:500,other:5}}).profitExact-125+12);
 });
-function baseProfitForTest(){
- return calculateProfit({fulfillmentType:'FBS',unitPrice:1000,product,expenses:{cost:500,other:5}}).profitExact;
-}
