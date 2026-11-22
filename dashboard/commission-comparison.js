@@ -63,8 +63,11 @@
         sku:(estimated||actual).sku,
         currency:'RUB',
         estimated_commission:estimated?Math.round(estimated.estimated_commission*100)/100:null,
-        actual_commission:actual?Math.round(actual.actual_commission*100)/100:null,
-        difference:estimated&&actual?Math.round((actual.actual_commission-estimated.estimated_commission)*100)/100:null,
+        // Ozon's source sale_commission is signed as a deduction (normally negative).
+        // Convert it to the expense convention used by the tariff estimate; reversals stay negative.
+        actual_commission_source:actual?Math.round(actual.actual_commission*100)/100:null,
+        actual_commission:actual?Math.round(-actual.actual_commission*100)/100:null,
+        difference:estimated&&actual?Math.round((-actual.actual_commission-estimated.estimated_commission)*100)/100:null,
         units:estimated?estimated.units:0,
         records:actual?actual.records:0,
         status:estimated&&actual?'comparable':estimated?'actual_missing':'estimate_missing'
@@ -77,7 +80,7 @@
       unmatched:rows.filter(row=>row.status!=='comparable').length,
       estimated_unmatched_units:estimatedUnmatched,actual_unmatched_records:actualUnmatched,
       non_rub_records:nonRub,missing_amount_records:missingAmount,
-      basis:'Сравнение агрегированных исходных sale_commission Ozon с расчётом по тарифному проценту на GMV доставленных продаж. Разница не является подтверждённым долгом, удержанием или прибылью.'
+      basis:'Исходная sale_commission Ozon обычно отрицательна как удержание. Для сравнения знак приведён к расходной конвенции: удержание показывается положительным расходом, сторно/возврат комиссии — отрицательным. Тарифная оценка рассчитана на GMV доставленных продаж. Разница не является подтверждённым долгом или прибылью.'
     };
   }
   const api={compareProductCommissions};
