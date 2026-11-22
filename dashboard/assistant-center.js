@@ -16,7 +16,7 @@
 
   const destinations = [
     { keys: ['продаж','выруч','оборот','заказ'], title: 'Продажи', description: 'Продажи за выбранный период и разбивка по товарам.', selector: '#salesBreakdown', panel: 'sales' },
-    { keys: ['финанс','комисс','удержан','начислен','сверк'], title: 'Финансы', description: 'Финансовая сверка, начисления и структура удержаний.', selector: '#reconciliationPanel', panel: 'finance' },
+    { keys: ['финанс','комисс','удержан','начислен','сверк','расход','затрат'], title: 'Финансы', description: 'Финансовая сверка, начисления и структура удержаний.', selector: '#reconciliationPanel', panel: 'finance' },
     { keys: ['остат','склад','запас','fbo','fbs'], title: 'Остатки и склад', description: 'Наличие, резерв, оборачиваемость и рекомендации по пополнению.', selector: '#inventory', panel: 'inventory' },
     { keys: ['товар','артикул','sku','маржин','прибыл','себестоим'], title: 'Товары и экономика', description: 'Юнит-экономика, прибыльность и сравнение товарных позиций.', selector: '#productGrid', panel: 'products' },
     { keys: ['тариф','логистик','эквайринг'], title: 'Тарифы и расходы', description: 'Комиссии, логистика и известные удержания.', selector: '#fees', panel: 'fees' },
@@ -194,6 +194,68 @@
     return 'Сводка для раздела «' + item.title + '» пока не подключена к ответам помощника. Могу открыть раздел с исходными данными.';
   }
 
+  function answerFinanceQuestion(query) {
+    const d = live.finance;
+    if (!d) return null;
+    const q = String(query || '').toLocaleLowerCase('ru');
+    const asksCommission = /комисс|sale_commission/.test(q);
+    const asksExpense = /расход|затрат|удержан/.test(q);
+    const asksProfit = /чист(ая|ой) прибыль|фактическ(ая|ой) прибыль|реальн(ая|ой) прибыль|сколько заработал/.test(q);
+    const fulfillment = /\bfbo\b|фбо/.test(q) ? 'FBO' : (/\bfbs\b|фбс/.test(q) ? 'FBS' : null);
+    const skuMatch = q.match(/\bsku\s*[:#№-]?\s*(\d{3,})\b/i);
+    const sku = skuMatch ? skuMatch[1] : null;
+    const signedMoney = value => new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
+    if (asksCommission && (fulfillment || sku)) {
+      let rows = Array.isArray(d.product_commission_summary) ? d.product_commission_summary : [];
+      if (fulfillment) rows = rows.filter(row => row.fulfillment_type === fulfillment);
+      if (sku) rows = rows.filter(row => String(row.sku) === sku);
+      if (!rows.length) return 'В загруженной сверке нет точных строк комиссии продажи' + (fulfillment ? ' для ' + fulfillment : '') + (sku ? ' по SKU ' + sku : '') + '. Проверь период и обнови финансовую сверку.';
+      const groups = new Map();
+      for (const row of rows) {
+        const currency = row.currency || 'валюта не указана';
+        const key = (row.fulfillment_type || 'Схема не сопоставлена') + ' · ' + currency;
+        const current = groups.get(key) || { amount: 0, records: 0 };
+        if (row.sale_commission !== null && row.sale_commission !== undefined && Number.isFinite(Number(row.sale_commission))) current.amount += Number(row.sale_commission);
+        current.records += Number(row.records) || 0;
+        groups.set(key, current);
+      }
+      const details = [...groups.entries()].map(([key, value]) => key + ': ' + signedMoney(value.amount) + ' (' + value.records + ' записей)').join('; ');
+      return 'Комиссия продажи по исходному полю Ozon' + (sku ? ' для SKU ' + sku : '') + ': ' + details + '. Показан исходный знак Ozon; это только поле комиссии продажи, не все расходы и не итоговая прибыль. Строки без точного сопоставления с доставленным отправлением не приписываются к FBO/FBS.';
+    }
+    if (asksExpense) {
+      const api = window.OzonAccrualClassification;
+      const mappings = api ? api.loadClassifications() : {};
+      const rows = Array.isArray(d.posting_product_summary) ? d.posting_product_summary : [];
+      const totals = new Map();
+      let confirmedRecords = 0, reviewRecords = 0;
+      for (const row of rows) {
+        const records = Math.max(1, Number(row.records) || 1);
+        const valid = row.sku !== null && row.sku !== undefined && (row.fulfillment_type === 'FBO' || row.fulfillment_type === 'FBS') && String(row.currency || '').toUpperCase() === 'RUB';
+        if (fulfillment && row.fulfillment_type !== fulfillment) continue;
+        const mapping = api && valid ? mappings[api.classificationKey(row.type_id, row.currency)] : null;
+        if (mapping && mapping.category === 'expense' && mapping.commission_confirmed_not_duplicate === true && Number.isFinite(Number(row.amount))) {
+          const key = row.fulfillment_type + ' · RUB';
+          const current = totals.get(key) || { amount: 0, records: 0 };
+          current.amount += Number(row.amount);
+          current.records += records;
+          totals.set(key, current);
+          confirmedRecords += records;
+        } else if (valid && (!mapping || (mapping.category !== 'neutral' && mapping.category !== 'commission'))) {
+          reviewRecords += records;
+        }
+      }
+      if (!totals.size) return 'Пока нет расходов, которые вручную подтверждены по типу начисления, RUB, SKU и схеме FBO/FBS. Открой «Финансы» и классифицируй типы начислений; неизвестные и неподтверждённые суммы я не буду автоматически называть расходами.';
+      const details = [...totals.entries()].map(([key, value]) => key + ': ' + signedMoney(value.amount) + ' (' + value.records + ' записей)').join('; ');
+      return 'Подтверждённые вручную расходы по начислениям: ' + details + '. Суммы сохранены с исходным знаком Ozon. Учтено записей: ' + confirmedRecords + '; других строк, требующих проверки: ' + reviewRecords + '. Это не полный список всех расходов магазина.';
+    }
+    if (asksProfit) {
+      const r = live.ranking;
+      if (!r || !r.includedUnits) return 'Подтверждённую прибыль пока рассчитать нельзя: нет продаж с полными данными по себестоимости и тарифам. Загрузи продажи и каталог, затем проверь заполнение экономики товаров.';
+      return 'Предварительная расчётная прибыль по учтённым товарам — ' + money(r.estimatedProfit) + '. Покрытие: ' + number(r.includedUnits) + ' из ' + number(r.totalUnits) + ' шт. (' + number(r.coveragePercent) + '%). Это не фактическая чистая прибыль и не выплата Ozon: часть начислений может требовать классификации, а не все расходы и возвраты подтверждены.';
+    }
+    return null;
+  }
+
   function showDestination(item, query) {
     activeTarget = item;
     left.replaceChildren();
@@ -226,7 +288,7 @@
       });
       right.append(open);
     }
-    const reply = answerFor(item) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
+    const specificReply = item ? answerFinanceQuestion(query) : null;\n    const reply = (specificReply || answerFor(item)) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
     addMessage(reply, 'assistant');
     setStatus('Запрос обработан', 'ready');
     if (root.dataset.voiceReply === 'on') speak(reply);
