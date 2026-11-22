@@ -288,7 +288,8 @@
       });
       right.append(open);
     }
-    const specificReply = item ? answerFinanceQuestion(query) : null;\n    const reply = (specificReply || answerFor(item)) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
+    const specificReply = item ? answerFinanceQuestion(query) : null;
+    const reply = (specificReply || answerFor(item)) + (item ? '\n\nМогу открыть раздел «' + item.title + '» и показать подробности.' : '');
     addMessage(reply, 'assistant');
     setStatus('Запрос обработан', 'ready');
     if (root.dataset.voiceReply === 'on') speak(reply);
