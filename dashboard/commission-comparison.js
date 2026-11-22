@@ -40,7 +40,8 @@
     const actuals=new Map();
     let actualUnmatched=0,nonRub=0,missingAmount=0;
     for(const row of Array.isArray(finance.product_commission_summary)?finance.product_commission_summary:[]){
-      const rawAmount=row&&row.sale_commission;\n      const amount=Number(rawAmount);
+      const rawAmount=row&&row.sale_commission;
+      const amount=Number(rawAmount);
       const sku=row&&row.sku!==null&&row.sku!==undefined?String(row.sku):'';
       const fulfillment=String(row&&row.fulfillment_type||'').toUpperCase();
       const currency=String(row&&row.currency||'').toUpperCase();
