@@ -94,3 +94,14 @@ test('suggests a target price for 15 percent margin without promising demand wil
  assert.ok(item.scenarioProfitLift>0);
  assert.match(item.recommendation,/Цена для маржи 15%/);
 });
+
+
+test('aggregates exact unit profit before rounding SKU totals',()=>{
+ const fractionalProduct={...product,sales_percent_fbs:12.25,acquiring:1.25,delivery_to_customer:10.25,first_mile_min:2.25,first_mile_max:4.25,transit_min:4.25,transit_max:6.25};
+ const fractionalSales={products:[{product_id:'101',sku:'9001',units:3,sales_gmv:300.99,fulfillment_type:'FBS'}]};
+ const fractionalCosts={'101':{cost:50.25,costConfigured:true,pack:2.25,ads:3.25,transit:0,other:0,tax:0}};
+ const result=buildProductRanking(fractionalSales,[fractionalProduct],fractionalCosts,{calculateProfit});
+ const expected=calculateProfit({fulfillmentType:'FBS',unitPrice:300.99/3,product:fractionalProduct,expenses:{cost:50.25,pack:2.25,ads:3.25,transit:0,other:0,tax:0}});
+ assert.equal(result.includedUnits,3);
+ assert.equal(result.items[0].profit,Math.round(expected.profitExact*3*100)/100);
+});
