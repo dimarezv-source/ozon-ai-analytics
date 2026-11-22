@@ -1,0 +1,31 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const {buildProductFacts}=require('../dashboard/product-facts.js');
+const sales={period:{date_from:'2026-11-01',date_to:'2026-11-07'}};
+test('exposes source fee rows and only exact-match return summary by SKU',()=>{
+ const finance={period:sales.period,product_fee_summary:[
+  {sku:'1001',fulfillment_type:'FBS',label:'Логистика',type_id:'2',currency:'RUB',amount:'125.50',components:3},
+  {sku:'2002',fulfillment_type:null,label:'Хранение',type_id:'3',currency:'',amount:'20',components:1}
+ ],returns_attribution:{matched_count:2,unmatched_count:1,summary:[
+  {sku:'1001',fulfillment_type:'FBS',return_type:'ClientReturn',currency:'RUB',quantity:2,returned_value:'500',priced_quantity:2,return_records:2}
+ ]}};
+ const result=buildProductFacts(sales,finance);
+ assert.equal(result.ok,true);
+ assert.equal(result.feeRows.length,2);
+ assert.equal(result.unmatchedFeeComponents,1);
+ assert.equal(result.returnRows.length,1);
+ assert.equal(result.returnRows[0].returned_value,'500');
+ assert.equal(result.unmatchedReturnRecords,1);
+});
+test('refuses to combine sales and finance from different periods',()=>{
+ const result=buildProductFacts(sales,{period:{date_from:'2026-11-02',date_to:'2026-11-07'}});
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'period_mismatch');
+});
+test('does not invent missing currency or amount values',()=>{
+ const result=buildProductFacts(sales,{period:sales.period,product_fee_summary:[
+  {sku:'1',fulfillment_type:'FBO',type_id:'8',currency:'',amount:null,components:1}
+ ]});
+ assert.equal(result.feeRows[0].currency,'');
+ assert.equal(result.feeRows[0].amount,null);
+});
