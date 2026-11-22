@@ -308,7 +308,7 @@
    document.querySelector('[data-commission-average-fbs]').textContent=commissionsFbs.length?pct(commissionsFbs.reduce((a,b)=>a+b,0)/commissionsFbs.length):'—';
    document.querySelector('[data-commission-average-fbo]').textContent=commissionsFbo.length?pct(commissionsFbo.reduce((a,b)=>a+b,0)/commissionsFbo.length):'—';
    status.innerHTML='<i class="dot"></i>Ozon API · данные обновлены';
-   notice.innerHTML='<b>Каталог и тарифы получены из Ozon</b>'+(persistenceAvailable?'Расходы и себестоимость сохраняются в PostgreSQL и доступны после перезапуска.':'Расходы пока хранятся локально в этом браузере; серверное хранилище не подключено. Расчёт прибыли предварительный:')+' Расчёт прибыли предварительный: первая миля усредняется по диапазону, транзит, возвраты и фактические начисления требуют отдельной сверки.';
+   notice.innerHTML='<b>Каталог и тарифы получены из Ozon</b>'+(persistenceAvailable?'Расходы и себестоимость сохраняются в PostgreSQL и доступны после перезапуска.':'Расходы пока хранятся локально в этом браузере; серверное хранилище не подключено.')+' Расчёт прибыли предварительный: первая миля усредняется по диапазону, транзит, возвраты и фактические начисления требуют отдельной сверки.';
   }catch(e){if(e.name==='AbortError')e=new Error('Ozon не ответил за 75 секунд. Проверь статус Render и доступ API.');status.innerHTML='<i class="dot" style="background:#c58b2b"></i>API недоступен';notice.innerHTML='<b>Не удалось обновить каталог</b>'+esc(e.message)+' · проверь соединение и доступ к Ozon API.';grid.innerHTML='<div class="empty">Нет актуальных данных. Обнови страницу позже.</div>'}
  }
  document.getElementById('productSearch').addEventListener('input',render);
