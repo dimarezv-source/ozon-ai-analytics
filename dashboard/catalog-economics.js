@@ -117,7 +117,7 @@
     item.coverage.service_fees==='matched'?'начисления ✓':'начисления —',
     item.coverage.returns==='matched'?'возвраты ✓':'возвраты —'
    ].join(' · ');
-   const values=[item.sku,item.fulfillment_type,fmt(item.revenue),String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage];
+   const values=[item.sku,item.fulfillment_type,item.revenue===null?'Нет цены':fmt(item.revenue)+(item.unpriced_units?' · частично':'') ,String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage+(item.unpriced_units?' · без цены '+item.unpriced_units+' шт.':'')];
    const tr=document.createElement('tr');
    values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.classList.add('num');tr.appendChild(td)});
    body.appendChild(tr);
