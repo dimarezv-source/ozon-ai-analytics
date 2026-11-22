@@ -64,6 +64,8 @@ test('finance assistant includes only manually confirmed RUB SKU expenses', () =
   assert.match(script, /commission_confirmed_not_duplicate === true/);
   assert.match(script, /String\(row\.currency \|\| ''\)\.toUpperCase\(\) === 'RUB'/);
   assert.match(script, /не буду автоматически называть расходами/);
+  assert.match(script, /if \(sku && String\(row\.sku\) !== sku\) continue;/);
+  assert.match(script, /для SKU /);
 });
 
 test('finance assistant never labels preliminary product economics as actual net profit', () => {
