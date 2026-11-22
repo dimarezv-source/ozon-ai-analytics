@@ -34,22 +34,11 @@
     const critical=alerts.filter(a=>a.severity==='critical').length;
     const warnings=alerts.filter(a=>a.severity==='warning').length;
     const coverage=Number(latestRanking&&latestRanking.coveragePercent)||0;
-    if(!latestRanking){
-      risk.textContent='Нет данных';risk.dataset.level='unknown';
-      summary.textContent='Загрузи продажи за период и каталог, чтобы оценить риски.';
-    }else if(!items.length){
-      risk.textContent='Недостаточно данных';risk.dataset.level='unknown';
-      summary.textContent='Нет товаров с полной себестоимостью и тарифами. Риск магазина пока нельзя достоверно оценить.';
-    }else if(critical){
-      risk.textContent='Высокий';risk.dataset.level='high';
-      summary.textContent='Критических сигналов: '+critical+' · предупреждений: '+warnings+' · покрытие продаж: '+number(coverage)+'%.';
-    }else if(warnings){
-      risk.textContent='Средний';risk.dataset.level='medium';
-      summary.textContent='Критических сигналов нет · предупреждений: '+warnings+' · покрытие продаж: '+number(coverage)+'%.';
-    }else{
-      risk.textContent='Низкий';risk.dataset.level='low';
-      summary.textContent='Критических сигналов и предупреждений не найдено · покрытие продаж: '+number(coverage)+'%. Это не гарантия отсутствия рисков.';
-    }
+    const assessment=root.OzonRiskReadiness
+      ?root.OzonRiskReadiness.assessRisk({hasRanking:!!latestRanking,itemCount:items.length,coveragePercent:coverage,critical,warnings})
+      :{label:critical?'Высокий':warnings?'Средний':coverage<100?'Неполная оценка':'Низкий',level:critical?'high':warnings?'medium':coverage<100?'unknown':'low',summary:'Критических сигналов: '+critical+' · предупреждений: '+warnings+' · покрытие продаж: '+number(coverage)+'%.'};
+    risk.textContent=assessment.label;risk.dataset.level=assessment.level;
+    summary.textContent=assessment.summary;
     count.textContent=String(alerts.length);
     if(!alerts.length){
       list.appendChild(row('Пока нет подтверждённых сигналов','Проверка работает по товарам, для которых заполнена себестоимость и доступны тарифы.','neutral'));
