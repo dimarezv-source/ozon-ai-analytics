@@ -141,9 +141,18 @@
     item.coverage.returns==='matched'?'возвраты ✓':'возвраты —'
    ].join(' · ');
    const readiness=item.profit_readiness||{};
-   const missing=(readiness.missing_components||[]).map(value=>value==='cost_of_goods'?'нет себестоимости':value).join(', ');
-   const review=(readiness.review_components||[]).map(value=>({unclassified_service_accruals:'начисления не классифицированы',service_accrual_source_missing:'нет источника начислений',return_value_is_not_a_confirmed_refund:'возврат не подтверждён как выплата'}[value]||value)).join(', ');
-   const readinessLabel=readiness.can_calculate_profit?'Готово к расчёту':([missing,review].filter(Boolean).join(' · ')||'Недостаточно данных');
+   const catalogProduct=products.find(product=>String(product.sku??'')===String(item.sku));
+   const savedCost=catalogProduct?(loadCosts()[safeKey(catalogProduct)]||{}):{};
+   const costKnown=savedCost.costConfigured===true||(savedCost.cost!==null&&savedCost.cost!==undefined&&savedCost.cost!==''&&Number.isFinite(Number(savedCost.cost))&&Number(savedCost.cost)>=0);
+   const priceComplete=item.coverage.sales==='complete_price_coverage';
+   const rateField=item.fulfillment_type==='FBO'?'sales_percent_fbo':'sales_percent_fbs';
+   const tariffCommissionKnown=!!(catalogProduct&&catalogProduct[rateField]!==null&&catalogProduct[rateField]!==undefined&&Number.isFinite(Number(catalogProduct[rateField])));
+   const commissionStatus=item.coverage.commission==='matched'?'фактическая комиссия ✓':tariffCommissionKnown?'комиссия по тарифу':'нет комиссии';
+   const review=(readiness.review_components||[]).map(value=>({unclassified_service_accruals:'прочие начисления не классифицированы',service_accrual_source_missing:'нет источника прочих начислений',return_value_is_not_a_confirmed_refund:'возврат не подтверждён как расход'}[value]||value)).join(', ');
+   const readinessParts=[costKnown?'себестоимость ✓':'нет себестоимости',priceComplete?'цена ✓':'цена неполная',commissionStatus,review].filter(Boolean);
+   const readinessLabel=costKnown&&priceComplete&& (item.coverage.commission==='matched'||tariffCommissionKnown)
+    ?'Предварительная оценка возможна · '+readinessParts.join(' · ')
+    :readinessParts.join(' · ')||'Недостаточно данных';
    const values=[item.sku,item.fulfillment_type,item.revenue===null?'Нет цены':fmt(item.revenue)+(item.unpriced_units?' · частично':'') ,String(item.units),fmt(item.commission_actual_rub),fmt(item.service_fee_raw_rub),String(item.return_quantity),coverage+(item.unpriced_units?' · без цены '+item.unpriced_units+' шт.':''),readinessLabel];
    const tr=document.createElement('tr');
    values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index>=2&&index<=6)td.classList.add('num');tr.appendChild(td)});
