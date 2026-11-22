@@ -98,7 +98,7 @@
   set('periodProfitFbs',totals.FBS.units?((totals.FBS.profit>0?'+':'')+money(totals.FBS.profit)):'Нет данных');
   set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
   let note='Комиссия Ozon: фактическая сумма из Seller API при совпадении периода, SKU, схемы FBO/FBS и RUB; если строки нет — тарифная оценка. Фактическая комиссия учитывается с исходным знаком Ozon. Эквайринг, доставка, первая миля и транзит пока оцениваются по тарифам (транзит — среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и ручное налоговое удержание берутся из карточек товара. Это не расчёт законного налога.';
-  note+=' Учтено с фактической комиссией: '+actualCommissionUnits+' шт.; с тарифной оценкой комиссии: '+tariffCommissionUnits+' шт. Сырые начисления и возвраты не включены, чтобы не задвоить комиссии и не принять неразмеченные операции за расходы.';
+  note+=' Учтено с фактической комиссией: '+actualCommissionUnits+' шт.; с тарифной оценкой комиссии: '+tariffCommissionUnits+' шт. прочие начисления учитываются только после ручной классификации и подтверждения, что это не комиссия продажи; неразмеченные операции исключены. Возвраты не считаются расходом без подтверждённого возврата денег.';
   const excluded=unmatchedUnits+missingCostUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
   if(excluded)note+=' Исключено: '+excluded+' шт. — без себестоимости: '+missingCostUnits+', без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
   set('periodProfitNote',note);
