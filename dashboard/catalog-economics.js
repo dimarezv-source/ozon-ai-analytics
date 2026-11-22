@@ -31,6 +31,22 @@
   }
   const saved=loadCosts();
   const totals={FBO:{profit:0,revenue:0,units:0},FBS:{profit:0,revenue:0,units:0}};
+  const commissionKey=(type,sku)=>type+'|'+String(sku??'');
+  const actualCommissionTotals=new Map(),salesGmvTotals=new Map();
+  const sameFinancePeriod=!!(financeReconciliation&&financeReconciliation.period&&financeReconciliation.period.date_from===periodSales.period.date_from&&financeReconciliation.period.date_to===periodSales.period.date_to);
+  if(sameFinancePeriod){
+   for(const item of Array.isArray(financeReconciliation.product_commission_summary)?financeReconciliation.product_commission_summary:[]){
+    const type=String(item.fulfillment_type||'').toUpperCase(),sku=item.sku;
+    const amount=Number(item.sale_commission);
+    if((type!=='FBO'&&type!=='FBS')||sku===null||sku===undefined||String(item.currency||'').toUpperCase()!=='RUB'||item.sale_commission===null||item.sale_commission===undefined||item.sale_commission===''||!Number.isFinite(amount))continue;
+    const key=commissionKey(type,sku);actualCommissionTotals.set(key,(actualCommissionTotals.get(key)||0)+amount);
+   }
+   for(const sale of rows){
+    const type=String(sale.fulfillment_type||'').toUpperCase(),sku=sale.sku,gmv=Number(sale.sales_gmv);
+    if((type==='FBO'||type==='FBS')&&sku!==null&&sku!==undefined&&Number.isFinite(gmv)&&gmv>0){const key=commissionKey(type,sku);salesGmvTotals.set(key,(salesGmvTotals.get(key)||0)+gmv);}
+   }
+  }
+  let actualCommissionUnits=0,tariffCommissionUnits=0;
   let unmatchedUnits=0,missingCostUnits=0,missingTariffUnits=0,unpricedUnits=0,unknownTypeUnits=0;
   for(const sale of rows){
    const units=Math.max(0,Number(sale.units)||0),salesGmv=Math.max(0,Number(sale.sales_gmv)||0);
@@ -51,11 +67,17 @@
    const cost=values.cost??0,pack=values.pack??0;
    const ads=values.ads??0,transit=values.transit??0;
    const other=values.other??0,taxRate=values.tax??0;
-   const calculation=window.OzonProfitCalculator.calculateProfit({
-    fulfillmentType:type,unitPrice,product,
-    expenses:{cost,pack,ads,transit,other,tax:taxRate}
-   });
+   const key=commissionKey(type,sale.sku);
+   const actualTotal=actualCommissionTotals.get(key);
+   const totalSalesGmv=salesGmvTotals.get(key)||0;
+   const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0;
+   const actualForRow=hasActualCommission?actualTotal*(salesGmv/totalSalesGmv):null;
+   const input={fulfillmentType:type,unitPrice,product,expenses:{cost,pack,ads,transit,other,tax:taxRate}};
+   const calculation=hasActualCommission
+    ?window.OzonProfitCalculator.calculateProfitWithActualCommission({...input,actualCommission:actualForRow})
+    :window.OzonProfitCalculator.calculateProfit(input);
    if(!calculation.ok){missingTariffUnits+=units;continue;}
+   if(hasActualCommission)actualCommissionUnits+=units;else tariffCommissionUnits+=units;
    totals[type].profit+=(calculation.profitExact??calculation.profit)*units;totals[type].revenue+=salesGmv;totals[type].units+=units;
   }
   const profit=totals.FBO.profit+totals.FBS.profit,revenue=totals.FBO.revenue+totals.FBS.revenue;
@@ -69,8 +91,8 @@
   set('periodProfitFbo',totals.FBO.units?((totals.FBO.profit>0?'+':'')+money(totals.FBO.profit)):'Нет данных');
   set('periodProfitFbs',totals.FBS.units?((totals.FBS.profit>0?'+':'')+money(totals.FBS.profit)):'Нет данных');
   set('periodRevenueSplit',money(totals.FBO.revenue)+' / '+money(totals.FBS.revenue));
-  let note='FBO: комиссия FBO + эквайринг + доставка клиенту + транзит (среднее диапазона). FBS: комиссия FBS + эквайринг + первая миля + доставка клиенту + транзит (среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и ручное налоговое удержание берутся из карточек товара. Это поле не рассчитывает законный налог по режиму.';
-  note+=' Для FBO отдельные услуги фулфилмента и хранения не включены, если их нет в доступных тарифах API. Возвраты и фактические начисления не учтены.';
+  let note='Комиссия Ozon: фактическая сумма из Seller API при совпадении периода, SKU, схемы FBO/FBS и RUB; если строки нет — тарифная оценка. Фактическая комиссия учитывается с исходным знаком Ozon. Эквайринг, доставка, первая миля и транзит пока оцениваются по тарифам (транзит — среднее диапазона). Себестоимость, упаковка, реклама, дополнительные расходы и ручное налоговое удержание берутся из карточек товара. Это не расчёт законного налога.';
+  note+=' Учтено с фактической комиссией: '+actualCommissionUnits+' шт.; с тарифной оценкой комиссии: '+tariffCommissionUnits+' шт. Сырые начисления и возвраты не включены, чтобы не задвоить комиссии и не принять неразмеченные операции за расходы.';
   const excluded=unmatchedUnits+missingCostUnits+missingTariffUnits+unpricedUnits+unknownTypeUnits;
   if(excluded)note+=' Исключено: '+excluded+' шт. — без себестоимости: '+missingCostUnits+', без цены: '+unpricedUnits+', товар не найден: '+unmatchedUnits+', нет тарифа: '+missingTariffUnits+', неизвестная схема: '+unknownTypeUnits+'.';
   set('periodProfitNote',note);
