@@ -21,12 +21,14 @@ from app.identity import (
 )
 from app.persistence import _connect
 from app.persistence_schema import migrate_tenant_foundation
+from app.login_throttle import ensure_login_throttle_schema, is_limited, record_failure, clear_failures
 from app.security import hash_session_token, verify_csrf_token
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 SESSION_COOKIE = "ozon_user_session"
 CSRF_COOKIE = "ozon_user_csrf"
 SESSION_TTL = timedelta(hours=12)
+_DUMMY_PASSWORD_HASH = hash_password("dummy-password-for-timing-only")
 
 
 class BootstrapPayload(BaseModel):
@@ -44,6 +46,7 @@ class LoginPayload(BaseModel):
 def _ensure_schema() -> None:
     with _connect() as connection:
         migrate_tenant_foundation(connection)
+    ensure_login_throttle_schema()
 
 
 def _set_session(response: JSONResponse, token: str, csrf: str) -> None:
@@ -110,8 +113,12 @@ async def bootstrap_owner(payload: BootstrapPayload) -> JSONResponse:
 
 
 @router.post("/login")
-async def login(payload: LoginPayload) -> JSONResponse:
+async def login(payload: LoginPayload, request: Request) -> JSONResponse:
     _ensure_schema()
+    address = request.client.host if request.client else "unknown"
+    attempt_key = hashlib.sha256(f"{address}|{payload.email.strip().casefold()[:254]}".encode("utf-8")).hexdigest()
+    if is_limited(attempt_key):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again in 15 minutes.")
     try:
         user = get_user_for_login(payload.email)
     except ValueError:
@@ -119,10 +126,13 @@ async def login(payload: LoginPayload) -> JSONResponse:
     # A constant-time dummy Argon2 verification keeps unknown-user timing closer
     # to the normal password path; no account existence details are returned.
     if user is None:
-        verify_password("$argon2id$v=19$m=65536,t=3,p=2$c29tZXNhbHQxMjM0NTY3OA$" + "A" * 43, payload.password)
+        verify_password(_DUMMY_PASSWORD_HASH, payload.password)
+        record_failure(attempt_key)
         raise HTTPException(status_code=401, detail="Invalid email or password.")
     if not verify_password(user["password_hash"], payload.password):
+        record_failure(attempt_key)
         raise HTTPException(status_code=401, detail="Invalid email or password.")
+    clear_failures(attempt_key)
     if not user["memberships"]:
         raise HTTPException(status_code=403, detail="No active workspace membership.")
     return _issue_session(user, user["memberships"][0])
