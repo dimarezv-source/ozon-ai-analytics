@@ -60,14 +60,16 @@
   const saved=loadCosts();
   const totals={FBO:{profit:0,revenue:0,units:0},FBS:{profit:0,revenue:0,units:0}};
   const commissionKey=(type,sku)=>type+'|'+String(sku??'');
-  const actualCommissionTotals=new Map(),salesGmvTotals=new Map();
+  const actualCommissionTotals=new Map(),actualCommissionCoverage=new Map(),salesGmvTotals=new Map();
   const sameFinancePeriod=!!(financeReconciliation&&financeReconciliation.period&&financeReconciliation.period.date_from===periodSales.period.date_from&&financeReconciliation.period.date_to===periodSales.period.date_to);
   if(sameFinancePeriod){
    for(const item of Array.isArray(financeReconciliation.product_commission_summary)?financeReconciliation.product_commission_summary:[]){
     const type=String(item.fulfillment_type||'').toUpperCase(),sku=item.sku;
     const amount=Number(item.sale_commission);
     if((type!=='FBO'&&type!=='FBS')||sku===null||sku===undefined||String(item.currency||'').toUpperCase()!=='RUB'||item.sale_commission===null||item.sale_commission===undefined||item.sale_commission===''||!Number.isFinite(amount))continue;
+    if(item.sale_commission_coverage!=='complete')continue;
     const key=commissionKey(type,sku);actualCommissionTotals.set(key,(actualCommissionTotals.get(key)||0)+amount);
+    actualCommissionCoverage.set(key,item.sale_commission_coverage);
    }
    for(const sale of rows){
     const type=String(sale.fulfillment_type||'').toUpperCase(),sku=sale.sku,gmv=Number(sale.sales_gmv);
@@ -92,7 +94,7 @@
    const key=commissionKey(type,sale.sku);
    const actualTotal=actualCommissionTotals.get(key);
    const totalSalesGmv=salesGmvTotals.get(key)||0;
-   const hasActualCommission=actualTotal!==undefined&&totalSalesGmv>0;
+   const hasActualCommission=actualTotal!==undefined&&actualCommissionCoverage.get(key)==='complete'&&totalSalesGmv>0;
    const required=type==='FBO'?['acquiring','fbo_delivery_to_customer','fbo_transit_min','fbo_transit_max']:['acquiring','delivery_to_customer','first_mile_min','first_mile_max','transit_min','transit_max'];
    const commissionField=type==='FBO'?'sales_percent_fbo':'sales_percent_fbs';
    if(required.some(field=>product[field]===null||product[field]===undefined||!Number.isFinite(Number(product[field])))||(!hasActualCommission&&(product[commissionField]===null||product[commissionField]===undefined||!Number.isFinite(Number(product[commissionField]))))){missingTariffUnits+=units;continue;}
