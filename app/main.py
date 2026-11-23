@@ -162,8 +162,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         rating_by_sku: dict[str, dict] = {}
         sku_values = sorted({
             str(record.get("sku"))
-            for product_id in detail_by_id
-            for record in [detail_by_id[product_id]]
+            for product_id in set(detail_by_id) | set(attributes_by_id)
+            for record in [{**detail_by_id.get(product_id, {}), **attributes_by_id.get(product_id, {})}]
             if record.get("sku") not in (None, "")
         })
         content_rating_available = True
