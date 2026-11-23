@@ -96,6 +96,8 @@ def analyze_catalog_product(
     brand = _text(product.get("brand") or product.get("brand_name"))
     category = _text(product.get("category") or product.get("type_name") or str(product.get("description_category_id") or ""))
     seller_price = _price_value(product.get("price") or product.get("marketing_price"))
+    content_rating = _price_value(product.get("content_rating"))
+    content_rating_groups = product.get("content_rating_groups") if isinstance(product.get("content_rating_groups"), list) else []
 
     issues: list[dict[str, str]] = []
     recommendations: list[str] = []
@@ -167,6 +169,8 @@ def analyze_catalog_product(
         "title": title or "Без названия",
         "seller_price": round(seller_price, 2) if seller_price is not None else None,
         "currency_code": _text(product.get("currency_code")) or None,
+        "ozon_content_rating": round(content_rating, 1) if content_rating is not None else None,
+        "content_rating_groups": content_rating_groups,
         "card_quality_score": card_score,
         "seo_score": seo_score,
         "price_analysis": price_analysis,
