@@ -202,16 +202,25 @@ def analyze_catalog_product(
         recommendations.append("Проверить сопоставимость аналогов, комплектацию и экономику перед корректировкой цены.")
 
     # This is a catalog-readiness proxy, not a demand or sales forecast.
-    if price_analysis:
+    if price_analysis and content_rating is not None:
+        potential_score = round(card_score * .45 + seo_score * .20 + content_rating * .20 + price_analysis["score"] * .15)
+        price_basis = "Ozon price index" if price_analysis.get("source") == "Ozon Seller API price index" else "supplied comparable-price positioning"
+        basis = f"card quality 45%, SEO 20%, Ozon content rating 20%, {price_basis} 15%"
+        confidence = "high" if images >= 3 and attributes >= 5 else "medium"
+    elif price_analysis:
         potential_score = round(card_score * .60 + seo_score * .25 + price_analysis["score"] * .15)
+        price_basis = "Ozon price index" if price_analysis.get("source") == "Ozon Seller API price index" else "supplied comparable-price positioning"
+        basis = f"card quality 60%, SEO 25%, {price_basis} 15%"
         price_evidence_ok = price_analysis.get("source") == "Ozon Seller API price index" or price_analysis.get("sample_size", 0) >= 3
         confidence = "high" if images >= 3 and attributes >= 5 and price_evidence_ok else "medium"
-        price_basis = "Ozon price index" if price_analysis.get("source") == "Ozon Seller API price index" else "supplied comparable-price positioning"
-        basis = f"card quality 60%, structural SEO 25%, {price_basis} 15%"
+    elif content_rating is not None:
+        potential_score = round(card_score * .55 + seo_score * .25 + content_rating * .20)
+        basis = "card quality 55%, SEO 25%, Ozon content rating 20%; price index unavailable"
+        confidence = "high" if images >= 3 and attributes >= 5 else "medium"
     else:
         potential_score = round(card_score * .70 + seo_score * .30)
         confidence = "low" if not title and not description and not images else "medium"
-        basis = "card quality 70%, structural SEO 30%; price and demand evidence unavailable"
+        basis = "card quality 70%, SEO 30%; price and Ozon content rating unavailable"
 
     return {
         "product_id": product_id or None,
