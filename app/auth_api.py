@@ -174,8 +174,12 @@ def _current_user_session(request: Request) -> dict:
     token = request.cookies.get(SESSION_COOKIE, "")
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required.")
+    try:
+        token_hash = hash_session_token(token)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid session.") from None
     _ensure_schema()
-    session = load_session(hash_session_token(token))
+    session = load_session(token_hash)
     if session is None:
         raise HTTPException(status_code=401, detail="Session expired or revoked.")
     return session
