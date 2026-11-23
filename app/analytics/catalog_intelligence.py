@@ -96,7 +96,12 @@ def analyze_catalog_product(
     brand = _text(product.get("brand") or product.get("brand_name"))
     category = _text(product.get("category") or product.get("type_name") or str(product.get("description_category_id") or ""))
     seller_price = _price_value(product.get("price") or product.get("marketing_price"))
-    content_rating = _price_value(product.get("content_rating"))
+    try:
+        content_rating = float(product.get("content_rating"))
+        if not 0 <= content_rating <= 100:
+            content_rating = None
+    except (TypeError, ValueError):
+        content_rating = None
     content_rating_groups = product.get("content_rating_groups") if isinstance(product.get("content_rating_groups"), list) else []
 
     issues: list[dict[str, str]] = []
