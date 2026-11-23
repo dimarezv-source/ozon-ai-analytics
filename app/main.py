@@ -201,6 +201,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         search_terms_by_sku: dict[str, list[str]] = {}
         search_metrics_available = False
         search_terms_available = False
+        search_terms_endpoint_available = True
         search_period = None
         if sku_values:
             period_end = datetime.now(timezone.utc).date() - timedelta(days=3)
@@ -232,8 +233,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                     ),
                     key=lambda sku: float(search_metrics_by_sku.get(sku, {}).get("unique_search_users") or 0),
                     reverse=True,
-                )[:50]
-                if not top_skus:
+                )[:20]
+                if not top_skus or not search_terms_endpoint_available:
                     continue
                 try:
                     detail_response = await client.execute(
@@ -256,8 +257,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                             if isinstance(detail, dict) and detail.get("sku") not in (None, "") and detail.get("query"):
                                 search_terms_by_sku.setdefault(str(detail["sku"]), []).append(str(detail["query"]))
                 except Exception as detail_exc:
+                    search_terms_endpoint_available = False
                     logger.warning("Ozon search query phrases unavailable: %s", type(detail_exc).__name__)
-                    continue
 
             search_metrics_available = bool(search_metrics_by_sku)
             search_terms_available = any(search_terms_by_sku.values())
