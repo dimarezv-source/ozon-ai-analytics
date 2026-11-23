@@ -1,8 +1,9 @@
 """Normalize explicit product commission fields from Ozon finance accrual records.
 
-These values are kept separate from service-fee components (logistics, storage,
-advertising, etc.). Currency is never inferred: when the source does not expose
-one, the row is explicitly marked as unspecified.
+These values are kept separate from service-fee components (logistics,
+storage, advertising, etc.). Currency is never inferred. A commission is
+eligible for profitability calculations only when every delivered posting
+for the SKU and fulfillment scheme has a matching sale_commission record.
 """
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
@@ -29,7 +30,7 @@ def _currency(*values):
 
 
 def normalize_product_commissions(records, delivered_postings=None):
-    """Extract explicit posting.products[].commission values without guessing."""
+    """Extract commissions and measure coverage against delivered SKU postings."""
     schemas = {
         str(row.get("posting_number")): str(row.get("fulfillment_type"))
         for row in (delivered_postings or [])
@@ -37,12 +38,25 @@ def normalize_product_commissions(records, delivered_postings=None):
         and row.get("posting_number") not in (None, "")
         and row.get("fulfillment_type") in ("FBO", "FBS")
     }
+    expected_postings = defaultdict(set)
+    for posting in delivered_postings or []:
+        if not isinstance(posting, dict):
+            continue
+        number = posting.get("posting_number")
+        schema = posting.get("fulfillment_type")
+        if number in (None, "") or schema not in ("FBO", "FBS"):
+            continue
+        for sku in posting.get("skus") or []:
+            if sku not in (None, ""):
+                expected_postings[(schema, str(sku))].add(str(number))
+
     totals = defaultdict(lambda: {
         "fulfillment_type": None, "sku": None, "currency": "",
         "seller_price": Decimal("0"), "sale_price": Decimal("0"),
         "sale_commission": Decimal("0"), "bonus": Decimal("0"),
         "coinvestment": Decimal("0"), "records": 0,
     })
+    observed_sale_commission_postings = defaultdict(set)
     rows = []
     for record in records or []:
         if not isinstance(record, dict):
@@ -85,13 +99,30 @@ def normalize_product_commissions(records, delivered_postings=None):
             for field, value in values.items():
                 if value is not None:
                     item[field] += value
+            if (fulfillment in ("FBO", "FBS") and sku is not None
+                    and currency.upper() == "RUB" and values["sale_commission"] is not None):
+                observed_sale_commission_postings[(fulfillment, sku)].add(number)
 
     summary = []
     for key, item in sorted(totals.items()):
-        summary.append({
+        row = {
             **item,
             **{field: str(item[field]) for field in AMOUNT_FIELDS},
+        }
+        expected = expected_postings.get((key[0], key[1]), set())
+        observed = observed_sale_commission_postings.get((key[0], key[1]), set()) if key[0] in ("FBO", "FBS") and key[1] not in ("UNATTRIBUTED", None) else set()
+        if key[2].upper() != "RUB" or not expected:
+            coverage = "unknown"
+        elif expected.issubset(observed):
+            coverage = "complete"
+        else:
+            coverage = "partial"
+        row.update({
+            "expected_postings": len(expected),
+            "sale_commission_postings": len(observed),
+            "sale_commission_coverage": coverage,
         })
+        summary.append(row)
     matched = sum(1 for row in rows if row["reconciliation_status"] == "matched")
     return {
         "product_commissions": rows,
@@ -105,6 +136,8 @@ def normalize_product_commissions(records, delivered_postings=None):
         "product_commission_basis": (
             "Explicit posting.products[].commission source fields. These are kept "
             "separate from service accrual components; currency is not inferred. "
-            "Only exact delivered posting-number matches receive FBO/FBS attribution."
+            "Only exact delivered posting-number matches receive FBO/FBS attribution. "
+            "RUB sale commission is marked complete only when every delivered posting "
+            "for the same SKU and fulfillment scheme has a matching sale_commission row."
         ),
     }
