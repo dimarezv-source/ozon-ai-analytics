@@ -47,7 +47,7 @@ def test_price_and_keyword_data_are_not_fabricated_when_missing():
 
     codes = {issue["code"] for issue in result["issues"]}
     assert result["price_analysis"] is None
-    assert "comparables_unavailable" in codes
+    assert "price_index_unavailable" in codes
     assert "search_terms_unavailable" in codes
     assert result["evidence"]["search_terms_supplied"] == 0
 
