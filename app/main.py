@@ -181,6 +181,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                 logger.warning("Ozon content rating unavailable: %s", type(rating_exc).__name__)
                 break
 
+        content_rating_available = content_rating_available and bool(rating_by_sku)
+
         analyzed = []
         for row in catalog_rows:
             product_id = str(row.get("product_id") or "")
