@@ -172,7 +172,7 @@ def analyze_catalog_product(
         issues.append({"severity": "low", "code": "missing_category", "message": "Категория в данных карточки не найдена."})
 
     source_terms = search_terms if search_terms is not None else product_search_terms
-    terms = [_text(term).lower() for term in source_terms if _text(term)]
+    terms = list(dict.fromkeys(_text(term).lower() for term in source_terms if _text(term)))
     title_lower, description_lower = title.lower(), description.lower()
     matched_terms = [term for term in terms if term in title_lower or term in description_lower]
     seo_weights = 40 + 30 + 20 + (10 if terms else 0)
