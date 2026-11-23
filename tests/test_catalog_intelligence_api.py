@@ -29,8 +29,10 @@ def test_catalog_intelligence_uses_only_read_operations_and_needs_no_sales(monke
             if operation == "product_info_list":
                 return {"items": [{
                     "id": 123, "name": "Товар с подробным названием модели и назначения",
-                    "offer_id": "A-123", "price": "1490",
+                    "offer_id": "A-123", "price": "1490", "sku": "555",
                 }]}
+            if operation == "product_content_rating":
+                return {"products": [{"sku": "555", "rating": 82, "groups": [{"name": "Фото", "rating": 90}]}]}
             if operation == "product_info_attributes":
                 return {"result": [{
                     "id": 123, "description": "Описание товара для теста",
@@ -54,6 +56,8 @@ def test_catalog_intelligence_uses_only_read_operations_and_needs_no_sales(monke
     assert data["product_count"] == 1
     assert data["products"][0]["product_id"] == "123"
     assert data["products"][0]["evidence"]["image_count"] == 3
+    assert data["products"][0]["ozon_content_rating"] == 82
+    assert data["content_rating_available"] is True
     assert data["summary"]["missing_price"] == 1
 
 
