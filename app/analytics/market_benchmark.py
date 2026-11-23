@@ -85,7 +85,7 @@ def _percentile(values: list[float], value: float, reverse: bool = False) -> flo
     ordered = sorted(values, reverse=reverse)
     if len(ordered) <= 1:
         return 50.0
-    better = sum(1 for item in ordered if item < value) if reverse else sum(1 for item in ordered if item > value)
+    better = sum(1 for item in ordered if item > value) if reverse else sum(1 for item in ordered if item < value)
     return round(100 * better / (len(ordered) - 1), 1)
 
 
