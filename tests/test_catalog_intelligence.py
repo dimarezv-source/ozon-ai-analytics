@@ -96,7 +96,7 @@ def test_ozon_price_index_provides_price_position_without_sales_history():
 def test_search_metrics_and_real_query_terms_are_returned_separately_from_sales():
     result = analyze_catalog_product({
         "name": "Подробное название товара для SEO проверки",
-        "description": "Описание для проверки поисковой оптимизации",
+        "description": "Описание для проверки поисковой оптимизации. Товар для SEO анализа",
         "search_metrics": {"unique_search_users": 120, "unique_view_users": 35, "view_conversion": 0.29, "position": 18},
         "search_terms": ["подробное название товара", "товар для SEO"],
     })
