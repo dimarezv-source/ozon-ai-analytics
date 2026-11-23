@@ -73,6 +73,41 @@ def _score_price(product_price: float, comparable_prices: Iterable[Any]) -> dict
     }
 
 
+def _score_ozon_price_index(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    raw_color = value.get("color_index")
+    if isinstance(raw_color, int):
+        color = {1: "GREEN", 2: "YELLOW", 3: "RED"}.get(raw_color)
+    else:
+        color = _text(raw_color).upper()
+        if color.startswith("COLOR_INDEX_"):
+            color = color.removeprefix("COLOR_INDEX_")
+    scores = {"GREEN": 100, "YELLOW": 70, "RED": 35}
+    if color not in scores:
+        return None
+
+    def index_value(key: str) -> float | None:
+        group = value.get(key)
+        if not isinstance(group, dict):
+            return None
+        try:
+            number = float(group.get("price_index"))
+        except (TypeError, ValueError):
+            return None
+        return number if 0 <= number <= 10 else None
+
+    return {
+        "score": scores[color],
+        "source": "Ozon Seller API price index",
+        "color_index": color,
+        "external_price_index": index_value("external_index_data"),
+        "ozon_price_index": index_value("ozon_index_data"),
+        "self_marketplaces_price_index": index_value("self_marketplaces_index_data"),
+        "basis": "Ozon-provided price index; not a direct competitor-price list",
+    }
+
+
 def analyze_catalog_product(
     product: dict[str, Any],
     *,
@@ -103,6 +138,7 @@ def analyze_catalog_product(
     except (TypeError, ValueError):
         content_rating = None
     content_rating_groups = product.get("content_rating_groups") if isinstance(product.get("content_rating_groups"), list) else []
+    ozon_price_index = _score_ozon_price_index(product.get("price_indexes"))
 
     issues: list[dict[str, str]] = []
     recommendations: list[str] = []
@@ -149,20 +185,25 @@ def analyze_catalog_product(
     elif not terms:
         issues.append({"severity": "info", "code": "search_terms_unavailable", "message": "Фактические поисковые фразы не переданы; SEO оценено только по структуре карточки."})
 
-    price_analysis = _score_price(seller_price, comparable_prices or []) if seller_price is not None else None
+    price_analysis = (_score_price(seller_price, comparable_prices or []) if seller_price is not None else None) or ozon_price_index
     if seller_price is None:
         issues.append({"severity": "info", "code": "seller_price_unavailable", "message": "Цена продавца не найдена в данных товара."})
     elif price_analysis is None:
-        issues.append({"severity": "info", "code": "comparables_unavailable", "message": "Нет подтверждённых сопоставимых цен; конкурентность цены не оценивалась."})
-    elif price_analysis["score"] <= 65:
+        issues.append({"severity": "info", "code": "price_index_unavailable", "message": "Индекс цен Ozon и сопоставимые цены недоступны; конкурентность цены не оценивалась."})
+    elif price_analysis.get("source") == "Ozon Seller API price index" and price_analysis["score"] <= 70:
+        issues.append({"severity": "medium", "code": "ozon_price_index_warning", "message": f"Индекс цены Ozon: {price_analysis['color_index']}."})
+        recommendations.append("Проверить позицию цены по индексу Ozon и сравнить условия аналогичных предложений.")
+    elif price_analysis.get("deviation_percent") is not None and price_analysis["score"] <= 65:
         issues.append({"severity": "medium", "code": "price_outside_benchmark", "message": f"Цена отличается от медианы переданной выборки на {price_analysis['deviation_percent']}%."})
         recommendations.append("Проверить сопоставимость аналогов, комплектацию и экономику перед корректировкой цены.")
 
     # This is a catalog-readiness proxy, not a demand or sales forecast.
     if price_analysis:
         potential_score = round(card_score * .60 + seo_score * .25 + price_analysis["score"] * .15)
-        confidence = "high" if images >= 3 and attributes >= 5 and price_analysis["sample_size"] >= 3 else "medium"
-        basis = "card quality 60%, structural SEO 25%, supplied comparable-price positioning 15%"
+        price_evidence_ok = price_analysis.get("source") == "Ozon Seller API price index" or price_analysis.get("sample_size", 0) >= 3
+        confidence = "high" if images >= 3 and attributes >= 5 and price_evidence_ok else "medium"
+        price_basis = "Ozon price index" if price_analysis.get("source") == "Ozon Seller API price index" else "supplied comparable-price positioning"
+        basis = f"card quality 60%, structural SEO 25%, {price_basis} 15%"
     else:
         potential_score = round(card_score * .70 + seo_score * .30)
         confidence = "low" if not title and not description and not images else "medium"
