@@ -159,14 +159,42 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                     if key:
                         attributes_by_id[key] = record
 
+        rating_by_sku: dict[str, dict] = {}
+        sku_values = sorted({
+            str(record.get("sku"))
+            for product_id in detail_by_id
+            for record in [detail_by_id[product_id]]
+            if record.get("sku") not in (None, "")
+        })
+        content_rating_available = True
+        for start in range(0, len(sku_values), 1000):
+            try:
+                rating_response = await client.execute("product_content_rating", {"skus": sku_values[start:start + 1000]})
+                rating_rows = rating_response.get("products", [])
+                if not isinstance(rating_rows, list):
+                    raise ValueError("Unexpected Ozon content rating response.")
+                for rating in rating_rows:
+                    if isinstance(rating, dict) and rating.get("sku") not in (None, ""):
+                        rating_by_sku[str(rating["sku"])] = rating
+            except Exception as rating_exc:
+                content_rating_available = False
+                logger.warning("Ozon content rating unavailable: %s", type(rating_exc).__name__)
+                break
+
         analyzed = []
         for row in catalog_rows:
             product_id = str(row.get("product_id") or "")
+            detail = detail_by_id.get(product_id, {})
+            attributes = attributes_by_id.get(product_id, {})
+            sku = str(detail.get("sku") or attributes.get("sku") or "")
+            rating = rating_by_sku.get(sku, {})
             product = {
                 **row,
-                **detail_by_id.get(product_id, {}),
-                **attributes_by_id.get(product_id, {}),
+                **detail,
+                **attributes,
                 "product_id": product_id,
+                "content_rating": rating.get("rating"),
+                "content_rating_groups": rating.get("groups", []),
             }
             analyzed.append(analyze_catalog_product(product))
 
@@ -175,7 +203,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         return {
             "status": "ok",
             "mode": "read-only",
-            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes"],
+            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v1/product/rating-by-sku"],
+            "content_rating_available": content_rating_available,
             "sales_history_required": False,
             "product_count": total,
             "summary": {
