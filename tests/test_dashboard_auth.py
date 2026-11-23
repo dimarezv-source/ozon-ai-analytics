@@ -22,6 +22,26 @@ def test_dashboard_requires_configured_authentication(monkeypatch) -> None:
     assert "authentication is not configured" in response.json()["detail"].lower()
 
 
+def test_dashboard_redirects_browser_to_login_when_unauthenticated(monkeypatch) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
+
+    response = TestClient(app).get("/dashboard", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_service_root_redirects_to_dashboard(monkeypatch) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
+
+    response = TestClient(app).get("/", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/dashboard"
+
+
 def test_dashboard_rejects_invalid_basic_auth(monkeypatch) -> None:
     monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
     monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
