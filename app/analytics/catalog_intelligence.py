@@ -1,7 +1,6 @@
 """Explainable pre-sales catalog audit; deliberately independent of sales history."""
 from __future__ import annotations
 
-import re
 from statistics import median
 from typing import Any, Iterable
 
@@ -20,11 +19,11 @@ def _attribute_count(value: Any) -> int:
         raw = item.get("values")
         if isinstance(raw, list):
             populated = any(
-                isinstance(entry, dict) and _text(str(entry.get("value") or ""))
+                isinstance(entry, dict) and _text(entry.get("value"))
                 for entry in raw
             )
         else:
-            populated = bool(_text(str(item.get("value") or "")))
+            populated = bool(_text(item.get("value")))
         count += int(populated)
     return count
 
@@ -149,7 +148,7 @@ def analyze_catalog_product(
     # This is a catalog-readiness proxy, not a demand or sales forecast.
     if price_analysis:
         potential_score = round(card_score * .60 + seo_score * .25 + price_analysis["score"] * .15)
-        confidence = "high" if images >= 3 and attributes >= 5 and len(price_analysis["sample_size"] if isinstance(price_analysis["sample_size"], list) else str(price_analysis["sample_size"])) > 0 else "medium"
+        confidence = "high" if images >= 3 and attributes >= 5 and price_analysis["sample_size"] >= 3 else "medium"
         basis = "card quality 60%, structural SEO 25%, supplied comparable-price positioning 15%"
     else:
         potential_score = round(card_score * .70 + seo_score * .30)
