@@ -91,3 +91,17 @@ def test_ozon_price_index_provides_price_position_without_sales_history():
     assert result["price_analysis"]["external_price_index"] == 1.24
     assert result["price_analysis"]["score"] == 35
     assert any(issue["code"] == "ozon_price_index_warning" for issue in result["issues"])
+
+
+def test_search_metrics_and_real_query_terms_are_returned_separately_from_sales():
+    result = analyze_catalog_product({
+        "name": "Подробное название товара для SEO проверки",
+        "description": "Описание для проверки поисковой оптимизации",
+        "search_metrics": {"unique_search_users": 120, "unique_view_users": 35, "view_conversion": 0.29, "position": 18},
+        "search_terms": ["подробное название товара", "товар для SEO"],
+    })
+
+    assert result["search_metrics"]["unique_search_users"] == 120
+    assert result["evidence"]["search_terms_supplied"] == 2
+    assert result["evidence"]["search_terms_matched"] == 2
+    assert result["evidence"]["sales_history_required"] is False
