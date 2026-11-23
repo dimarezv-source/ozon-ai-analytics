@@ -130,6 +130,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         ]
         detail_by_id: dict[str, dict] = {}
         attributes_by_id: dict[str, dict] = {}
+        price_by_id: dict[str, dict] = {}
         for start in range(0, len(product_ids), 1000):
             batch = product_ids[start:start + 1000]
             details_response = await client.execute("product_info_list", {"product_id": batch})
@@ -158,6 +159,19 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                     key = str(record.get("id") or record.get("product_id") or "")
                     if key:
                         attributes_by_id[key] = record
+
+            price_response = await client.execute(
+                "product_info_prices",
+                {"cursor": "", "filter": {"product_id": batch, "visibility": "ALL"}, "limit": 1000},
+            )
+            price_rows = price_response.get("items", [])
+            if not isinstance(price_rows, list):
+                raise ValueError("Unexpected Ozon product prices response.")
+            for price_row in price_rows:
+                if isinstance(price_row, dict):
+                    key = str(price_row.get("product_id") or "")
+                    if key:
+                        price_by_id[key] = price_row
 
         rating_by_sku: dict[str, dict] = {}
         sku_values = sorted({
@@ -194,6 +208,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                 **row,
                 **detail,
                 **attributes,
+                **price_by_id.get(product_id, {}),
                 "product_id": product_id,
                 "content_rating": rating.get("rating"),
                 "content_rating_groups": rating.get("groups", []),
@@ -205,7 +220,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         return {
             "status": "ok",
             "mode": "read-only",
-            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v1/product/rating-by-sku"],
+            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v5/product/info/prices", "/v1/product/rating-by-sku"],
             "content_rating_available": content_rating_available,
             "sales_history_required": False,
             "product_count": total,
@@ -217,7 +232,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                 "average_seo": round(sum(item["seo_score"] for item in analyzed) / total, 1) if total else 0,
             },
             "products": analyzed,
-            "notice": "Предпродажная оценка качества каталога. Конкурентные цены и фактические поисковые фразы пока не подключены; отсутствие этих данных явно отмечается в карточках.",
+            "notice": "Предпродажная оценка качества каталога. Ценовая позиция использует индекс Ozon, если он доступен; фактические поисковые фразы пока не подключены и не угадываются.",
         }
     except HTTPException:
         raise
