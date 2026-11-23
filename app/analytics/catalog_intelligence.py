@@ -94,7 +94,7 @@ def analyze_catalog_product(
     offer_id = _text(product.get("offer_id"))
     product_id = _text(str(product.get("product_id") or product.get("id") or ""))
     brand = _text(product.get("brand") or product.get("brand_name"))
-    category = _text(product.get("category") or product.get("type_name"))
+    category = _text(product.get("category") or product.get("type_name") or str(product.get("description_category_id") or ""))
     seller_price = _price_value(product.get("price") or product.get("marketing_price"))
 
     issues: list[dict[str, str]] = []
@@ -165,6 +165,8 @@ def analyze_catalog_product(
         "product_id": product_id or None,
         "offer_id": offer_id or None,
         "title": title or "Без названия",
+        "seller_price": round(seller_price, 2) if seller_price is not None else None,
+        "currency_code": _text(product.get("currency_code")) or None,
         "card_quality_score": card_score,
         "seo_score": seo_score,
         "price_analysis": price_analysis,
