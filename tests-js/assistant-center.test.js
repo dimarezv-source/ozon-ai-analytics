@@ -82,7 +82,7 @@ test('AI center script parses as valid JavaScript before deployment', () => {
 test('finance assistant does not substitute store-wide profit for SKU profit and parses article aliases', () => {
   assert.match(script, /const asksProfit = \/прибыл\|сколько заработал\//);
   assert.ok(script.includes('артикул'));
-  assert.ok(script.includes('арт\\\\.?'));
+  assert.ok(script.includes('арт\\.?'));
   assert.match(script, /Не буду подменять прибыль конкретного SKU общей прибылью магазина/);
 });
 
