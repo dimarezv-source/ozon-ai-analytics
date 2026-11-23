@@ -34,6 +34,7 @@ MOTION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "motion.js"
 ASSISTANT_CENTER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "assistant-center.js"
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
+CATALOG_AUDIT_SCRIPT_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "catalog-intelligence.js"
 LOSS_ALERTS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "loss-alerts.js"
 RISK_READINESS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "risk-readiness.js"
 INVENTORY_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "inventory.js"
@@ -875,6 +876,10 @@ async def profit_calculator_script(_: None = Depends(require_dashboard_auth)) ->
 @app.get("/dashboard/intelligence.js", tags=["dashboard"], include_in_schema=False)
 async def intelligence_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(INTELLIGENCE_FILE, media_type="application/javascript")
+
+@app.get("/dashboard/catalog-intelligence.js", tags=["dashboard"], include_in_schema=False)
+async def catalog_intelligence_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(CATALOG_AUDIT_SCRIPT_FILE, media_type="application/javascript")
 
 
 @app.get("/dashboard/loss-alerts.js", tags=["dashboard"], include_in_schema=False)
