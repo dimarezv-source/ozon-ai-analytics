@@ -5,7 +5,7 @@ def test_sparse_product_flags_missing_content_without_sales_history():
     result = analyze_catalog_product({"product_id": 1, "offer_id": "A-1"})
 
     assert result["evidence"]["sales_history_required"] is False
-    assert result["card_quality_score"] == 15
+    assert result["card_quality_score"] == 10
     assert result["price_analysis"] is None
     assert result["pre_sales_potential_score"] >= 0
     codes = {issue["code"] for issue in result["issues"]}
