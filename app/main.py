@@ -719,8 +719,26 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "mode": "read-only"}
 
 
+@app.get("/", include_in_schema=False)
+async def home() -> RedirectResponse:
+    """Send the service root to the dashboard entry point."""
+    return RedirectResponse(url="/dashboard", status_code=307)
+
+
 @app.get("/dashboard", tags=["dashboard"], include_in_schema=False)
-async def dashboard(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+async def dashboard(
+    request: Request,
+    credentials: HTTPBasicCredentials | None = Depends(security),
+):
+    """Serve the dashboard, redirecting browser visits to the login page."""
+    try:
+        require_dashboard_auth(request, credentials)
+    except HTTPException as exc:
+        # Keep explicit HTTP Basic failures and configuration errors visible,
+        # but give normal browser visits a friendly login flow.
+        if exc.status_code == 401 and credentials is None:
+            return RedirectResponse(url="/login", status_code=303)
+        raise
     return FileResponse(DASHBOARD_FILE, media_type="text/html")
 
 
