@@ -24,8 +24,8 @@ def test_extracts_explicit_sale_commission_and_keeps_it_separate_by_fulfillment_
         },
     ]
     result = normalize_product_commissions(records, [
-        {"posting_number": "FBO-1", "fulfillment_type": "FBO"},
-        {"posting_number": "FBS-1", "fulfillment_type": "FBS"},
+        {"posting_number": "FBO-1", "fulfillment_type": "FBO", "skus": ["123"]},
+        {"posting_number": "FBS-1", "fulfillment_type": "FBS", "skus": ["456"]},
     ])
 
     assert result["product_commission_metrics"] == {
@@ -38,6 +38,39 @@ def test_extracts_explicit_sale_commission_and_keeps_it_separate_by_fulfillment_
         ("FBO", "123", "RUB", "1000.00", "-150.00"),
         ("FBS", "456", "KZT", "200", "-25"),
     ]
+    assert result["product_commission_summary"][0]["sale_commission_coverage"] == "complete"
+    assert result["product_commission_summary"][1]["sale_commission_coverage"] == "unknown"
+
+
+def test_partial_commission_coverage_is_not_marked_complete():
+    records = [{
+        "posting_number": "FBO-1",
+        "posting": {"products": [{
+            "sku": 123, "price": {"currency_code": "RUB"},
+            "commission": {"sale_commission": "-15"},
+        }]},
+    }]
+    delivered = [
+        {"posting_number": "FBO-1", "fulfillment_type": "FBO", "skus": ["123"]},
+        {"posting_number": "FBO-2", "fulfillment_type": "FBO", "skus": ["123"]},
+    ]
+    row = normalize_product_commissions(records, delivered)["product_commission_summary"][0]
+    assert row["expected_postings"] == 2
+    assert row["sale_commission_postings"] == 1
+    assert row["sale_commission_coverage"] == "partial"
+
+
+def test_commission_coverage_requires_explicit_sku_posting_and_rub_currency():
+    records = [{
+        "posting_number": "FBO-1",
+        "posting": {"products": [{
+            "sku": 123,
+            "commission": {"sale_commission": "-15"},
+        }]},
+    }]
+    delivered = [{"posting_number": "FBO-1", "fulfillment_type": "FBO", "skus": ["123"]}]
+    row = normalize_product_commissions(records, delivered)["product_commission_summary"][0]
+    assert row["sale_commission_coverage"] == "unknown"
 
 
 def test_unmatched_posting_and_unspecified_currency_are_not_guessed():
