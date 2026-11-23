@@ -197,6 +197,71 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
 
         content_rating_available = content_rating_available and bool(rating_by_sku)
 
+        search_metrics_by_sku: dict[str, dict] = {}
+        search_terms_by_sku: dict[str, list[str]] = {}
+        search_metrics_available = False
+        search_terms_available = False
+        search_period = None
+        if sku_values:
+            period_end = datetime.now(timezone.utc).date() - timedelta(days=3)
+            period_start = period_end - timedelta(days=30)
+            date_from = f"{period_start.isoformat()}T00:00:00Z"
+            date_to = f"{period_end.isoformat()}T23:59:59Z"
+            search_period = {"date_from": date_from, "date_to": date_to}
+            for start in range(0, len(sku_values), 1000):
+                sku_batch = sku_values[start:start + 1000]
+                try:
+                    query_response = await client.execute(
+                        "product_queries",
+                        {"date_from": date_from, "date_to": date_to, "page": 0, "page_size": 1000, "skus": sku_batch, "sort_by": "BY_SEARCHES", "sort_dir": "DESCENDING"},
+                    )
+                    query_rows = query_response.get("items", [])
+                    if not isinstance(query_rows, list):
+                        raise ValueError("Unexpected Ozon product query response.")
+                    for query_item in query_rows:
+                        if isinstance(query_item, dict) and query_item.get("sku") not in (None, ""):
+                            search_metrics_by_sku[str(query_item["sku"])] = query_item
+                except Exception as search_exc:
+                    logger.warning("Ozon product search metrics unavailable: %s", type(search_exc).__name__)
+                    break
+
+                top_skus = sorted(
+                    (
+                        sku for sku in sku_batch
+                        if float(search_metrics_by_sku.get(sku, {}).get("unique_search_users") or 0) > 0
+                    ),
+                    key=lambda sku: float(search_metrics_by_sku.get(sku, {}).get("unique_search_users") or 0),
+                    reverse=True,
+                )[:50]
+                if not top_skus:
+                    continue
+                try:
+                    detail_response = await client.execute(
+                        "product_queries_details",
+                        {"date_from": date_from, "date_to": date_to, "limit_by_sku": 15, "page": 0, "page_size": 100, "skus": top_skus, "sort_by": "BY_SEARCHES", "sort_dir": "DESCENDING"},
+                    )
+                    query_details = detail_response.get("queries", [])
+                    if not isinstance(query_details, list):
+                        raise ValueError("Unexpected Ozon product query details response.")
+                    for detail in query_details:
+                        if isinstance(detail, dict) and detail.get("sku") not in (None, "") and detail.get("query"):
+                            search_terms_by_sku.setdefault(str(detail["sku"]), []).append(str(detail["query"]))
+                    page_count = min(10, int(detail_response.get("page_count") or 1))
+                    for page in range(1, page_count):
+                        page_response = await client.execute(
+                            "product_queries_details",
+                            {"date_from": date_from, "date_to": date_to, "limit_by_sku": 15, "page": page, "page_size": 100, "skus": top_skus, "sort_by": "BY_SEARCHES", "sort_dir": "DESCENDING"},
+                        )
+                        for detail in page_response.get("queries", []) if isinstance(page_response.get("queries", []), list) else []:
+                            if isinstance(detail, dict) and detail.get("sku") not in (None, "") and detail.get("query"):
+                                search_terms_by_sku.setdefault(str(detail["sku"]), []).append(str(detail["query"]))
+                except Exception as detail_exc:
+                    logger.warning("Ozon search query phrases unavailable: %s", type(detail_exc).__name__)
+                    continue
+
+            search_metrics_available = bool(search_metrics_by_sku)
+            search_terms_available = any(search_terms_by_sku.values())
+
         analyzed = []
         for row in catalog_rows:
             product_id = str(row.get("product_id") or "")
@@ -212,6 +277,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                 "product_id": product_id,
                 "content_rating": rating.get("rating"),
                 "content_rating_groups": rating.get("groups", []),
+                "search_metrics": search_metrics_by_sku.get(sku),
+                "search_terms": search_terms_by_sku.get(sku, []),
             }
             analyzed.append(analyze_catalog_product(product))
 
@@ -220,8 +287,11 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         return {
             "status": "ok",
             "mode": "read-only",
-            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v5/product/info/prices", "/v1/product/rating-by-sku"],
+            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v5/product/info/prices", "/v1/product/rating-by-sku", "/v1/analytics/product-queries", "/v1/analytics/product-queries/details"],
             "content_rating_available": content_rating_available,
+            "search_metrics_available": search_metrics_available,
+            "search_terms_available": search_terms_available,
+            "search_period": search_period,
             "sales_history_required": False,
             "product_count": total,
             "summary": {
@@ -232,7 +302,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                 "average_seo": round(sum(item["seo_score"] for item in analyzed) / total, 1) if total else 0,
             },
             "products": analyzed,
-            "notice": "Предпродажная оценка качества каталога. Ценовая позиция использует индекс Ozon, если он доступен; фактические поисковые фразы пока не подключены и не угадываются.",
+            "notice": "Предпродажная оценка качества каталога. Используются доступные поисковые метрики и фразы за указанный период; последние 3 дня исключены из-за задержки расчёта. Данные по поиску могут быть ограничены подпиской Ozon.",
         }
     except HTTPException:
         raise
