@@ -33,6 +33,8 @@ READ_ONLY_OPERATIONS: dict[str, ReadOperation] = {
     "product_info_list": ReadOperation(path="/v3/product/info/list", http_method="POST"),
     "product_info_attributes": ReadOperation(path="/v4/product/info/attributes", http_method="POST"),
     "product_content_rating": ReadOperation(path="/v1/product/rating-by-sku", http_method="POST"),
+    "product_queries": ReadOperation(path="/v1/analytics/product-queries", http_method="POST"),
+    "product_queries_details": ReadOperation(path="/v1/analytics/product-queries/details", http_method="POST"),
     "product_info_prices": ReadOperation(path="/v5/product/info/prices", http_method="POST"),
     "product_info_stocks": ReadOperation(path="/v4/product/info/stocks", http_method="POST"),
     "finance_accrual_types": ReadOperation(path="/v1/finance/accrual/types", http_method="POST"),
