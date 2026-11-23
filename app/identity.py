@@ -198,3 +198,22 @@ def revoke_session(token_hash: bytes) -> bool:
             (token_hash,),
         ).fetchone()
     return row is not None
+
+
+def create_first_tenant_owner(email: str, password_hash: str, tenant_name: str) -> dict:
+    """Create the initial owner exactly once, guarded by a transaction-scoped lock."""
+    normalized_email = normalize_email(email)
+    if not isinstance(password_hash, str) or not password_hash.startswith("$argon2id$") or len(password_hash) > 512:
+        raise ValueError("A valid Argon2id password hash is required.")
+    if not isinstance(tenant_name, str) or not 1 <= len(tenant_name.strip()) <= 160:
+        raise ValueError("Tenant name must contain between 1 and 160 characters.")
+    user_id, tenant_id = uuid4(), uuid4()
+    with _connect() as connection:
+        connection.execute("SELECT pg_advisory_xact_lock(741920261)")
+        exists = connection.execute("SELECT EXISTS(SELECT 1 FROM users) AS has_users").fetchone()
+        if exists and exists["has_users"]:
+            raise RuntimeError("Account system already initialized.")
+        connection.execute("INSERT INTO tenants (id, name) VALUES (%s, %s)", (tenant_id, tenant_name.strip()))
+        connection.execute("INSERT INTO users (id, email, password_hash) VALUES (%s, %s, %s)", (user_id, normalized_email, password_hash))
+        connection.execute("INSERT INTO tenant_memberships (tenant_id, user_id, role) VALUES (%s, %s, 'owner')", (tenant_id, user_id))
+    return {"user_id": str(user_id), "tenant_id": str(tenant_id), "email": normalized_email, "role": "owner"}
