@@ -71,6 +71,9 @@ def test_catalog_intelligence_uses_only_read_operations_and_needs_no_sales(monke
     assert data["products"][0]["evidence"]["search_terms_matched"] == 1
     assert data["products"][0]["price_analysis"]["color_index"] == "GREEN"
     assert data["summary"]["missing_price"] == 0
+    assert data["summary"]["search_opportunities_available"] == 1
+    assert data["summary"]["high_search_opportunity"] == 0
+    assert data["products"][0]["search_opportunity"]["catalog_search_rank"] == 1
 
 
 def test_catalog_intelligence_validates_product_limit(monkeypatch):
