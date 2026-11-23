@@ -108,6 +108,77 @@ def _score_ozon_price_index(value: Any) -> dict[str, Any] | None:
     }
 
 
+def _metric_number(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 and number < float("inf") else None
+
+
+def rank_search_opportunities(products: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Add a within-catalog search-opportunity score; never infer marketplace demand."""
+    candidates: list[tuple[dict[str, Any], float]] = []
+    for product in products:
+        metrics = product.get("search_metrics") if isinstance(product.get("search_metrics"), dict) else {}
+        searches = _metric_number(metrics.get("unique_search_users"))
+        if searches is not None and searches > 0:
+            candidates.append((product, searches))
+
+    ordered = sorted(candidates, key=lambda pair: pair[1])
+    demand_percentile: dict[int, float] = {}
+    catalog_rank: dict[int, int] = {}
+    index = 0
+    while index < len(ordered):
+        end = index
+        while end + 1 < len(ordered) and ordered[end + 1][1] == ordered[index][1]:
+            end += 1
+        average_rank = (index + end) / 2
+        percentile = 50.0 if len(ordered) == 1 else average_rank / (len(ordered) - 1) * 100.0
+        for tied_index in range(index, end + 1):
+            product = ordered[tied_index][0]
+            demand_percentile[id(product)] = percentile
+            catalog_rank[id(product)] = len(ordered) - tied_index
+        index = end + 1
+
+    for product in products:
+        metrics = product.get("search_metrics") if isinstance(product.get("search_metrics"), dict) else {}
+        searches = _metric_number(metrics.get("unique_search_users"))
+        if searches is None or searches <= 0:
+            product["search_opportunity"] = None
+            continue
+
+        components: list[tuple[float, float]] = [(demand_percentile[id(product)], 0.50)]
+        position = _metric_number(metrics.get("position"))
+        if position is not None and position > 0:
+            components.append((min(100.0, max(0.0, (position - 1.0) / 49.0 * 100.0)), 0.25))
+
+        conversion = _metric_number(metrics.get("view_conversion"))
+        if conversion is not None:
+            normalized_conversion = conversion / 100.0 if conversion > 1 else conversion
+            if normalized_conversion <= 1:
+                components.append(((1.0 - normalized_conversion) * 100.0, 0.25))
+
+        weight = sum(part_weight for _, part_weight in components)
+        score_value = round(sum(value * part_weight for value, part_weight in components) / weight)
+        product["search_opportunity"] = {
+            "score": score_value,
+            "level": "high" if score_value >= 70 else "medium" if score_value >= 40 else "low",
+            "unique_search_users": int(searches),
+            "position": position,
+            "view_conversion": conversion,
+            "catalog_search_rank": catalog_rank[id(product)],
+            "catalog_search_products": len(ordered),
+            "basis": "Relative position within this seller's catalog plus available Ozon product-search signals; not marketplace-wide demand.",
+        }
+        if score_value >= 70:
+            recommendation = "Высокий поисковый интерес относительно каталога: проверьте позицию, заголовок, фото и соответствие карточки поисковому намерению."
+            if recommendation not in product.get("recommendations", []):
+                product.setdefault("recommendations", []).append(recommendation)
+
+    return products
+
+
 def analyze_catalog_product(
     product: dict[str, Any],
     *,
