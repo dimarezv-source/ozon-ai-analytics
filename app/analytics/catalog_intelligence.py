@@ -138,7 +138,7 @@ def rank_search_opportunities(products: list[dict[str, Any]]) -> list[dict[str, 
         for tied_index in range(index, end + 1):
             product = ordered[tied_index][0]
             demand_percentile[id(product)] = percentile
-            catalog_rank[id(product)] = len(ordered) - tied_index
+            catalog_rank[id(product)] = len(ordered) - end
         index = end + 1
 
     for product in products:
