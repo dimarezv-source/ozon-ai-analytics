@@ -32,11 +32,17 @@ def _image_count(product: dict[str, Any]) -> int:
     for key in ("images", "primary_image", "image_url", "images360"):
         value = product.get(key)
         if isinstance(value, list):
-            return sum(bool(_text(str(v.get("file_name") or v.get("url") or v.get("src") or "") if isinstance(v, dict) else str(v))) for v in value)
+            count = 0
+            for item in value:
+                if isinstance(item, str):
+                    count += int(bool(item.strip()))
+                elif isinstance(item, dict):
+                    candidate = item.get("file_name") or item.get("url") or item.get("src")
+                    count += int(isinstance(candidate, str) and bool(candidate.strip()))
+            return count
         if isinstance(value, str) and value.strip():
             return 1
     return 0
-
 
 def _price_value(value: Any) -> float | None:
     if isinstance(value, dict):
