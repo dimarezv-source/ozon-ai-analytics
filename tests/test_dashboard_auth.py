@@ -12,6 +12,17 @@ def clear_settings_cache():
     get_settings.cache_clear()
 
 
+
+def test_browser_dashboard_redirects_to_login_instead_of_showing_json(monkeypatch) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
+
+    response = TestClient(app).get("/dashboard", headers={"accept": "text/html"})
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login"
+
+
 def test_dashboard_requires_configured_authentication(monkeypatch) -> None:
     monkeypatch.setenv("DASHBOARD_USERNAME", "")
     monkeypatch.setenv("DASHBOARD_PASSWORD", "")
