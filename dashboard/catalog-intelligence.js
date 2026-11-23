@@ -61,7 +61,7 @@
       $("catalogIntelSeo").textContent = data.summary.low_seo;
       $("catalogIntelAverage").textContent = data.summary.average_card_quality + "/100";
       status.textContent = "Готово · " + state.products.length + " товаров · " +
-        state.loadedAt.toLocaleTimeString("ru-RU") + ". " + data.notice;
+        state.loadedAt.toLocaleTimeString("ru-RU") + ". " + (data.content_rating_available ? "Контент-рейтинг Ozon получен. " : "Контент-рейтинг Ozon недоступен по текущему ключу. ") + data.notice;
       render();
     } catch (error) {
       status.classList.add("error");
@@ -73,11 +73,11 @@
 
   function exportCsv() {
     const columns = ["product_id", "offer_id", "title", "seller_price", "currency_code",
-      "card_quality_score", "seo_score", "pre_sales_potential_score", "confidence", "issues"];
+      "card_quality_score", "ozon_content_rating", "seo_score", "pre_sales_potential_score", "confidence", "issues"];
     const quote = (value) => '"' + String(value ?? "").replace(/"/g, '""') + '"';
     const lines = [columns.join(";")].concat(state.products.map((item) => [
       item.product_id, item.offer_id, item.title, item.seller_price, item.currency_code,
-      item.card_quality_score, item.seo_score, item.pre_sales_potential_score, item.confidence,
+      item.card_quality_score, item.ozon_content_rating, item.seo_score, item.pre_sales_potential_score, item.confidence,
       (item.issues || []).map((issue) => issue.message).join(" | ")
     ].map(quote).join(";")));
     const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
