@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     dashboard_username: str | None = None
     dashboard_password: str | None = None
     database_url: str | None = None
+    credential_encryption_key: str | None = None
 
 
 @lru_cache
