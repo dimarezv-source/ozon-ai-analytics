@@ -27,11 +27,15 @@
       const ratingGroups = (item.content_rating_groups || []).map((group) =>
         '<li>' + esc(group.name || group.title || group.id || "Показатель") + ': ' + esc(group.rating ?? group.value ?? "—") + '</li>'
       ).join("");
+      const searchSummary = item.search_metrics
+        ? '<p>Пользователи поиска: ' + esc(item.search_metrics.unique_search_users ?? "—") + '; просмотры: ' + esc(item.search_metrics.unique_view_users ?? "—") + '; конверсия просмотра: ' + esc(item.search_metrics.view_conversion ?? "—") + '; позиция: ' + esc(item.search_metrics.position ?? "—") + '</p>'
+        : "";
       const detail = (item.issues?.length || item.recommendations?.length || ratingGroups || searchTerms || item.search_metrics)
         ? '<details class="catalog-intel-details"><summary>Проблемы и действия (' + esc(item.issues?.length || 0) + ')</summary>' +
           (issues ? '<b>Найдено</b><ul>' + issues + '</ul>' : '') +
           (recommendations ? '<b>Рекомендуется</b><ul>' + recommendations + '</ul>' : '') +
           (ratingGroups ? '<b>Группы контент-рейтинга Ozon</b><ul>' + ratingGroups + '</ul>' : '') +
+          (searchSummary ? searchSummary : '') +
           (searchTerms ? '<b>Поисковые фразы Ozon</b><ul>' + searchTerms + '</ul>' : '') + '</details>'
         : '<span class="hint">Критичных замечаний по текущим данным нет</span>';
       const searchActivity = item.search_metrics
