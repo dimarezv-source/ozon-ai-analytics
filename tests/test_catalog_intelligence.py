@@ -72,3 +72,22 @@ def test_malformed_attributes_and_images_are_safe():
 
     assert result["evidence"]["populated_attribute_count"] == 1
     assert result["evidence"]["image_count"] == 1
+
+
+def test_ozon_price_index_provides_price_position_without_sales_history():
+    result = analyze_catalog_product({
+        "product_id": 77,
+        "name": "Подробное название товара для проверки",
+        "price": {"marketing_price": "1200"},
+        "price_indexes": {
+            "color_index": "RED",
+            "external_index_data": {"price_index": 1.24},
+            "ozon_index_data": {"price_index": 1.08},
+        },
+    })
+
+    assert result["price_analysis"]["source"] == "Ozon Seller API price index"
+    assert result["price_analysis"]["color_index"] == "RED"
+    assert result["price_analysis"]["external_price_index"] == 1.24
+    assert result["price_analysis"]["score"] == 35
+    assert any(issue["code"] == "ozon_price_index_warning" for issue in result["issues"])
