@@ -33,8 +33,10 @@
           (ratingGroups ? '<b>Группы контент-рейтинга Ozon</b><ul>' + ratingGroups + '</ul>' : '') + '</details>'
         : '<span class="hint">Критичных замечаний по текущим данным нет</span>';
       const price = item.price_analysis
-        ? money(item.seller_price, item.currency_code) + '<small>Отклонение ' + esc(item.price_analysis.deviation_percent) + '% от медианы</small>'
-        : money(item.seller_price, item.currency_code) + '<small>Аналоги не подключены</small>';
+        ? money(item.seller_price, item.currency_code) + (item.price_analysis.source === "Ozon Seller API price index"
+          ? '<small>Индекс Ozon: ' + esc(item.price_analysis.color_index) + '</small>'
+          : '<small>Отклонение ' + esc(item.price_analysis.deviation_percent) + '% от медианы</small>')
+        : money(item.seller_price, item.currency_code) + '<small>Индекс Ozon недоступен</small>';
       return '<tr><td><b>' + esc(item.title) + '</b><small>' + esc(item.offer_id || item.product_id || "") + '</small></td>' +
         '<td>' + price + '</td><td>' + score(item.card_quality_score) + '</td><td>' + (item.ozon_content_rating == null ? '—' : score(item.ozon_content_rating)) + '</td><td>' + score(item.seo_score) + '</td>' +
         '<td>' + score(item.pre_sales_potential_score) + '<small>' + esc(item.confidence) + ' уверенность</small></td><td>' + detail + '</td></tr>';
