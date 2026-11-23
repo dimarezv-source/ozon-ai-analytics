@@ -23,18 +23,22 @@
         '<li><b>' + esc(issue.severity) + ':</b> ' + esc(issue.message) + '</li>'
       ).join("");
       const recommendations = (item.recommendations || []).map((value) => '<li>' + esc(value) + '</li>').join("");
-      const detail = (item.issues?.length || item.recommendations?.length)
+      const ratingGroups = (item.content_rating_groups || []).map((group) =>
+        '<li>' + esc(group.name || group.title || group.id || "Показатель") + ': ' + esc(group.rating ?? group.value ?? "—") + '</li>'
+      ).join("");
+      const detail = (item.issues?.length || item.recommendations?.length || ratingGroups)
         ? '<details class="catalog-intel-details"><summary>Проблемы и действия (' + esc(item.issues?.length || 0) + ')</summary>' +
           (issues ? '<b>Найдено</b><ul>' + issues + '</ul>' : '') +
-          (recommendations ? '<b>Рекомендуется</b><ul>' + recommendations + '</ul>' : '') + '</details>'
+          (recommendations ? '<b>Рекомендуется</b><ul>' + recommendations + '</ul>' : '') +
+          (ratingGroups ? '<b>Группы контент-рейтинга Ozon</b><ul>' + ratingGroups + '</ul>' : '') + '</details>'
         : '<span class="hint">Критичных замечаний по текущим данным нет</span>';
       const price = item.price_analysis
         ? money(item.seller_price, item.currency_code) + '<small>Отклонение ' + esc(item.price_analysis.deviation_percent) + '% от медианы</small>'
         : money(item.seller_price, item.currency_code) + '<small>Аналоги не подключены</small>';
       return '<tr><td><b>' + esc(item.title) + '</b><small>' + esc(item.offer_id || item.product_id || "") + '</small></td>' +
-        '<td>' + price + '</td><td>' + score(item.card_quality_score) + '</td><td>' + score(item.seo_score) + '</td>' +
+        '<td>' + price + '</td><td>' + score(item.card_quality_score) + '</td><td>' + (item.ozon_content_rating == null ? '—' : score(item.ozon_content_rating)) + '</td><td>' + score(item.seo_score) + '</td>' +
         '<td>' + score(item.pre_sales_potential_score) + '<small>' + esc(item.confidence) + ' уверенность</small></td><td>' + detail + '</td></tr>';
-    }).join("") : '<tr><td colspan="6" class="hint">По фильтру ничего не найдено.</td></tr>';
+    }).join("") : '<tr><td colspan="7" class="hint">По фильтру ничего не найдено.</td></tr>';
     $("catalogIntelExport").disabled = !state.products.length;
     $("catalogIntelCount").textContent = rows.length + " из " + state.products.length;
   }
