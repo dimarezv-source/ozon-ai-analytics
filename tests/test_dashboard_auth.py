@@ -17,7 +17,7 @@ def test_browser_dashboard_redirects_to_login_instead_of_showing_json(monkeypatc
     monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
     monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
 
-    response = TestClient(app).get("/dashboard", headers={"accept": "text/html"})
+    response = TestClient(app, follow_redirects=False).get("/dashboard", headers={"accept": "text/html"})
 
     assert response.status_code == 302
     assert response.headers["location"] == "/login"
