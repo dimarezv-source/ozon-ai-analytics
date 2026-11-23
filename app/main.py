@@ -20,6 +20,7 @@ from app.analytics.catalog_intelligence import analyze_catalog_product, rank_sea
 from app.analytics.market_benchmark import analyze_market_export
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
+from app.auth_api import router as auth_api_router
 
 logger = logging.getLogger(__name__)
 security = HTTPBasic(auto_error=False)
@@ -29,6 +30,8 @@ app = FastAPI(
     description="Read-only Ozon Seller analytics service.",
     version="0.4.0",
 )
+
+app.include_router(auth_api_router)
 
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
 MOTION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "motion.js"
