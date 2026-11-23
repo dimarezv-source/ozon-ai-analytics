@@ -101,6 +101,23 @@ def require_dashboard_auth(
         raise HTTPException(status_code=401, detail="Authentication required.", headers={"WWW-Authenticate": "Basic"})
 
 
+@app.middleware("http")
+async def redirect_browser_to_login(request: Request, call_next):
+    """Show the login page for browser navigation instead of a raw JSON 401."""
+    if request.method == "GET" and request.url.path == "/dashboard":
+        accepts_html = "text/html" in request.headers.get("accept", "").lower()
+        has_basic_auth = bool(request.headers.get("authorization"))
+        settings = get_settings()
+        cookie_ok = _valid_session(
+            request.cookies.get("ozon_dashboard_session"),
+            settings.dashboard_username or "",
+            settings.dashboard_password or "",
+        )
+        if accepts_html and not has_basic_auth and not cookie_ok:
+            return RedirectResponse(url="/login", status_code=302)
+    return await call_next(request)
+
+
 @app.get("/api/catalog/intelligence", tags=["dashboard"])
 async def catalog_intelligence(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
     """Audit the active catalog using read-only product details; no sales history required."""
