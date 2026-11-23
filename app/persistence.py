@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from app.config import get_settings
+from app.persistence_schema import migrate_tenant_foundation
 from typing import Any
 
 import psycopg
@@ -26,6 +27,7 @@ def _connect():
 
 
 def _ensure_schema(connection) -> None:
+    migrate_tenant_foundation(connection)
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS dashboard_cost_settings (
