@@ -33,6 +33,11 @@ def test_catalog_intelligence_uses_only_read_operations_and_needs_no_sales(monke
                 }]}
             if operation == "product_info_prices":
                 return {"items": [{"product_id": 123, "price_indexes": {"color_index": "GREEN", "external_index_data": {"price_index": 0.92}}}]}
+            if operation == "product_queries":
+                assert payload["page_size"] == 1000
+                return {"items": [{"sku": "555", "unique_search_users": 25, "unique_view_users": 10, "view_conversion": 0.4, "position": 12}]}
+            if operation == "product_queries_details":
+                return {"queries": [{"sku": "555", "query": "подробным названием", "unique_search_users": 12}], "page_count": 1}
             if operation == "product_content_rating":
                 return {"products": [{"sku": "555", "rating": 82, "groups": [{"name": "Фото", "rating": 90}]}]}
             if operation == "product_info_attributes":
@@ -60,6 +65,10 @@ def test_catalog_intelligence_uses_only_read_operations_and_needs_no_sales(monke
     assert data["products"][0]["evidence"]["image_count"] == 3
     assert data["products"][0]["ozon_content_rating"] == 82
     assert data["content_rating_available"] is True
+    assert data["search_metrics_available"] is True
+    assert data["search_terms_available"] is True
+    assert data["products"][0]["search_metrics"]["unique_search_users"] == 25
+    assert data["products"][0]["evidence"]["search_terms_matched"] == 1
     assert data["products"][0]["price_analysis"]["color_index"] == "GREEN"
     assert data["summary"]["missing_price"] == 0
 
