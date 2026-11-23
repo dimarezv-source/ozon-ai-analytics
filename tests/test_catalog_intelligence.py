@@ -105,3 +105,38 @@ def test_search_metrics_and_real_query_terms_are_returned_separately_from_sales(
     assert result["evidence"]["search_terms_supplied"] == 2
     assert result["evidence"]["search_terms_matched"] == 2
     assert result["evidence"]["sales_history_required"] is False
+
+
+def test_search_opportunity_ranks_products_relative_to_this_catalog():
+    from app.analytics.catalog_intelligence import rank_search_opportunities
+
+    products = [
+        {"search_metrics": {"unique_search_users": 1000, "position": 80, "view_conversion": 0.05}, "recommendations": []},
+        {"search_metrics": {"unique_search_users": 500, "position": 10, "view_conversion": 0.30}, "recommendations": []},
+        {"search_metrics": {"unique_search_users": 0}, "recommendations": []},
+    ]
+
+    ranked = rank_search_opportunities(products)
+
+    assert ranked[0]["search_opportunity"]["score"] > ranked[1]["search_opportunity"]["score"]
+    assert ranked[0]["search_opportunity"]["level"] == "high"
+    assert ranked[0]["search_opportunity"]["catalog_search_rank"] == 1
+    assert ranked[1]["search_opportunity"]["catalog_search_rank"] == 2
+    assert ranked[2]["search_opportunity"] is None
+    assert any("Высокий поисковый интерес" in text for text in ranked[0]["recommendations"])
+
+
+def test_search_opportunity_uses_neutral_percentile_for_single_product_and_ties():
+    from app.analytics.catalog_intelligence import rank_search_opportunities
+
+    single = [{"search_metrics": {"unique_search_users": 25}, "recommendations": []}]
+    rank_search_opportunities(single)
+    assert single[0]["search_opportunity"]["score"] == 50
+
+    tied = [
+        {"search_metrics": {"unique_search_users": 100}, "recommendations": []},
+        {"search_metrics": {"unique_search_users": 100}, "recommendations": []},
+    ]
+    rank_search_opportunities(tied)
+    assert tied[0]["search_opportunity"]["score"] == tied[1]["search_opportunity"]["score"]
+    assert tied[0]["search_opportunity"]["catalog_search_rank"] == tied[1]["search_opportunity"]["catalog_search_rank"]

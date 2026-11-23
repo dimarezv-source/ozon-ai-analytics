@@ -41,15 +41,18 @@
       const searchActivity = item.search_metrics
         ? esc(item.search_metrics.unique_search_users ?? "—") + '<small>поиск / ' + esc(item.search_metrics.unique_view_users ?? "—") + ' просмотров</small>'
         : '<span class="hint">Нет данных</span>';
+      const searchOpportunity = item.search_opportunity
+        ? score(item.search_opportunity.score) + '<small>ранг ' + esc(item.search_opportunity.catalog_search_rank) + ' из ' + esc(item.search_opportunity.catalog_search_products) + '</small>'
+        : '<span class="hint">Нет данных</span>';
       const price = item.price_analysis
         ? money(item.seller_price, item.currency_code) + (item.price_analysis.source === "Ozon Seller API price index"
           ? '<small>Индекс Ozon: ' + esc(item.price_analysis.color_index) + '</small>'
           : '<small>Отклонение ' + esc(item.price_analysis.deviation_percent) + '% от медианы</small>')
         : money(item.seller_price, item.currency_code) + '<small>Индекс Ozon недоступен</small>';
       return '<tr><td><b>' + esc(item.title) + '</b><small>' + esc(item.offer_id || item.product_id || "") + '</small></td>' +
-        '<td>' + price + '</td><td>' + score(item.card_quality_score) + '</td><td>' + (item.ozon_content_rating == null ? '—' : score(item.ozon_content_rating)) + '</td><td>' + searchActivity + '</td><td>' + score(item.seo_score) + '</td>' +
+        '<td>' + price + '</td><td>' + score(item.card_quality_score) + '</td><td>' + (item.ozon_content_rating == null ? '—' : score(item.ozon_content_rating)) + '</td><td>' + searchActivity + '</td><td>' + searchOpportunity + '</td><td>' + score(item.seo_score) + '</td>' +
         '<td>' + score(item.pre_sales_potential_score) + '<small>' + esc(item.confidence) + ' уверенность</small></td><td>' + detail + '</td></tr>';
-    }).join("") : '<tr><td colspan="8" class="hint">По фильтру ничего не найдено.</td></tr>';
+    }).join("") : '<tr><td colspan="9" class="hint">По фильтру ничего не найдено.</td></tr>';
     $("catalogIntelExport").disabled = !state.products.length;
     $("catalogIntelCount").textContent = rows.length + " из " + state.products.length;
   }
@@ -70,11 +73,13 @@
       $("catalogIntelTotal").textContent = data.product_count;
       $("catalogIntelWeak").textContent = data.summary.weak_cards;
       $("catalogIntelSeo").textContent = data.summary.low_seo;
+      if ($("catalogIntelSearchOpp")) $("catalogIntelSearchOpp").textContent = data.summary.high_search_opportunity + " / " + data.summary.search_opportunities_available;
       $("catalogIntelAverage").textContent = data.summary.average_card_quality + "/100";
       status.textContent = "Готово · " + state.products.length + " товаров · " +
         state.loadedAt.toLocaleTimeString("ru-RU") + ". " + (data.content_rating_available ? "Контент-рейтинг Ozon получен. " : "Контент-рейтинг Ozon недоступен по текущему ключу. ") +
         (data.search_metrics_available ? "Метрики поиска получены. " : "Метрики поиска не вернулись. ") +
-        (data.search_terms_available ? "Поисковые фразы подключены. " : "Фактические поисковые фразы недоступны. ") + data.notice;
+        (data.search_terms_available ? "Поисковые фразы подключены. " : "Фактические поисковые фразы недоступны. ") +
+        "Высокий поисковый потенциал в каталоге: " + data.summary.high_search_opportunity + ". " + data.notice;
       render();
     } catch (error) {
       status.classList.add("error");
@@ -86,11 +91,11 @@
 
   function exportCsv() {
     const columns = ["product_id", "offer_id", "title", "seller_price", "currency_code",
-      "card_quality_score", "ozon_content_rating", "unique_search_users", "unique_view_users", "view_conversion", "position", "search_terms", "seo_score", "pre_sales_potential_score", "confidence", "issues"];
+      "card_quality_score", "ozon_content_rating", "unique_search_users", "unique_view_users", "view_conversion", "position", "search_opportunity_score", "search_opportunity_level", "search_catalog_rank", "search_terms", "seo_score", "pre_sales_potential_score", "confidence", "issues"];
     const quote = (value) => '"' + String(value ?? "").replace(/"/g, '""') + '"';
     const lines = [columns.join(";")].concat(state.products.map((item) => [
       item.product_id, item.offer_id, item.title, item.seller_price, item.currency_code,
-      item.card_quality_score, item.ozon_content_rating, item.search_metrics?.unique_search_users, item.search_metrics?.unique_view_users, item.search_metrics?.view_conversion, item.search_metrics?.position, (item.search_terms || []).join(" | "), item.seo_score, item.pre_sales_potential_score, item.confidence,
+      item.card_quality_score, item.ozon_content_rating, item.search_metrics?.unique_search_users, item.search_metrics?.unique_view_users, item.search_metrics?.view_conversion, item.search_metrics?.position, item.search_opportunity?.score, item.search_opportunity?.level, item.search_opportunity?.catalog_search_rank, (item.search_terms || []).join(" | "), item.seo_score, item.pre_sales_potential_score, item.confidence,
       (item.issues || []).map((issue) => issue.message).join(" | ")
     ].map(quote).join(";")));
     const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });

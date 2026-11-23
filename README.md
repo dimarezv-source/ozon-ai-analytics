@@ -117,3 +117,11 @@ For a production SaaS launch, replace the current single-user dashboard credenti
 - SKU profitability: not yet calculated; requires reconciliation of delivered postings, finance accruals, returns/refunds, and product purchase costs.
 
 All exports are manual GitHub Actions workflows. They do not run in the background or on a schedule.
+
+## Catalog intelligence
+
+The authenticated catalog audit works without sales history. It reports card completeness, structural SEO, Ozon content rating and price index when the Seller API key has access, plus Ozon product-search metrics and actual query phrases when those analytics are available.
+
+The separate **search opportunity** score ranks products only against the seller's own catalog. It combines relative search-user volume with average search position and view conversion when present. Missing metrics are excluded and the remaining weights are normalized. Products without positive search-user data are left unscored. This score is a prioritization aid, not marketplace-wide demand, competitor share, or a sales forecast.
+
+Search analytics coverage depends on Ozon's subscription and API permissions. The dashboard and CSV export explicitly show missing fields rather than inventing values.
