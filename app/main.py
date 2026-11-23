@@ -15,6 +15,8 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import get_settings
 from app.ozon.client import OzonReadOnlyClient
+from app.ozon.catalog import iter_products
+from app.analytics.catalog_intelligence import analyze_catalog_product
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
 
@@ -32,6 +34,7 @@ MOTION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "motion.js"
 ASSISTANT_CENTER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "assistant-center.js"
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
+CATALOG_AUDIT_SCRIPT_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "catalog-intelligence.js"
 LOSS_ALERTS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "loss-alerts.js"
 RISK_READINESS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "risk-readiness.js"
 INVENTORY_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "inventory.js"
@@ -94,6 +97,219 @@ def require_dashboard_auth(
     )
     if not (cookie_ok or basic_ok):
         raise HTTPException(status_code=401, detail="Authentication required.", headers={"WWW-Authenticate": "Basic"})
+
+
+@app.get("/api/catalog/intelligence", tags=["dashboard"])
+async def catalog_intelligence(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Audit the active catalog using read-only product details; no sales history required."""
+    try:
+        max_products = int(request.query_params.get("limit", "5000"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Параметр limit должен быть целым числом.") from None
+    if not 1 <= max_products <= 10000:
+        raise HTTPException(status_code=400, detail="Лимит каталога должен быть от 1 до 10000 товаров.")
+
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+
+    try:
+        catalog_rows = []
+        async for item in iter_products(client, visibility="ALL"):
+            if item.get("archived") or item.get("is_archived"):
+                continue
+            catalog_rows.append(item)
+            if len(catalog_rows) >= max_products:
+                break
+
+        product_ids = [
+            int(item["product_id"])
+            for item in catalog_rows
+            if str(item.get("product_id", "")).isdigit()
+        ]
+        detail_by_id: dict[str, dict] = {}
+        attributes_by_id: dict[str, dict] = {}
+        price_by_id: dict[str, dict] = {}
+        for start in range(0, len(product_ids), 1000):
+            batch = product_ids[start:start + 1000]
+            details_response = await client.execute("product_info_list", {"product_id": batch})
+            details = details_response.get("items")
+            if details is None and isinstance(details_response.get("result"), dict):
+                details = details_response["result"].get("items")
+            if not isinstance(details, list):
+                raise ValueError("Unexpected Ozon product detail response.")
+            for detail in details:
+                if isinstance(detail, dict):
+                    key = str(detail.get("id") or detail.get("product_id") or "")
+                    if key:
+                        detail_by_id[key] = detail
+
+            attributes_response = await client.execute(
+                "product_info_attributes",
+                {"filter": {"product_id": batch}, "limit": 1000, "last_id": ""},
+            )
+            attributes = attributes_response.get("result", [])
+            if isinstance(attributes, dict):
+                attributes = attributes.get("items", [])
+            if not isinstance(attributes, list):
+                raise ValueError("Unexpected Ozon product attributes response.")
+            for record in attributes:
+                if isinstance(record, dict):
+                    key = str(record.get("id") or record.get("product_id") or "")
+                    if key:
+                        attributes_by_id[key] = record
+
+            price_response = await client.execute(
+                "product_info_prices",
+                {"cursor": "", "filter": {"product_id": batch, "visibility": "ALL"}, "limit": 1000},
+            )
+            price_rows = price_response.get("items", [])
+            if not isinstance(price_rows, list):
+                raise ValueError("Unexpected Ozon product prices response.")
+            for price_row in price_rows:
+                if isinstance(price_row, dict):
+                    key = str(price_row.get("product_id") or "")
+                    if key:
+                        price_by_id[key] = price_row
+
+        rating_by_sku: dict[str, dict] = {}
+        sku_values = sorted({
+            str(record.get("sku"))
+            for product_id in set(detail_by_id) | set(attributes_by_id)
+            for record in [{**detail_by_id.get(product_id, {}), **attributes_by_id.get(product_id, {})}]
+            if record.get("sku") not in (None, "")
+        })
+        content_rating_available = True
+        for start in range(0, len(sku_values), 1000):
+            try:
+                rating_response = await client.execute("product_content_rating", {"skus": sku_values[start:start + 1000]})
+                rating_rows = rating_response.get("products", [])
+                if not isinstance(rating_rows, list):
+                    raise ValueError("Unexpected Ozon content rating response.")
+                for rating in rating_rows:
+                    if isinstance(rating, dict) and rating.get("sku") not in (None, ""):
+                        rating_by_sku[str(rating["sku"])] = rating
+            except Exception as rating_exc:
+                content_rating_available = False
+                logger.warning("Ozon content rating unavailable: %s", type(rating_exc).__name__)
+                break
+
+        content_rating_available = content_rating_available and bool(rating_by_sku)
+
+        search_metrics_by_sku: dict[str, dict] = {}
+        search_terms_by_sku: dict[str, list[str]] = {}
+        search_metrics_available = False
+        search_terms_available = False
+        search_terms_endpoint_available = True
+        search_period = None
+        if sku_values:
+            period_end = datetime.now(timezone.utc).date() - timedelta(days=3)
+            period_start = period_end - timedelta(days=30)
+            date_from = f"{period_start.isoformat()}T00:00:00Z"
+            date_to = f"{period_end.isoformat()}T23:59:59Z"
+            search_period = {"date_from": date_from, "date_to": date_to}
+            for start in range(0, len(sku_values), 1000):
+                sku_batch = sku_values[start:start + 1000]
+                try:
+                    query_response = await client.execute(
+                        "product_queries",
+                        {"date_from": date_from, "date_to": date_to, "page": 0, "page_size": 1000, "skus": sku_batch, "sort_by": "BY_SEARCHES", "sort_dir": "DESCENDING"},
+                    )
+                    query_rows = query_response.get("items", [])
+                    if not isinstance(query_rows, list):
+                        raise ValueError("Unexpected Ozon product query response.")
+                    for query_item in query_rows:
+                        if isinstance(query_item, dict) and query_item.get("sku") not in (None, ""):
+                            search_metrics_by_sku[str(query_item["sku"])] = query_item
+                except Exception as search_exc:
+                    logger.warning("Ozon product search metrics unavailable: %s", type(search_exc).__name__)
+                    break
+
+                top_skus = sorted(
+                    (
+                        sku for sku in sku_batch
+                        if float(search_metrics_by_sku.get(sku, {}).get("unique_search_users") or 0) > 0
+                    ),
+                    key=lambda sku: float(search_metrics_by_sku.get(sku, {}).get("unique_search_users") or 0),
+                    reverse=True,
+                )[:20]
+                if not top_skus or not search_terms_endpoint_available:
+                    continue
+                try:
+                    detail_response = await client.execute(
+                        "product_queries_details",
+                        {"date_from": date_from, "date_to": date_to, "limit_by_sku": 15, "page": 0, "page_size": 100, "skus": top_skus, "sort_by": "BY_SEARCHES", "sort_dir": "DESCENDING"},
+                    )
+                    query_details = detail_response.get("queries", [])
+                    if not isinstance(query_details, list):
+                        raise ValueError("Unexpected Ozon product query details response.")
+                    for detail in query_details:
+                        if isinstance(detail, dict) and detail.get("sku") not in (None, "") and detail.get("query"):
+                            search_terms_by_sku.setdefault(str(detail["sku"]), []).append(str(detail["query"]))
+                    page_count = min(10, int(detail_response.get("page_count") or 1))
+                    for page in range(1, page_count):
+                        page_response = await client.execute(
+                            "product_queries_details",
+                            {"date_from": date_from, "date_to": date_to, "limit_by_sku": 15, "page": page, "page_size": 100, "skus": top_skus, "sort_by": "BY_SEARCHES", "sort_dir": "DESCENDING"},
+                        )
+                        for detail in page_response.get("queries", []) if isinstance(page_response.get("queries", []), list) else []:
+                            if isinstance(detail, dict) and detail.get("sku") not in (None, "") and detail.get("query"):
+                                search_terms_by_sku.setdefault(str(detail["sku"]), []).append(str(detail["query"]))
+                except Exception as detail_exc:
+                    search_terms_endpoint_available = False
+                    logger.warning("Ozon search query phrases unavailable: %s", type(detail_exc).__name__)
+
+            search_metrics_available = bool(search_metrics_by_sku)
+            search_terms_available = any(search_terms_by_sku.values())
+
+        analyzed = []
+        for row in catalog_rows:
+            product_id = str(row.get("product_id") or "")
+            detail = detail_by_id.get(product_id, {})
+            attributes = attributes_by_id.get(product_id, {})
+            sku = str(detail.get("sku") or attributes.get("sku") or "")
+            rating = rating_by_sku.get(sku, {})
+            product = {
+                **row,
+                **detail,
+                **attributes,
+                **price_by_id.get(product_id, {}),
+                "product_id": product_id,
+                "content_rating": rating.get("rating"),
+                "content_rating_groups": rating.get("groups", []),
+                "search_metrics": search_metrics_by_sku.get(sku),
+                "search_terms": search_terms_by_sku.get(sku, []),
+            }
+            analyzed.append(analyze_catalog_product(product))
+
+        analyzed.sort(key=lambda item: (item["pre_sales_potential_score"], item["card_quality_score"]))
+        total = len(analyzed)
+        return {
+            "status": "ok",
+            "mode": "read-only",
+            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v5/product/info/prices", "/v1/product/rating-by-sku", "/v1/analytics/product-queries", "/v1/analytics/product-queries/details"],
+            "content_rating_available": content_rating_available,
+            "search_metrics_available": search_metrics_available,
+            "search_terms_available": search_terms_available,
+            "search_period": search_period,
+            "sales_history_required": False,
+            "product_count": total,
+            "summary": {
+                "weak_cards": sum(item["card_quality_score"] < 60 for item in analyzed),
+                "low_seo": sum(item["seo_score"] < 60 for item in analyzed),
+                "missing_price": sum(item["price_analysis"] is None for item in analyzed),
+                "average_card_quality": round(sum(item["card_quality_score"] for item in analyzed) / total, 1) if total else 0,
+                "average_seo": round(sum(item["seo_score"] for item in analyzed) / total, 1) if total else 0,
+            },
+            "products": analyzed,
+            "notice": "Предпродажная оценка качества каталога. Используются доступные поисковые метрики и фразы за указанный период; последние 3 дня исключены из-за задержки расчёта. Данные по поиску могут быть ограничены подпиской Ozon.",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Catalog intelligence failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось загрузить и проанализировать каталог Ozon.") from None
 
 
 @app.get("/login", tags=["dashboard"], response_class=HTMLResponse, include_in_schema=False)
@@ -777,6 +993,10 @@ async def profit_calculator_script(_: None = Depends(require_dashboard_auth)) ->
 @app.get("/dashboard/intelligence.js", tags=["dashboard"], include_in_schema=False)
 async def intelligence_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(INTELLIGENCE_FILE, media_type="application/javascript")
+
+@app.get("/dashboard/catalog-intelligence.js", tags=["dashboard"], include_in_schema=False)
+async def catalog_intelligence_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(CATALOG_AUDIT_SCRIPT_FILE, media_type="application/javascript")
 
 
 @app.get("/dashboard/loss-alerts.js", tags=["dashboard"], include_in_schema=False)

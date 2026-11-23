@@ -222,13 +222,23 @@ button:active{transform:translateY(1px)}
 @media(max-width:620px){.assistant-center{grid-template-columns:1fr;gap:11px;padding-top:12px}.assistant-core{grid-column:auto;grid-row:auto}.assistant-panel{min-height:150px;padding:17px}.assistant-avatar{width:145px;margin-bottom:12px}.assistant-examples{gap:5px}.assistant-example{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.assistant-avatar:before,.assistant-avatar:after,.assistant-orb{animation:none!important}}
 
+
+.catalog-intel-panel{margin:0 0 18px}.catalog-intel-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:14px 0}
+.catalog-intel-toolbar label{display:grid;gap:5px;color:var(--muted);font-size:10px}.catalog-intel-toolbar input{min-height:38px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;background:#fff;color:var(--ink)}
+.catalog-intel-toolbar button{min-height:38px;border:0;border-radius:9px;padding:9px 14px;background:linear-gradient(110deg,var(--orange),var(--orange2));font-weight:800;cursor:pointer}
+.catalog-intel-toolbar button.secondary{border:1px solid var(--line);background:#fff;color:var(--ink)}.catalog-intel-toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.catalog-intel-status{font-size:11px;color:var(--muted);line-height:1.55;margin:8px 0 12px}.catalog-intel-status.error{color:var(--red)}
+.catalog-intel-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}.catalog-intel-kpi{padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:linear-gradient(145deg,#f7f8fc,#f0fbfc)}.catalog-intel-kpi small{display:block;color:var(--muted);font-size:10px}.catalog-intel-kpi strong{display:block;font-size:23px;margin-top:5px;font-variant-numeric:tabular-nums}
+.catalog-intel-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}.catalog-intel-table{width:100%;border-collapse:collapse;min-width:920px;font-size:11px}.catalog-intel-table th,.catalog-intel-table td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.catalog-intel-table th{font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);background:#f8f9fc}.catalog-intel-table td:first-child{max-width:270px}.catalog-intel-table td small{display:block;color:var(--muted);font-size:9px;margin-top:4px}.catalog-score{display:inline-block;min-width:58px;text-align:center;border-radius:8px;padding:5px 7px;font-weight:850;background:#eef1f6;color:#526071}.catalog-score.good{background:#e7f7f1;color:#16745e}.catalog-score.mid{background:#fff5e5;color:#94620d}.catalog-score.bad{background:#fff0f1;color:#b8324b}.catalog-intel-details{min-width:190px}.catalog-intel-details summary{cursor:pointer;color:#526071;font-weight:700}.catalog-intel-details ul{padding-left:17px;margin:7px 0 10px;line-height:1.5}.catalog-intel-details li{margin:4px 0}.catalog-intel-empty{padding:16px;color:var(--muted);text-align:center}
+@media(max-width:650px){.catalog-intel-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.catalog-intel-toolbar label{flex:1}.catalog-intel-toolbar input{width:100%}}
+
 </style>
 </head>
 <body>
 <div class="shell">
 <aside class="side">
  <div><div class="brand"><div class="mark">O</div><div>OZON AI<br>ANALYTICS</div></div><div class="subbrand">SELLER INTELLIGENCE</div></div>
- <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#intelligence"><span>✦</span>Ozon Intelligence</a><a href="#inventory"><span>▤</span>Остатки</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a><button class="module-manager-trigger" id="moduleManagerOpen" type="button"><span>⚙</span><span>Мои модули</span><small id="moduleManagerCount">9 из 9 включено</small></button></div>
+ <div class="nav"><div class="navlabel">РАБОЧЕЕ ПРОСТРАНСТВО</div><a class="active" href="#overview"><span>▦</span>Обзор</a><a href="#intelligence"><span>✦</span>Ozon Intelligence</a><a href="#catalog-intelligence"><span>◎</span>Каталог AI</a><a href="#inventory"><span>▤</span>Остатки</a><a href="#unit"><span>◈</span>Юнит-экономика</a><a href="#fees"><span>⌁</span>Тарифы Ozon</a><a href="#data"><span>◷</span>Продажи и данные</a><button class="module-manager-trigger" id="moduleManagerOpen" type="button"><span>⚙</span><span>Мои модули</span><small id="moduleManagerCount">9 из 9 включено</small></button></div>
  <div class="sidefoot">READ-ONLY MODE<br>Данные кабинета не изменяются.<br><br>BUILD 0.1 · PREVIEW</div>
 </aside>
 <main class="main">
@@ -338,6 +348,26 @@ button:active{transform:translateY(1px)}
  <div class="hint" id="intelStatus">Загрузи продажи за период и укажи себестоимость товаров, чтобы построить рейтинг.</div>
  <div class="intel-table-wrap" style="margin-top:12px"><table class="intel-table"><thead><tr><th>Товар</th><th>Схема</th><th>Шт.</th><th>Оборот</th><th>Расчётная прибыль</th><th>Маржа</th><th>Рекомендация</th></tr></thead><tbody id="intelRows"><tr><td colspan="7" class="hint">Ожидаем данные за период.</td></tr></tbody></table></div>
  <p class="intel-footnote">Оценка по доставленным продажам, тарифам Seller API и введённым расходам. Товары без себестоимости или полных тарифов исключаются из рейтинга, а не считаются прибыльными с нулевыми затратами. Фактические начисления, возвраты и выплаты Ozon пока не смешиваются с этой оценкой.</p>
+</section>
+
+
+<section class="card catalog-intel-panel" id="catalog-intelligence" data-module="catalog-intelligence">
+ <div class="sectionhead" style="margin:0"><div><h2>Каталог AI · диагностика карточек</h2><p>Слабые места, структурное SEO и готовность товаров до первых продаж</p></div><span class="tag">PRE-SALES AUDIT</span></div>
+ <div class="catalog-intel-toolbar">
+  <label>Максимум товаров <input id="catalogIntelLimit" type="number" min="1" max="10000" value="5000"></label>
+  <button id="catalogIntelRun" type="button">Проверить каталог</button>
+  <button id="catalogIntelExport" class="secondary" type="button" disabled>Экспорт CSV</button><span id="catalogIntelCount" class="hint">0 товаров</span>
+  <label style="flex:1;min-width:190px">Поиск товара <input id="catalogIntelSearch" type="search" placeholder="Название, артикул или ID"></label>
+ </div>
+ <div class="catalog-intel-kpis">
+  <div class="catalog-intel-kpi"><small>Проверено товаров</small><strong id="catalogIntelTotal">—</strong></div>
+  <div class="catalog-intel-kpi"><small>Слабые карточки</small><strong id="catalogIntelWeak">—</strong></div>
+  <div class="catalog-intel-kpi"><small>Низкий SEO-балл</small><strong id="catalogIntelSeo">—</strong></div>
+  <div class="catalog-intel-kpi"><small>Среднее качество</small><strong id="catalogIntelAverage">—</strong></div>
+ </div>
+ <div class="catalog-intel-status" id="catalogIntelStatus">Нажми «Проверить каталог». Модуль использует только чтение каталога Ozon и не зависит от продаж.</div>
+ <div class="catalog-intel-table-wrap"><table class="catalog-intel-table"><thead><tr><th>Товар</th><th>Текущая цена</th><th>Карточка</th><th>Контент Ozon</th><th>Поиск Ozon</th><th>SEO</th><th>Потенциал</th><th>Диагностика</th></tr></thead><tbody id="catalogIntelRows"><tr><td colspan="8" class="catalog-intel-empty">Каталог ещё не проверен.</td></tr></tbody></table></div>
+ <p class="intel-footnote">«Потенциал» здесь означает предпродажную готовность карточки, а не прогноз спроса. Индекс цены, контент-рейтинг и поисковые показатели отображаются только при наличии данных в Seller API и могут зависеть от подписки. Никакие цены и карточки автоматически не меняются.</p>
 </section>
 
 <section class="card risk-panel" id="storeRisk" data-module="risk">
@@ -466,6 +496,7 @@ button:active{transform:translateY(1px)}
 <script src="/dashboard/product-facts.js"></script>
 <script src="/dashboard/accrual-classification.js"></script>
 <script src="/dashboard/intelligence.js"></script>
+<script src="/dashboard/catalog-intelligence.js"></script>
 <script src="/dashboard/action-prioritizer.js"></script>
 <script src="/dashboard/risk-readiness.js"></script>
 <script src="/dashboard/loss-alerts.js"></script>

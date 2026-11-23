@@ -1,7 +1,6 @@
 """Read-only product catalog pagination helpers.
 
-The Seller API operation remains disabled until its availability under the
-account's Admin read-only role is confirmed against Ozon's current docs.
+Catalog listing uses the explicitly allowlisted read-only Seller API operation.
 """
 from collections.abc import AsyncIterator
 from typing import Any, Protocol
@@ -18,6 +17,7 @@ async def iter_products(
     *,
     page_size: int = 1000,
     max_pages: int = 1000,
+    visibility: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield catalog items page by page, with cursor-loop protection."""
     if not 1 <= page_size <= 1000:
@@ -29,7 +29,7 @@ async def iter_products(
     seen_cursors: set[str] = set()
 
     for _ in range(max_pages):
-        payload = {"filter": {}, "last_id": last_id, "limit": page_size}
+        payload = {"filter": {"visibility": visibility} if visibility else {}, "last_id": last_id, "limit": page_size}
         response = await client.execute("product_list", payload)
 
         result = response.get("result")
