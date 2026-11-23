@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     dashboard_password: str | None = None
     database_url: str | None = None
     credential_encryption_key: str | None = None
+    bootstrap_token: str | None = None
 
 
 @lru_cache
