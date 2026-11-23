@@ -58,3 +58,14 @@ async def test_iter_products_validates_page_size() -> None:
 
     with pytest.raises(ValueError, match="page_size"):
         [item async for item in iter_products(client, page_size=1001)]
+
+
+
+@pytest.mark.asyncio
+async def test_iter_products_can_request_all_visibility() -> None:
+    client = FakeOzonClient([{"result": {"items": [{"product_id": 7}], "last_id": ""}}])
+
+    products = [item async for item in iter_products(client, visibility="ALL")]
+
+    assert products == [{"product_id": 7}]
+    assert client.payloads == [{"filter": {"visibility": "ALL"}, "last_id": "", "limit": 1000}]
