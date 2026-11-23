@@ -16,7 +16,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import get_settings
 from app.ozon.client import OzonReadOnlyClient
 from app.ozon.catalog import iter_products
-from app.analytics.catalog_intelligence import analyze_catalog_product
+from app.analytics.catalog_intelligence import analyze_catalog_product, rank_search_opportunities
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
 
@@ -283,6 +283,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
             }
             analyzed.append(analyze_catalog_product(product))
 
+        analyzed = rank_search_opportunities(analyzed)
         analyzed.sort(key=lambda item: (item["pre_sales_potential_score"], item["card_quality_score"]))
         total = len(analyzed)
         return {
@@ -301,6 +302,8 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
                 "missing_price": sum(item["price_analysis"] is None for item in analyzed),
                 "average_card_quality": round(sum(item["card_quality_score"] for item in analyzed) / total, 1) if total else 0,
                 "average_seo": round(sum(item["seo_score"] for item in analyzed) / total, 1) if total else 0,
+                "search_opportunities_available": sum(item.get("search_opportunity") is not None for item in analyzed),
+                "high_search_opportunity": sum((item.get("search_opportunity") or {}).get("level") == "high" for item in analyzed),
             },
             "products": analyzed,
             "notice": "Предпродажная оценка качества каталога. Используются доступные поисковые метрики и фразы за указанный период; последние 3 дня исключены из-за задержки расчёта. Данные по поиску могут быть ограничены подпиской Ozon.",
