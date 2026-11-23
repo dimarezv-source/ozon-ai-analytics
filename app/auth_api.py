@@ -22,7 +22,10 @@ from app.identity import (
 from app.persistence import _connect
 from app.persistence_schema import migrate_tenant_foundation
 from app.login_throttle import ensure_login_throttle_schema, is_limited, record_failure, clear_failures
-from app.security import hash_session_token, verify_csrf_token
+from app.security import hash_session_token, verify_csrf_token, CredentialEncryptionNotConfigured
+from app.identity import load_session
+from app.store_repository import create_store, list_stores, deactivate_store, StoreAccessDenied
+from app.ozon.client import OzonReadOnlyClient
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 SESSION_COOKIE = "ozon_user_session"
@@ -159,3 +162,85 @@ async def logout(request: Request) -> JSONResponse:
     response.delete_cookie(SESSION_COOKIE, path="/", secure=True, httponly=True, samesite="strict")
     response.delete_cookie(CSRF_COOKIE, path="/", secure=True, httponly=False, samesite="strict")
     return response
+
+
+class StorePayload(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    client_id: str = Field(min_length=1, max_length=64)
+    api_key: str = Field(min_length=1, max_length=4096)
+
+
+def _current_user_session(request: Request) -> dict:
+    token = request.cookies.get(SESSION_COOKIE, "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    _ensure_schema()
+    session = load_session(hash_session_token(token))
+    if session is None:
+        raise HTTPException(status_code=401, detail="Session expired or revoked.")
+    return session
+
+
+def _require_csrf(request: Request, session: dict) -> None:
+    cookie = request.cookies.get(CSRF_COOKIE, "")
+    header = request.headers.get("x-csrf-token", "")
+    if not cookie or not header or not hmac.compare_digest(cookie, header):
+        raise HTTPException(status_code=403, detail="CSRF validation failed.")
+    if not verify_csrf_token(header, session["csrf_token_hash"]):
+        raise HTTPException(status_code=403, detail="CSRF validation failed.")
+
+
+@router.get("/me")
+async def current_user(request: Request) -> dict:
+    session = _current_user_session(request)
+    return {
+        "user": {"email": session["email"]},
+        "tenant": {"id": session["tenant_id"], "name": session["tenant_name"], "role": session["role"]},
+        "session_id": session["session_id"],
+    }
+
+
+@router.get("/stores")
+async def get_stores(request: Request) -> dict:
+    session = _current_user_session(request)
+    return {"stores": list_stores(session["user_id"], session["tenant_id"])}
+
+
+@router.post("/stores")
+async def connect_store(payload: StorePayload, request: Request) -> JSONResponse:
+    session = _current_user_session(request)
+    _require_csrf(request, session)
+    if session["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Only workspace owners and admins can connect stores.")
+    settings = get_settings()
+    try:
+        client = OzonReadOnlyClient(payload.client_id.strip(), payload.api_key, settings.ozon_api_base_url)
+        # Credential check uses only the allowlisted read-only product listing API.
+        await client.execute("product_list", {"filter": {"visibility": "ALL"}, "last_id": "", "limit": 1})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Ozon did not accept these credentials or the read-only check failed.") from None
+    try:
+        store = create_store(
+            session["user_id"], session["tenant_id"], payload.name,
+            payload.client_id, payload.api_key,
+        )
+    except CredentialEncryptionNotConfigured:
+        raise HTTPException(status_code=503, detail="Server-side credential encryption is not configured.") from None
+    except StoreAccessDenied:
+        raise HTTPException(status_code=403, detail="Store connection is not permitted.") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    return JSONResponse({"status": "connected", "store": store}, status_code=201)
+
+
+@router.delete("/stores/{store_id}")
+async def disconnect_store(store_id: str, request: Request) -> dict:
+    session = _current_user_session(request)
+    _require_csrf(request, session)
+    try:
+        changed = deactivate_store(session["user_id"], session["tenant_id"], store_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    if not changed:
+        raise HTTPException(status_code=404, detail="Store not found or action not permitted.")
+    return {"status": "disconnected"}
