@@ -138,6 +138,9 @@ def analyze_catalog_product(
     except (TypeError, ValueError):
         content_rating = None
     content_rating_groups = product.get("content_rating_groups") if isinstance(product.get("content_rating_groups"), list) else []
+    raw_search_metrics = product.get("search_metrics") if isinstance(product.get("search_metrics"), dict) else {}
+    search_metrics = {key: raw_search_metrics.get(key) for key in ("unique_search_users", "unique_view_users", "view_conversion", "position") if raw_search_metrics.get(key) is not None}
+    product_search_terms = product.get("search_terms") if isinstance(product.get("search_terms"), list) else []
     ozon_price_index = _score_ozon_price_index(product.get("price_indexes"))
 
     issues: list[dict[str, str]] = []
@@ -168,7 +171,8 @@ def analyze_catalog_product(
     if not category:
         issues.append({"severity": "low", "code": "missing_category", "message": "Категория в данных карточки не найдена."})
 
-    terms = [_text(term).lower() for term in (search_terms or []) if _text(term)]
+    source_terms = search_terms if search_terms is not None else product_search_terms
+    terms = [_text(term).lower() for term in source_terms if _text(term)]
     title_lower, description_lower = title.lower(), description.lower()
     matched_terms = [term for term in terms if term in title_lower or term in description_lower]
     seo_weights = 40 + 30 + 20 + (10 if terms else 0)
@@ -217,6 +221,8 @@ def analyze_catalog_product(
         "currency_code": _text(product.get("currency_code")) or None,
         "ozon_content_rating": round(content_rating, 1) if content_rating is not None else None,
         "content_rating_groups": content_rating_groups,
+        "search_metrics": search_metrics or None,
+        "search_terms": terms,
         "card_quality_score": card_score,
         "seo_score": seo_score,
         "price_analysis": price_analysis,
