@@ -15,6 +15,8 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import get_settings
 from app.ozon.client import OzonReadOnlyClient
+from app.ozon.catalog import iter_products
+from app.analytics.catalog_intelligence import analyze_catalog_product
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
 
@@ -94,6 +96,102 @@ def require_dashboard_auth(
     )
     if not (cookie_ok or basic_ok):
         raise HTTPException(status_code=401, detail="Authentication required.", headers={"WWW-Authenticate": "Basic"})
+
+
+@app.get("/api/catalog/intelligence", tags=["dashboard"])
+async def catalog_intelligence(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Audit the active catalog using read-only product details; no sales history required."""
+    try:
+        max_products = int(request.query_params.get("limit", "5000"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Параметр limit должен быть целым числом.") from None
+    if not 1 <= max_products <= 10000:
+        raise HTTPException(status_code=400, detail="Лимит каталога должен быть от 1 до 10000 товаров.")
+
+    settings = get_settings()
+    if not settings.ozon_client_id or not settings.ozon_api_key:
+        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
+    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+
+    try:
+        catalog_rows = []
+        async for item in iter_products(client, visibility="ALL"):
+            if item.get("archived") or item.get("is_archived"):
+                continue
+            catalog_rows.append(item)
+            if len(catalog_rows) >= max_products:
+                break
+
+        product_ids = [
+            int(item["product_id"])
+            for item in catalog_rows
+            if str(item.get("product_id", "")).isdigit()
+        ]
+        detail_by_id: dict[str, dict] = {}
+        attributes_by_id: dict[str, dict] = {}
+        for start in range(0, len(product_ids), 1000):
+            batch = product_ids[start:start + 1000]
+            details_response = await client.execute("product_info_list", {"product_id": batch})
+            details = details_response.get("items")
+            if details is None and isinstance(details_response.get("result"), dict):
+                details = details_response["result"].get("items")
+            if not isinstance(details, list):
+                raise ValueError("Unexpected Ozon product detail response.")
+            for detail in details:
+                if isinstance(detail, dict):
+                    key = str(detail.get("id") or detail.get("product_id") or "")
+                    if key:
+                        detail_by_id[key] = detail
+
+            attributes_response = await client.execute(
+                "product_info_attributes",
+                {"filter": {"product_id": batch}, "limit": 1000, "last_id": ""},
+            )
+            attributes = attributes_response.get("result", [])
+            if isinstance(attributes, dict):
+                attributes = attributes.get("items", [])
+            if not isinstance(attributes, list):
+                raise ValueError("Unexpected Ozon product attributes response.")
+            for record in attributes:
+                if isinstance(record, dict):
+                    key = str(record.get("id") or record.get("product_id") or "")
+                    if key:
+                        attributes_by_id[key] = record
+
+        analyzed = []
+        for row in catalog_rows:
+            product_id = str(row.get("product_id") or "")
+            product = {
+                **row,
+                **detail_by_id.get(product_id, {}),
+                **attributes_by_id.get(product_id, {}),
+                "product_id": product_id,
+            }
+            analyzed.append(analyze_catalog_product(product))
+
+        analyzed.sort(key=lambda item: (item["pre_sales_potential_score"], item["card_quality_score"]))
+        total = len(analyzed)
+        return {
+            "status": "ok",
+            "mode": "read-only",
+            "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes"],
+            "sales_history_required": False,
+            "product_count": total,
+            "summary": {
+                "weak_cards": sum(item["card_quality_score"] < 60 for item in analyzed),
+                "low_seo": sum(item["seo_score"] < 60 for item in analyzed),
+                "missing_price": sum(item["price_analysis"] is None for item in analyzed),
+                "average_card_quality": round(sum(item["card_quality_score"] for item in analyzed) / total, 1) if total else 0,
+                "average_seo": round(sum(item["seo_score"] for item in analyzed) / total, 1) if total else 0,
+            },
+            "products": analyzed,
+            "notice": "Предпродажная оценка качества каталога. Конкурентные цены и фактические поисковые фразы пока не подключены; отсутствие этих данных явно отмечается в карточках.",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Catalog intelligence failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось загрузить и проанализировать каталог Ozon.") from None
 
 
 @app.get("/login", tags=["dashboard"], response_class=HTMLResponse, include_in_schema=False)
