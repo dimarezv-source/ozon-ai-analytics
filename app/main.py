@@ -7,7 +7,7 @@ import time as time_module
 from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -17,6 +17,7 @@ from app.config import get_settings
 from app.ozon.client import OzonReadOnlyClient
 from app.ozon.catalog import iter_products
 from app.analytics.catalog_intelligence import analyze_catalog_product, rank_search_opportunities
+from app.analytics.market_benchmark import analyze_market_export
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
 
@@ -44,6 +45,7 @@ CATALOG_ECONOMICS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "ca
 SALES_PERIOD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "sales-period.js"
 FINANCE_ACCRUALS_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "finance-accruals.js"
 FINANCE_RECONCILIATION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "finance-reconciliation.js"
+MARKET_BENCHMARK_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "market-benchmark.js"
 
 
 def _session_token(username: str, password: str, expires: int) -> str:
@@ -313,6 +315,22 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
     except Exception as exc:
         logger.exception("Catalog intelligence failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось загрузить и проанализировать каталог Ozon.") from None
+
+
+@app.post("/api/market/benchmark/import", tags=["dashboard"])
+async def import_market_benchmark(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+    """Analyze a user-provided Ozon market export; bytes are never persisted."""
+    filename = unquote(request.headers.get("x-file-name", "ozon-market-export.csv"))
+    content = await request.body()
+    if len(content) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Максимальный размер файла — 15 МБ.")
+    try:
+        return analyze_market_export(filename, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except Exception as exc:
+        logger.exception("Market benchmark import failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Не удалось обработать выгрузку Ozon.") from None
 
 
 @app.get("/login", tags=["dashboard"], response_class=HTMLResponse, include_in_schema=False)
@@ -942,6 +960,11 @@ async def health() -> dict[str, str]:
 async def dashboard(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(DASHBOARD_FILE, media_type="text/html")
 
+
+
+@app.get("/dashboard/market-benchmark.js", tags=["dashboard"], include_in_schema=False)
+async def market_benchmark_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(MARKET_BENCHMARK_FILE, media_type="application/javascript")
 
 
 @app.get("/dashboard/assistant-center.js", tags=["dashboard"], include_in_schema=False)
