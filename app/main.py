@@ -20,7 +20,7 @@ from app.analytics.catalog_intelligence import analyze_catalog_product, rank_sea
 from app.analytics.market_benchmark import analyze_market_export
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
-from app.auth_api import router as auth_api_router
+from app.auth_api import router as auth_api_router, _current_user_session, _require_csrf
 from app.tenant_analytics import TenantAnalyticsContext, get_tenant_analytics_context
 
 logger = logging.getLogger(__name__)
@@ -914,12 +914,10 @@ async def finance_reconciliation(request: Request, context: TenantAnalyticsConte
         raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
 
 @app.get("/api/settings/costs", tags=["dashboard"])
-async def get_cost_settings(_: None = Depends(require_dashboard_auth)) -> dict:
-    """Load the authenticated dashboard user's saved per-SKU cost assumptions."""
-    settings = get_settings()
-    tenant_id = settings.dashboard_username
-    if not tenant_id:
-        raise HTTPException(status_code=503, detail="Dashboard user is not configured.")
+async def get_cost_settings(request: Request) -> dict:
+    """Load the authenticated tenant's saved per-SKU cost assumptions."""
+    session = _current_user_session(request)
+    tenant_id = session["tenant_id"]
     try:
         saved = load_cost_settings(tenant_id)
         return {"status": "ok", "source": "postgresql", **saved}
@@ -932,15 +930,14 @@ async def get_cost_settings(_: None = Depends(require_dashboard_auth)) -> dict:
 
 @app.put("/api/settings/costs", tags=["dashboard"])
 async def put_cost_settings(
+    request: Request,
     payload: dict = Body(...),
-    _: None = Depends(require_dashboard_auth),
 ) -> dict:
-    """Persist per-SKU cost assumptions for the authenticated dashboard user."""
-    settings = get_settings()
-    tenant_id = settings.dashboard_username
+    """Persist per-SKU cost assumptions for the authenticated tenant."""
+    session = _current_user_session(request)
+    _require_csrf(request, session)
+    tenant_id = session["tenant_id"]
     costs = payload.get("costs") if isinstance(payload, dict) else None
-    if not tenant_id:
-        raise HTTPException(status_code=503, detail="Dashboard user is not configured.")
     if not isinstance(costs, dict) or len(costs) > 10000:
         raise HTTPException(status_code=400, detail="Некорректный формат расходов.")
     allowed_fields = {"cost", "pack", "ads", "transit", "other", "tax", "costConfigured"}
