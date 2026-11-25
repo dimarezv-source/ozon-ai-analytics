@@ -117,3 +117,17 @@ def test_context_fails_closed_when_credential_encryption_is_unavailable(monkeypa
         tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
 
     assert error.value.status_code == 503
+
+
+def test_context_rejects_missing_store_after_authentication(monkeypatch):
+    install_context_mocks(monkeypatch)
+    monkeypatch.setattr(
+        tenant_analytics,
+        "get_store_credentials",
+        lambda *args: pytest.fail("Store credentials must not be loaded without a selected store"),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        tenant_analytics.get_tenant_analytics_context(make_request(), None)
+
+    assert error.value.status_code == 400
