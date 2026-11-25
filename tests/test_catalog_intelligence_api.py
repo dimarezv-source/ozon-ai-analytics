@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
+from app import tenant_analytics
 
 
 @pytest.fixture(autouse=True)
@@ -52,14 +53,26 @@ def test_catalog_intelligence_uses_only_read_operations_and_needs_no_sales(monke
         assert kwargs["visibility"] == "ALL"
         yield {"product_id": 123, "offer_id": "A-123", "archived": False}
 
-    monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", FakeOzonClient)
     monkeypatch.setattr("app.main.iter_products", fake_iter_products)
 
-    response = TestClient(app).get("/api/catalog/intelligence", auth=("owner", "test-password"))
+    response = TestClient(app).get(
+        "/api/catalog/intelligence?store_id=store-1",
+        auth=("owner", "test-password"),
+    )
 
     assert response.status_code == 200
     data = response.json()
     assert data["sales_history_required"] is False
+    assert data["tenant_id"] == "tenant-1"
+    assert data["store_id"] == "store-1"
+    assert data["store_name"] == "Primary"
     assert data["product_count"] == 1
     assert data["products"][0]["product_id"] == "123"
     assert data["products"][0]["evidence"]["image_count"] == 3
@@ -80,6 +93,16 @@ def test_catalog_intelligence_validates_product_limit(monkeypatch):
     monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
     monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
 
-    response = TestClient(app).get("/api/catalog/intelligence?limit=0", auth=("owner", "test-password"))
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda *args: {
+        "store_id": "store-1", "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", lambda *args: object())
+    response = TestClient(app).get(
+        "/api/catalog/intelligence?store_id=store-1&limit=0",
+        auth=("owner", "test-password"),
+    )
 
     assert response.status_code == 400
