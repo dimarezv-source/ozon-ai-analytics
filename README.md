@@ -1,6 +1,6 @@
 # Ozon AI Analytics
 
-Private, read-only analytics workspace for an Ozon Seller account.
+Read-only analytics workspace for Ozon Seller accounts, with tenant-scoped workspaces and per-store credentials.
 
 ## Safety
 
@@ -97,15 +97,15 @@ The stock endpoint may require the **Admin read-only** Seller API role. If the i
 A Render Blueprint is provided in `render.yaml`. To deploy the private dashboard:
 
 1. Open [Render Blueprints](https://dashboard.render.com/blueprints), connect the GitHub account that can access this private repository, and create a Blueprint from `dimarezv-source/ozon-ai-analytics`.
-2. Render reads `render.yaml` and prompts for five values: `OZON_CLIENT_ID`, `OZON_API_KEY`, `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD`, and `DATABASE_URL`. For `DATABASE_URL`, use the Internal Database URL from the existing `ozon-ai-analytics-db` PostgreSQL instance. Enter the Ozon read-only API credentials and choose a separate dashboard login/password. These values are server-side environment variables; they are not committed to Git.
-3. When the service deploys, open `https://<your-render-service>.onrender.com/dashboard` and enter the dashboard login/password in the browser's HTTP Basic Authentication prompt. `/health` is available for service health checks.
+2. Render reads `render.yaml` and prompts for `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD`, `DATABASE_URL`, `CREDENTIAL_ENCRYPTION_KEY`, and `BOOTSTRAP_TOKEN`. For `DATABASE_URL`, use the Internal Database URL from the existing `ozon-ai-analytics-db` PostgreSQL instance. Generate a fresh Fernet key for `CREDENTIAL_ENCRYPTION_KEY` and a separate random token of at least 24 characters for `BOOTSTRAP_TOKEN`; enter both directly in Render and never commit or paste them into chat. Ozon credentials are connected per store inside the authenticated workspace and encrypted at rest; the web service no longer requires global `OZON_CLIENT_ID` / `OZON_API_KEY` values. These values remain GitHub Actions secrets only for the separate manual export workflows.
+3. When the service deploys, open `https://<your-render-service>.onrender.com/dashboard` and enter the dashboard login/password in the browser's HTTP Basic Authentication prompt. Then create the first workspace owner in the in-dashboard workspace gate using the `BOOTSTRAP_TOKEN`, email, and a strong password. After bootstrap, connect each Ozon store with a read-only API key; the key is encrypted server-side. `/health` is available for service health checks.
 4. The free Render instance is suitable for a trial, not uninterrupted production use: it can spin down after 15 minutes without traffic and may take about a minute to wake. Set `DATABASE_URL` on the web service to the PostgreSQL database's **Internal Database URL** from the Render database page (keep it secret). The app creates the cost-settings table automatically on first use. If `DATABASE_URL` is absent, cost assumptions continue to work in browser local storage only. The current database is on Render's free plan and has an expiry date; upgrade or recreate it before expiry to avoid losing persisted settings.
 
-The hosted dashboard reads the complete current product catalog and FBS price/commission data from Ozon on page load. It renders all products returned by the API (not a fixed SKU list), supports search by product name/SKU/offer ID, and provides a CSV export of the visible unit-economics rows. Product purchase cost, packaging, advertising, transit, other expenses, and an optional tax rate are saved in PostgreSQL when `DATABASE_URL` is configured; a local browser copy remains as a fallback. The settings are currently scoped to the single configured dashboard login, not a multi-user tenant system. Clearing browser storage does not delete the PostgreSQL copy.
+The hosted dashboard reads Ozon data only after a valid tenant session and explicit store selection. Every Ozon-backed analytics request rechecks that the selected active store belongs to the authenticated tenant and builds its client from that store's server-side credentials. Missing sessions, foreign/inactive stores, or unavailable credential encryption fail closed; global Ozon credentials are not used as a fallback. Product purchase cost, packaging, advertising, transit, other expenses, and optional tax assumptions are stored by tenant in PostgreSQL when `DATABASE_URL` is configured; clearing browser storage does not delete the PostgreSQL copy. The current cost-settings table is tenant-scoped, not yet store-scoped, so multiple stores in one tenant share SKU cost assumptions.
 
 The dashboard's date-range sales endpoint reads delivered FBO/FBS postings for a selected UTC date range and returns an SKU-level breakdown (units, estimated GMV, and share of period GMV). Its GMV is an item-price estimate before returns, deductions, and finance reconciliation; it must not be treated as seller payout or net profit. Returns and finance are still available through separate manual GitHub Actions reports and are not yet reconciled into the live dashboard.
 
-For a production SaaS launch, replace the current single-user dashboard credentials with per-user authentication, tenant isolation, encrypted credential storage, persistent server-side settings, billing, monitoring, and a production hosting plan. The current Render free plan is a prototype environment, not a paid multi-tenant deployment. PostgreSQL-backed cost settings are now supported, but production multi-user authentication, tenant isolation, encrypted Ozon credential storage, billing, monitoring, and a production hosting plan are still outstanding.
+The workspace now has database-backed user sessions, tenant membership checks, encrypted per-store API-key storage, and a selected-store dashboard gate. The legacy dashboard Basic Auth remains as an outer gate for the static shell; the workspace session is the authorization boundary for analytics. The current Render free plan is a prototype environment, not a paid multi-tenant deployment. OAuth private-app connection, per-store cost-settings partitioning, billing, production monitoring, and a production hosting plan remain follow-up work.
 
 ## Project status
 
@@ -114,6 +114,7 @@ For a production SaaS launch, replace the current single-user dashboard credenti
 - Read-only FBO/FBS posting export and delivered-product report: implemented; awaiting first live run under the seller account.
 - Read-only unified FBO/FBS returns export and SKU report: implemented; awaiting first live run and confirmation of API-key permissions.
 - Combined delivered-posting and 365-day return reconciliation: implemented with SKU-level net-unit/GMV estimates; awaiting first live run.
+- Tenant/store analytics isolation: implemented on the feature branch and under CI review; not deployed until PR review/merge.
 - SKU profitability: not yet calculated; requires reconciliation of delivered postings, finance accruals, returns/refunds, and product purchase costs.
 
 All exports are manual GitHub Actions workflows. They do not run in the background or on a schedule.
