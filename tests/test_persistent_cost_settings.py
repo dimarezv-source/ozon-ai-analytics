@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
-from app import auth_api
+from app import main
 
 
 @pytest.fixture(autouse=True)
@@ -19,11 +19,11 @@ def configure_auth(monkeypatch):
 
 
 def configure_tenant_session(monkeypatch):
-    monkeypatch.setattr(auth_api, "_current_user_session", lambda request: {
+    monkeypatch.setattr(main, "_current_user_session", lambda request: {
         "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner",
         "csrf_token_hash": b"csrf-hash",
     })
-    monkeypatch.setattr(auth_api, "_require_csrf", lambda request, session: None)
+    monkeypatch.setattr(main, "_require_csrf", lambda request, session: None)
 
 
 def test_cost_settings_requires_authentication(monkeypatch):
