@@ -12,6 +12,16 @@ def clear_settings_cache():
     yield
     get_settings.cache_clear()
 
+@pytest.fixture(autouse=True)
+def tenant_store_context(monkeypatch):
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
+
+
 
 def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
     monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
@@ -117,6 +127,7 @@ def test_sales_endpoint_returns_zero_totals_when_no_delivered_sales(monkeypatch)
             return {"result": {"postings": [], "has_next": False}}
 
     monkeypatch.setattr("app.main.OzonReadOnlyClient", EmptyOzonClient)
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", EmptyOzonClient)
     response = TestClient(app).get(
         "/api/sales?store_id=store-1&date_from=2026-11-01&date_to=2026-11-18",
         auth=("owner", "test-password"),
