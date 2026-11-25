@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
+from app import auth_api
 
 
 @pytest.fixture(autouse=True)
@@ -17,6 +18,14 @@ def configure_auth(monkeypatch):
     monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
 
 
+def configure_tenant_session(monkeypatch):
+    monkeypatch.setattr(auth_api, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner",
+        "csrf_token_hash": b"csrf-hash",
+    })
+    monkeypatch.setattr(auth_api, "_require_csrf", lambda request, session: None)
+
+
 def test_cost_settings_requires_authentication(monkeypatch):
     configure_auth(monkeypatch)
     response = TestClient(app).get("/api/settings/costs")
@@ -25,6 +34,7 @@ def test_cost_settings_requires_authentication(monkeypatch):
 
 def test_cost_settings_reports_missing_database_configuration(monkeypatch):
     configure_auth(monkeypatch)
+    configure_tenant_session(monkeypatch)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     response = TestClient(app).get(
         "/api/settings/costs", auth=("owner", "test-password")
@@ -35,6 +45,7 @@ def test_cost_settings_reports_missing_database_configuration(monkeypatch):
 
 def test_cost_settings_rejects_invalid_payload_before_database_access(monkeypatch):
     configure_auth(monkeypatch)
+    configure_tenant_session(monkeypatch)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     response = TestClient(app).put(
         "/api/settings/costs",
@@ -46,6 +57,7 @@ def test_cost_settings_rejects_invalid_payload_before_database_access(monkeypatc
 
 def test_cost_settings_rejects_unknown_fields(monkeypatch):
     configure_auth(monkeypatch)
+    configure_tenant_session(monkeypatch)
     response = TestClient(app).put(
         "/api/settings/costs",
         auth=("owner", "test-password"),
@@ -56,6 +68,7 @@ def test_cost_settings_rejects_unknown_fields(monkeypatch):
 
 def test_cost_settings_rejects_negative_values(monkeypatch):
     configure_auth(monkeypatch)
+    configure_tenant_session(monkeypatch)
     response = TestClient(app).put(
         "/api/settings/costs",
         auth=("owner", "test-password"),
