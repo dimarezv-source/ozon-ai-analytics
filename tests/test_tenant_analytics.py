@@ -56,11 +56,10 @@ def install_context_mocks(monkeypatch, credentials=None):
     return user_id, tenant_id, store_id, calls, FakeClient
 
 
-@pytest.mark.asyncio
-async def test_context_builds_read_only_client_from_selected_tenant_store(monkeypatch):
+def test_context_builds_read_only_client_from_selected_tenant_store(monkeypatch):
     user_id, tenant_id, store_id, calls, fake_client = install_context_mocks(monkeypatch)
 
-    context = await tenant_analytics.get_tenant_analytics_context(make_request(), store_id)
+    context = tenant_analytics.get_tenant_analytics_context(make_request(), store_id)
 
     assert (context.user_id, context.tenant_id, context.store_id) == (user_id, tenant_id, store_id)
     assert context.store_name == "Primary"
@@ -71,8 +70,7 @@ async def test_context_builds_read_only_client_from_selected_tenant_store(monkey
     assert not hasattr(context, "api_key")
 
 
-@pytest.mark.asyncio
-async def test_context_rejects_missing_user_session(monkeypatch):
+def test_context_rejects_missing_user_session(monkeypatch):
     def no_session(request):
         raise HTTPException(status_code=401, detail="Authentication required.")
 
@@ -84,13 +82,12 @@ async def test_context_rejects_missing_user_session(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as error:
-        await tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
+        tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
 
     assert error.value.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_context_rejects_store_outside_current_tenant(monkeypatch):
+def test_context_rejects_store_outside_current_tenant(monkeypatch):
     from app.store_repository import StoreAccessDenied
 
     install_context_mocks(monkeypatch)
@@ -101,13 +98,12 @@ async def test_context_rejects_store_outside_current_tenant(monkeypatch):
     monkeypatch.setattr(tenant_analytics, "get_store_credentials", denied)
 
     with pytest.raises(HTTPException) as error:
-        await tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
+        tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
 
     assert error.value.status_code == 404
 
 
-@pytest.mark.asyncio
-async def test_context_fails_closed_when_credential_encryption_is_unavailable(monkeypatch):
+def test_context_fails_closed_when_credential_encryption_is_unavailable(monkeypatch):
     from app.security import CredentialEncryptionNotConfigured
 
     install_context_mocks(monkeypatch)
@@ -118,6 +114,6 @@ async def test_context_fails_closed_when_credential_encryption_is_unavailable(mo
     monkeypatch.setattr(tenant_analytics, "get_store_credentials", unavailable)
 
     with pytest.raises(HTTPException) as error:
-        await tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
+        tenant_analytics.get_tenant_analytics_context(make_request(), str(uuid4()))
 
     assert error.value.status_code == 503
