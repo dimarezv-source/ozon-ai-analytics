@@ -21,6 +21,7 @@ from app.analytics.market_benchmark import analyze_market_export
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
 from app.auth_api import router as auth_api_router
+from app.tenant_analytics import TenantAnalyticsContext, get_tenant_analytics_context
 
 logger = logging.getLogger(__name__)
 security = HTTPBasic(auto_error=False)
@@ -122,7 +123,7 @@ async def redirect_browser_to_login(request: Request, call_next):
 
 
 @app.get("/api/catalog/intelligence", tags=["dashboard"])
-async def catalog_intelligence(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def catalog_intelligence(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Audit the active catalog using read-only product details; no sales history required."""
     try:
         max_products = int(request.query_params.get("limit", "5000"))
@@ -131,10 +132,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
     if not 1 <= max_products <= 10000:
         raise HTTPException(status_code=400, detail="Лимит каталога должен быть от 1 до 10000 товаров.")
 
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
 
     try:
         catalog_rows = []
@@ -311,6 +309,9 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         return {
             "status": "ok",
             "mode": "read-only",
+            "tenant_id": context.tenant_id,
+            "store_id": context.store_id,
+            "store_name": context.store_name,
             "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v5/product/info/prices", "/v1/product/rating-by-sku", "/v1/analytics/product-queries", "/v1/analytics/product-queries/details"],
             "content_rating_available": content_rating_available,
             "search_metrics_available": search_metrics_available,
