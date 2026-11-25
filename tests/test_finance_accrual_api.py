@@ -12,6 +12,16 @@ def clear_settings_cache():
     yield
     get_settings.cache_clear()
 
+@pytest.fixture(autouse=True)
+def tenant_store_context(monkeypatch):
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
+
+
 
 def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -> None:
     monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
