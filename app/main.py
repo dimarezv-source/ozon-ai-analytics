@@ -36,6 +36,7 @@ app.include_router(auth_api_router)
 
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
 MOTION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "motion.js"
+TENANT_STORE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "tenant-store.js"
 ASSISTANT_CENTER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "assistant-center.js"
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
@@ -982,6 +983,11 @@ async def market_benchmark_script(_: None = Depends(require_dashboard_auth)) -> 
 @app.get("/dashboard/assistant-center.js", tags=["dashboard"], include_in_schema=False)
 async def assistant_center_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(ASSISTANT_CENTER_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/tenant-store.js", tags=["dashboard"], include_in_schema=False)
+async def tenant_store_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(TENANT_STORE_FILE, media_type="application/javascript")
 
 
 @app.get("/dashboard/motion.js", tags=["dashboard"], include_in_schema=False)
