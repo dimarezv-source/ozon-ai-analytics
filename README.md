@@ -6,7 +6,7 @@ Read-only analytics workspace for Ozon Seller accounts, with tenant-scoped works
 
 - The integration uses only explicitly allowlisted read-only Ozon Seller API methods.
 - It never changes products, prices, stock, orders, promotions, campaigns, reviews, chats, or returns.
-- Seller API credentials are stored only as GitHub Actions repository secrets. Never commit `.env`, API keys, or screenshots containing credentials.
+- For manual GitHub Actions exports, Ozon Seller API credentials are stored as repository secrets. For the hosted workspace, each store's read-only API key is encrypted server-side in PostgreSQL. Never commit `.env`, API keys, encryption keys, bootstrap tokens, or screenshots containing credentials.
 - Reports and raw JSON are uploaded as private GitHub Actions artifacts and retained for 7 days.
 
 ## Required GitHub secrets
