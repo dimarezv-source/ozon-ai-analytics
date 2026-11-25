@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import HTTPException, Query, Request
+from fastapi import HTTPException, Request
 
 from app.auth_api import _current_user_session
 from app.config import get_settings
@@ -25,7 +25,7 @@ class TenantAnalyticsContext:
 
 def get_tenant_analytics_context(
     request: Request,
-    store_id: str = Query(..., min_length=1, max_length=64),
+    store_id: str | None = None,
 ) -> TenantAnalyticsContext:
     """Resolve the live session and an active store belonging to its tenant.
 
@@ -37,6 +37,8 @@ def get_tenant_analytics_context(
     session = _current_user_session(request)
     user_id = str(session["user_id"])
     tenant_id = str(session["tenant_id"])
+    if not isinstance(store_id, str) or not store_id.strip() or len(store_id) > 64:
+        raise HTTPException(status_code=400, detail="A valid store_id is required.")
 
     try:
         credentials = get_store_credentials(user_id, tenant_id, store_id)
