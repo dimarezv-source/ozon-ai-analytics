@@ -1,7 +1,7 @@
-"""HTTP API for first-owner bootstrap and database-backed user sessions.
+"""HTTP API for first-owner bootstrap, tenant sessions, and store management.
 
-The legacy dashboard login remains active until every analytics route is tenant/store
-scoped. These endpoints deliberately do not grant access to legacy analytics routes.
+The legacy dashboard login protects the static dashboard shell only. Ozon-backed
+analytics routes require this database-backed tenant session and an active store.
 """
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def _issue_session(user: dict, membership: dict) -> JSONResponse:
         "user": {"email": user["email"]},
         "tenant": {"id": membership["tenant_id"], "name": membership["tenant_name"], "role": membership["role"]},
         "expires_at": expires.isoformat(),
-        "analytics_access": "not_enabled_until_tenant_isolation_is_complete",
+        "analytics_access": "enabled_with_tenant_and_store_scope",
     })
     _set_session(response, token, csrf)
     return response
