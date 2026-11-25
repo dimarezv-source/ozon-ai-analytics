@@ -8,13 +8,13 @@ services:
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
-      - key: OZON_CLIENT_ID
-        sync: false
-      - key: OZON_API_KEY
-        sync: false
       - key: DASHBOARD_USERNAME
         sync: false
       - key: DASHBOARD_PASSWORD
         sync: false
       - key: DATABASE_URL
+        sync: false
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        sync: false
+      - key: BOOTSTRAP_TOKEN
         sync: false
