@@ -20,7 +20,8 @@ from app.analytics.catalog_intelligence import analyze_catalog_product, rank_sea
 from app.analytics.market_benchmark import analyze_market_export
 from app.analytics.inventory import fetch_inventory
 from app.persistence import PersistenceNotConfigured, load_cost_settings, save_cost_settings
-from app.auth_api import router as auth_api_router
+from app.auth_api import router as auth_api_router, _current_user_session, _require_csrf
+from app.tenant_analytics import TenantAnalyticsContext, get_tenant_analytics_context
 
 logger = logging.getLogger(__name__)
 security = HTTPBasic(auto_error=False)
@@ -35,6 +36,7 @@ app.include_router(auth_api_router)
 
 DASHBOARD_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
 MOTION_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "motion.js"
+TENANT_STORE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "tenant-store.js"
 ASSISTANT_CENTER_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "assistant-center.js"
 PROFIT_CALCULATOR_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "profit-calculator.js"
 INTELLIGENCE_FILE = Path(__file__).resolve().parents[1] / "dashboard" / "intelligence.js"
@@ -122,7 +124,7 @@ async def redirect_browser_to_login(request: Request, call_next):
 
 
 @app.get("/api/catalog/intelligence", tags=["dashboard"])
-async def catalog_intelligence(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def catalog_intelligence(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Audit the active catalog using read-only product details; no sales history required."""
     try:
         max_products = int(request.query_params.get("limit", "5000"))
@@ -131,10 +133,7 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
     if not 1 <= max_products <= 10000:
         raise HTTPException(status_code=400, detail="Лимит каталога должен быть от 1 до 10000 товаров.")
 
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
 
     try:
         catalog_rows = []
@@ -311,6 +310,9 @@ async def catalog_intelligence(request: Request, _: None = Depends(require_dashb
         return {
             "status": "ok",
             "mode": "read-only",
+            "tenant_id": context.tenant_id,
+            "store_id": context.store_id,
+            "store_name": context.store_name,
             "source": ["/v3/product/list", "/v3/product/info/list", "/v4/product/info/attributes", "/v5/product/info/prices", "/v1/product/rating-by-sku", "/v1/analytics/product-queries", "/v1/analytics/product-queries/details"],
             "content_rating_available": content_rating_available,
             "search_metrics_available": search_metrics_available,
@@ -408,7 +410,7 @@ async def logout():
 
 
 @app.get("/api/sales", tags=["dashboard"])
-async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def sales_data(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Read-only delivered FBO/FBS sales for a selected UTC date range."""
     raw_from = request.query_params.get("date_from", "")
     raw_to = request.query_params.get("date_to", "")
@@ -421,10 +423,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
         raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
     if (date_to - date_from).days > 364:
         raise HTTPException(status_code=400, detail="Максимальный период одного запроса — 365 дней.")
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
     since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     delivered_postings = set()
@@ -507,7 +506,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
             {**row, "sales_gmv": float(row["sales_gmv"])}
             for row in sorted(sku_sales.values(), key=lambda item: item["sales_gmv"], reverse=True)
         ]
-        return {"status": "ok", "mode": "read-only", "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
+        return {"status": "ok", "mode": "read-only", "tenant_id": context.tenant_id, "store_id": context.store_id, "store_name": context.store_name, "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
                 "sales_gmv": float(gmv), "delivered_units": units, "delivered_postings": len(delivered_postings),
                 "fbo_postings": counts["FBO"], "fbs_postings": counts["FBS"], "unpriced_units": unpriced_units,
                 "fulfillment": {
@@ -643,7 +642,7 @@ def _reconcile_posting_fees(posting_fee_summary: list[dict], delivered_posting_r
 
 
 @app.get("/api/finance/accruals", tags=["dashboard"])
-async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def finance_accruals(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
     raw_from = request.query_params.get("date_from", "")
     raw_to = request.query_params.get("date_to", "")
@@ -656,10 +655,7 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
         raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
     if (date_to - date_from).days > 30:
         raise HTTPException(status_code=400, detail="Максимальный период финансовых начислений — 31 день.")
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
     try:
         # Ozon requires sequential calls for this API family. Keep by-day pages
         # sequential too; never infer totals from forecast tariffs.
@@ -706,6 +702,9 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
         return {
             "status": "ok",
             "mode": "read-only",
+            "tenant_id": context.tenant_id,
+            "store_id": context.store_id,
+            "store_name": context.store_name,
             "period": {"date_from": raw_from, "date_to": raw_to},
             "record_count": len(rows),
             "accrual_types": type_names,
@@ -863,7 +862,7 @@ async def _fetch_posting_accruals(client: OzonReadOnlyClient, records: list[dict
 
 
 @app.get("/api/finance/reconciliation", tags=["dashboard"])
-async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def finance_reconciliation(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Return conservative normalized reconciliation totals, with unknowns exposed."""
     from app.analytics.finance_reconciliation import normalize_accrual_records
     raw_from, raw_to = request.query_params.get("date_from", ""), request.query_params.get("date_to", "")
@@ -873,10 +872,7 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
     if date_to < date_from or (date_to - date_from).days > 30:
         raise HTTPException(status_code=400, detail="Период должен быть корректным и не превышать 31 день.")
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
     try:
         type_response = await client.execute("finance_accrual_types", {})
         dictionary = {str(i.get("id")): {"name": i.get("name"), "description": i.get("description")}
@@ -908,7 +904,7 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         from app.analytics.returns_attribution import attribute_returns_to_delivered_postings
         return_attribution = attribute_returns_to_delivered_postings(return_records, delivered_postings)
         normalized = normalize_accrual_records(records, dictionary, delivered_postings)
-        return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
+        return {"status":"ok", "mode":"read-only", "tenant_id":context.tenant_id, "store_id":context.store_id, "store_name":context.store_name, "period":{"date_from":raw_from,"date_to":raw_to},
                 "source_records":len(records), "delivered_posting_count":len(delivered_postings),
                 "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
                 "returns_attribution":return_attribution,
@@ -919,12 +915,10 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         raise HTTPException(status_code=502, detail="Не удалось получить финансовую сверку Ozon.") from None
 
 @app.get("/api/settings/costs", tags=["dashboard"])
-async def get_cost_settings(_: None = Depends(require_dashboard_auth)) -> dict:
-    """Load the authenticated dashboard user's saved per-SKU cost assumptions."""
-    settings = get_settings()
-    tenant_id = settings.dashboard_username
-    if not tenant_id:
-        raise HTTPException(status_code=503, detail="Dashboard user is not configured.")
+async def get_cost_settings(request: Request) -> dict:
+    """Load the authenticated tenant's saved per-SKU cost assumptions."""
+    session = _current_user_session(request)
+    tenant_id = session["tenant_id"]
     try:
         saved = load_cost_settings(tenant_id)
         return {"status": "ok", "source": "postgresql", **saved}
@@ -937,15 +931,14 @@ async def get_cost_settings(_: None = Depends(require_dashboard_auth)) -> dict:
 
 @app.put("/api/settings/costs", tags=["dashboard"])
 async def put_cost_settings(
+    request: Request,
     payload: dict = Body(...),
-    _: None = Depends(require_dashboard_auth),
 ) -> dict:
-    """Persist per-SKU cost assumptions for the authenticated dashboard user."""
-    settings = get_settings()
-    tenant_id = settings.dashboard_username
+    """Persist per-SKU cost assumptions for the authenticated tenant."""
+    session = _current_user_session(request)
+    _require_csrf(request, session)
+    tenant_id = session["tenant_id"]
     costs = payload.get("costs") if isinstance(payload, dict) else None
-    if not tenant_id:
-        raise HTTPException(status_code=503, detail="Dashboard user is not configured.")
     if not isinstance(costs, dict) or len(costs) > 10000:
         raise HTTPException(status_code=400, detail="Некорректный формат расходов.")
     allowed_fields = {"cost", "pack", "ads", "transit", "other", "tax", "costConfigured"}
@@ -990,6 +983,11 @@ async def market_benchmark_script(_: None = Depends(require_dashboard_auth)) -> 
 @app.get("/dashboard/assistant-center.js", tags=["dashboard"], include_in_schema=False)
 async def assistant_center_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
     return FileResponse(ASSISTANT_CENTER_FILE, media_type="application/javascript")
+
+
+@app.get("/dashboard/tenant-store.js", tags=["dashboard"], include_in_schema=False)
+async def tenant_store_script(_: None = Depends(require_dashboard_auth)) -> FileResponse:
+    return FileResponse(TENANT_STORE_FILE, media_type="application/javascript")
 
 
 @app.get("/dashboard/motion.js", tags=["dashboard"], include_in_schema=False)
@@ -1057,14 +1055,11 @@ async def risk_readiness_script(_: None = Depends(require_dashboard_auth)) -> Fi
 
 
 @app.get("/api/stocks", tags=["dashboard"])
-async def stock_data(_: None = Depends(require_dashboard_auth)) -> dict:
+async def stock_data(context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Fetch current FBO/FBS stock quantities from Ozon without changing inventory."""
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured on this server.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
     try:
-        return await fetch_inventory(client)
+        result = await fetch_inventory(context.client)
+        return {**result, "tenant_id": context.tenant_id, "store_id": context.store_id, "store_name": context.store_name}
     except Exception as exc:
         logger.exception("Could not retrieve Ozon stock levels: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить остатки Ozon. Проверьте доступ ключа к информационному методу остатков.") from None
@@ -1081,20 +1076,9 @@ async def sku_reconciliation_script(_: None = Depends(require_dashboard_auth)) -
 
 
 @app.get("/api/dashboard", tags=["dashboard"])
-async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
+async def dashboard_data(context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Fetch a fresh read-only catalog and current FBS price/commission data."""
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="Ozon API credentials are not configured on this server.",
-        )
-
-    client = OzonReadOnlyClient(
-        settings.ozon_client_id,
-        settings.ozon_api_key,
-        settings.ozon_api_base_url,
-    )
+    client = context.client
     try:
         catalog_items: list[dict] = []
         cursor = ""
@@ -1238,6 +1222,9 @@ async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
         return {
             "status": "ok",
             "mode": "read-only",
+            "tenant_id": context.tenant_id,
+            "store_id": context.store_id,
+            "store_name": context.store_name,
             "source": [
                 "/v3/product/list",
                 "/v3/product/info/list",

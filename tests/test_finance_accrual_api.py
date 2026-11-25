@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import _extract_fee_components, app
+from app import tenant_analytics
 
 
 @pytest.fixture(autouse=True)
@@ -10,6 +11,16 @@ def clear_settings_cache():
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+@pytest.fixture(autouse=True)
+def tenant_store_context(monkeypatch):
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
+
 
 
 def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -> None:
@@ -39,9 +50,16 @@ def test_finance_accrual_endpoint_reads_sequential_days_and_pages(monkeypatch) -
                 ], "last_id": ""}
             return {"accruals": [], "last_id": ""}
 
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
     monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", FakeOzonClient)
     response = TestClient(app).get(
-        "/api/finance/accruals?date_from=2026-11-17&date_to=2026-11-18",
+        "/api/finance/accruals?store_id=store-1&date_from=2026-11-17&date_to=2026-11-18",
         auth=("owner", "test-password"),
     )
 
@@ -72,7 +90,7 @@ def test_finance_accrual_endpoint_rejects_invalid_period(monkeypatch, date_from,
     monkeypatch.setenv("DASHBOARD_USERNAME", "owner")
     monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
     response = TestClient(app).get(
-        f"/api/finance/accruals?date_from={date_from}&date_to={date_to}",
+        f"/api/finance/accruals?store_id=store-1&date_from={date_from}&date_to={date_to}",
         auth=("owner", "test-password"),
     )
     assert response.status_code == 400
@@ -254,9 +272,16 @@ def test_finance_reconciliation_matches_delivered_fbo_fbs_postings(monkeypatch) 
                 }], "has_next": False}
             raise AssertionError(f"Unexpected operation: {operation}")
 
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
     monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", FakeOzonClient)
     response = TestClient(app).get(
-        "/api/finance/reconciliation?date_from=2026-11-17&date_to=2026-11-17",
+        "/api/finance/reconciliation?store_id=store-1&date_from=2026-11-17&date_to=2026-11-17",
         auth=("owner", "test-password"),
     )
     assert response.status_code == 200

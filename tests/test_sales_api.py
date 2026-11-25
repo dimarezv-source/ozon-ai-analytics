@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
+from app import tenant_analytics
 
 
 @pytest.fixture(autouse=True)
@@ -10,6 +11,16 @@ def clear_settings_cache():
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+@pytest.fixture(autouse=True)
+def tenant_store_context(monkeypatch):
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
+
 
 
 def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
@@ -44,9 +55,16 @@ def test_sales_endpoint_returns_sku_level_breakdown(monkeypatch) -> None:
                 }
             }
 
+    monkeypatch.setattr(tenant_analytics, "_current_user_session", lambda request: {
+        "user_id": "user-1", "tenant_id": "tenant-1", "role": "owner"
+    })
+    monkeypatch.setattr(tenant_analytics, "get_store_credentials", lambda user_id, tenant_id, store_id: {
+        "store_id": store_id, "name": "Primary", "client_id": "client", "api_key": "read-only-key"
+    })
     monkeypatch.setattr("app.main.OzonReadOnlyClient", FakeOzonClient)
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", FakeOzonClient)
     response = TestClient(app).get(
-        "/api/sales?date_from=2026-11-01&date_to=2026-11-18",
+        "/api/sales?store_id=store-1&date_from=2026-11-01&date_to=2026-11-18",
         auth=("owner", "test-password"),
     )
 
@@ -88,7 +106,7 @@ def test_sales_endpoint_rejects_reversed_dates(monkeypatch) -> None:
     monkeypatch.setenv("DASHBOARD_PASSWORD", "test-password")
 
     response = TestClient(app).get(
-        "/api/sales?date_from=2026-11-18&date_to=2026-11-01",
+        "/api/sales?store_id=store-1&date_from=2026-11-18&date_to=2026-11-01",
         auth=("owner", "test-password"),
     )
 
@@ -109,8 +127,9 @@ def test_sales_endpoint_returns_zero_totals_when_no_delivered_sales(monkeypatch)
             return {"result": {"postings": [], "has_next": False}}
 
     monkeypatch.setattr("app.main.OzonReadOnlyClient", EmptyOzonClient)
+    monkeypatch.setattr(tenant_analytics, "OzonReadOnlyClient", EmptyOzonClient)
     response = TestClient(app).get(
-        "/api/sales?date_from=2026-11-01&date_to=2026-11-18",
+        "/api/sales?store_id=store-1&date_from=2026-11-01&date_to=2026-11-18",
         auth=("owner", "test-password"),
     )
 
