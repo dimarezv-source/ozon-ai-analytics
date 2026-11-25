@@ -409,7 +409,7 @@ async def logout():
 
 
 @app.get("/api/sales", tags=["dashboard"])
-async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def sales_data(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Read-only delivered FBO/FBS sales for a selected UTC date range."""
     raw_from = request.query_params.get("date_from", "")
     raw_to = request.query_params.get("date_to", "")
@@ -422,10 +422,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
         raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
     if (date_to - date_from).days > 364:
         raise HTTPException(status_code=400, detail="Максимальный период одного запроса — 365 дней.")
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
     since = datetime.combine(date_from, time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     to = datetime.combine(date_to + timedelta(days=1), time.min, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     delivered_postings = set()
@@ -508,7 +505,7 @@ async def sales_data(request: Request, _: None = Depends(require_dashboard_auth)
             {**row, "sales_gmv": float(row["sales_gmv"])}
             for row in sorted(sku_sales.values(), key=lambda item: item["sales_gmv"], reverse=True)
         ]
-        return {"status": "ok", "mode": "read-only", "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
+        return {"status": "ok", "mode": "read-only", "tenant_id": context.tenant_id, "store_id": context.store_id, "store_name": context.store_name, "period": {"date_from": raw_from, "date_to": raw_to, "timezone": "UTC"},
                 "sales_gmv": float(gmv), "delivered_units": units, "delivered_postings": len(delivered_postings),
                 "fbo_postings": counts["FBO"], "fbs_postings": counts["FBS"], "unpriced_units": unpriced_units,
                 "fulfillment": {
@@ -644,7 +641,7 @@ def _reconcile_posting_fees(posting_fee_summary: list[dict], delivered_posting_r
 
 
 @app.get("/api/finance/accruals", tags=["dashboard"])
-async def finance_accruals(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def finance_accruals(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Read-only raw Ozon accruals, fetched sequentially one calendar day at a time."""
     raw_from = request.query_params.get("date_from", "")
     raw_to = request.query_params.get("date_to", "")
@@ -657,10 +654,7 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
         raise HTTPException(status_code=400, detail="Дата окончания не может быть раньше даты начала.")
     if (date_to - date_from).days > 30:
         raise HTTPException(status_code=400, detail="Максимальный период финансовых начислений — 31 день.")
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
     try:
         # Ozon requires sequential calls for this API family. Keep by-day pages
         # sequential too; never infer totals from forecast tariffs.
@@ -707,6 +701,9 @@ async def finance_accruals(request: Request, _: None = Depends(require_dashboard
         return {
             "status": "ok",
             "mode": "read-only",
+            "tenant_id": context.tenant_id,
+            "store_id": context.store_id,
+            "store_name": context.store_name,
             "period": {"date_from": raw_from, "date_to": raw_to},
             "record_count": len(rows),
             "accrual_types": type_names,
@@ -864,7 +861,7 @@ async def _fetch_posting_accruals(client: OzonReadOnlyClient, records: list[dict
 
 
 @app.get("/api/finance/reconciliation", tags=["dashboard"])
-async def finance_reconciliation(request: Request, _: None = Depends(require_dashboard_auth)) -> dict:
+async def finance_reconciliation(request: Request, context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Return conservative normalized reconciliation totals, with unknowns exposed."""
     from app.analytics.finance_reconciliation import normalize_accrual_records
     raw_from, raw_to = request.query_params.get("date_from", ""), request.query_params.get("date_to", "")
@@ -874,10 +871,7 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         raise HTTPException(status_code=400, detail="Укажите даты в формате ГГГГ-ММ-ДД.") from None
     if date_to < date_from or (date_to - date_from).days > 30:
         raise HTTPException(status_code=400, detail="Период должен быть корректным и не превышать 31 день.")
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
+    client = context.client
     try:
         type_response = await client.execute("finance_accrual_types", {})
         dictionary = {str(i.get("id")): {"name": i.get("name"), "description": i.get("description")}
@@ -909,7 +903,7 @@ async def finance_reconciliation(request: Request, _: None = Depends(require_das
         from app.analytics.returns_attribution import attribute_returns_to_delivered_postings
         return_attribution = attribute_returns_to_delivered_postings(return_records, delivered_postings)
         normalized = normalize_accrual_records(records, dictionary, delivered_postings)
-        return {"status":"ok", "mode":"read-only", "period":{"date_from":raw_from,"date_to":raw_to},
+        return {"status":"ok", "mode":"read-only", "tenant_id":context.tenant_id, "store_id":context.store_id, "store_name":context.store_name, "period":{"date_from":raw_from,"date_to":raw_to},
                 "source_records":len(records), "delivered_posting_count":len(delivered_postings),
                 "return_record_count":len(return_records), "returns_summary":_summarize_returns(return_records),
                 "returns_attribution":return_attribution,
@@ -1058,14 +1052,11 @@ async def risk_readiness_script(_: None = Depends(require_dashboard_auth)) -> Fi
 
 
 @app.get("/api/stocks", tags=["dashboard"])
-async def stock_data(_: None = Depends(require_dashboard_auth)) -> dict:
+async def stock_data(context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Fetch current FBO/FBS stock quantities from Ozon without changing inventory."""
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(status_code=503, detail="Ozon API credentials are not configured on this server.")
-    client = OzonReadOnlyClient(settings.ozon_client_id, settings.ozon_api_key, settings.ozon_api_base_url)
     try:
-        return await fetch_inventory(client)
+        result = await fetch_inventory(context.client)
+        return {**result, "tenant_id": context.tenant_id, "store_id": context.store_id, "store_name": context.store_name}
     except Exception as exc:
         logger.exception("Could not retrieve Ozon stock levels: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Не удалось получить остатки Ozon. Проверьте доступ ключа к информационному методу остатков.") from None
@@ -1082,20 +1073,9 @@ async def sku_reconciliation_script(_: None = Depends(require_dashboard_auth)) -
 
 
 @app.get("/api/dashboard", tags=["dashboard"])
-async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
+async def dashboard_data(context: TenantAnalyticsContext = Depends(get_tenant_analytics_context)) -> dict:
     """Fetch a fresh read-only catalog and current FBS price/commission data."""
-    settings = get_settings()
-    if not settings.ozon_client_id or not settings.ozon_api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="Ozon API credentials are not configured on this server.",
-        )
-
-    client = OzonReadOnlyClient(
-        settings.ozon_client_id,
-        settings.ozon_api_key,
-        settings.ozon_api_base_url,
-    )
+    client = context.client
     try:
         catalog_items: list[dict] = []
         cursor = ""
@@ -1239,6 +1219,9 @@ async def dashboard_data(_: None = Depends(require_dashboard_auth)) -> dict:
         return {
             "status": "ok",
             "mode": "read-only",
+            "tenant_id": context.tenant_id,
+            "store_id": context.store_id,
+            "store_name": context.store_name,
             "source": [
                 "/v3/product/list",
                 "/v3/product/info/list",
