@@ -53,9 +53,9 @@ Browser voice uses speech recognition plus speech synthesis, not a full-duplex s
 
 The web client now includes a progressive Three.js + `@pixiv/three-vrm` runtime. It keeps the approved PNG portrait visible as a fallback and only switches to the rigged avatar when a compatible model is present.
 
-- Put the approved, licensed VRM 1.0 character model at `lilu/public/lilu-avatar.vrm`.
-- The model should preserve LILU's approved identity (sky-blue bob, brown eyes) and include a humanoid skeleton plus VRM facial expressions (`blink`, `aa`, `happy`, `sad`, `surprised`).
-- The runtime drives subtle idle breathing/body sway, head and arm gestures, blinking, expression changes and speech-word mouth cues.
+- Put the approved, licensed VRM 1.0 character model at `lilu/public/lilu-avatar.vrm`. A rigged GLB is also supported as a fallback at `lilu/public/lilu-avatar.glb`.
+- The model should preserve LILU's approved identity (sky-blue bob, brown eyes). VRM gives the best facial-expression support; GLB needs a humanoid skeleton and useful morph targets/animation clips for comparable results.
+- The runtime drives subtle idle breathing/body sway, head and arm gestures, blinking, expression changes and speech-word mouth cues. For GLB, it maps common humanoid bone names and plays an embedded idle clip when present.
 - If the model is missing, WebGL is unavailable, or loading fails, the original PNG remains in use.
 - No third-party avatar service or paid API key is required. The browser downloads Three.js and three-vrm ES modules from jsDelivr; deployments that block that CDN will keep the PNG fallback.
 
