@@ -14,7 +14,7 @@ const MODEL_DEFAULTS = {
   gemini: "gemini-3.1-flash-lite-preview",
   groq: "openai/gpt-oss-20b"
 };
-const MODEL = process.env.AI_MODEL || process.env.OPENAI_MODEL || MODEL_DEFAULTS[AI_PROVIDER] || "gpt-4.1-mini";
+const MODEL = process.env.AI_MODEL || (AI_PROVIDER === "openai" ? process.env.OPENAI_MODEL : "") || MODEL_DEFAULTS[AI_PROVIDER] || "gpt-4.1-mini";
 const API_KEYS = {
   openai: process.env.OPENAI_API_KEY || "",
   gemini: process.env.GEMINI_API_KEY || "",
