@@ -11,3 +11,6 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# Russian VPS deployment secrets and local database backups
+deploy/ru-vps/backups/
