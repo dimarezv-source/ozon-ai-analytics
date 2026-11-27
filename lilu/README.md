@@ -3,7 +3,7 @@
 A standalone Node.js web app inside the repository's `lilu/` directory.
 
 ## Features
-- Responsive LILU companion interface with distinct idle, listening, thinking, speaking, and happy avatar face states.
+- Responsive LILU companion interface with distinct idle, listening, thinking, speaking, happy, and surprised avatar face states.
 - Animated blinking, subtle hair motion, expression-specific eye direction and mouth shapes.
 - Russian speech recognition through the browser Web Speech API (Chrome/Edge recommended).
 - Russian text-to-speech through browser speech synthesis.
@@ -15,7 +15,7 @@ A standalone Node.js web app inside the repository's `lilu/` directory.
 
 The default remains `AI_PROVIDER=openai` to preserve the existing deployment. No provider is silently switched and no automatic fallback sends conversation data to another company.
 
-Set one of the following in the Render service environment:
+Set one of the following in the Render service environment. See [FREE_AI_SETUP.md](./FREE_AI_SETUP.md) for the account/key steps:
 
 | Provider | `AI_PROVIDER` | Default model | Key variable |
 | --- | --- | --- | --- |
