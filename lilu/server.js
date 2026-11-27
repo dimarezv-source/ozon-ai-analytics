@@ -65,6 +65,13 @@ app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) return res.status(401).json({ error: "Требуется вход в LILU." });
   return res.redirect(302, "/login");
 });
+// Serve the authenticated avatar UI and its local assets.
+app.use(express.static(path.join(__dirname, "public"), { index: false, fallthrough: true }));
+app.get("/", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 app.use("/api/", rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, apiConfigured: Boolean(API_KEY), model: MODEL }));
