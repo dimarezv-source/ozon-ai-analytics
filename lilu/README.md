@@ -3,7 +3,7 @@
 A standalone Node.js web app inside the repository's `lilu/` directory.
 
 ## Features
-- Responsive LILU companion interface with distinct idle, listening, thinking, speaking, happy, and surprised avatar face states.
+- Responsive LILU companion interface with distinct idle, listening, thinking, speaking, happy, surprised, and empathetic/sad avatar face states.
 - Animated blinking, subtle hair motion, expression-specific eye direction and mouth shapes.
 - Russian speech recognition through the browser Web Speech API (Chrome/Edge recommended).
 - Russian text-to-speech through browser speech synthesis.
