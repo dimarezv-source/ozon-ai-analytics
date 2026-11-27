@@ -169,7 +169,9 @@ app.post("/api/chat", async (req, res) => {
       ? await askOpenAI([...history, { role: "user", content: message }])
       : AI_PROVIDER === "gemini"
         ? await askGemini(history, message)
-        : AI_PROVIDER === "groq"\n          ? await askGroq(history, message)\n          : await askOpenRouter(history, message);
+        : AI_PROVIDER === "groq"
+          ? await askGroq(history, message)
+          : await askOpenRouter(history, message);
     if (!answer) return res.status(502).json({ error: "Модель вернула пустой ответ." });
     res.json({ answer, provider: AI_PROVIDER, model: MODEL });
   } catch (err) {
