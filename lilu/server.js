@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const path = require("path");
 
 const app = express();
+// Render terminates TLS at its proxy; trust the first proxy hop for secure client IP handling.
+app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT || 3000);
 const API_KEY = process.env.OPENAI_API_KEY || "";
 const MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
