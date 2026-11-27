@@ -48,6 +48,12 @@ app.get("/login", (req, res) => {
   if (hasValidSession(req)) return res.redirect("/");
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
+app.post("/api/logout", (req, res) => {
+  res.set("Set-Cookie", "lilu_session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict");
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true });
+});
+
 app.post("/api/login", loginLimiter, (req, res) => {
   if (!APP_PASSWORD) return res.status(503).json({ error: "Авторизация не настроена на сервере." });
   const username = typeof req.body?.username === "string" ? req.body.username : "";
