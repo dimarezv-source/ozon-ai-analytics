@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Вход · LILU</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at 50% 10%,#14365e,#061020 58%,#020711);color:#eff9ff;font:16px/1.5 Inter,Segoe UI,Arial,sans-serif}.panel{width:min(420px,100%);padding:30px;border:1px solid #4bbcff66;border-radius:22px;background:#081a30e8;box-shadow:0 0 42px #159dff22}.logo{text-align:center;font-size:27px;font-weight:900;letter-spacing:.24em;color:#73dcff}.sub{text-align:center;color:#bcecff;margin:4px 0 24px}label{display:block;margin:14px 0 6px;color:#bcecff;font-size:13px}input{width:100%;padding:13px;border:1px solid #4cbcff66;border-radius:11px;background:#041020;color:white;font-size:16px}button{width:100%;margin-top:20px;padding:13px;border:1px solid #63d4ff88;border-radius:12px;background:linear-gradient(135deg,#12416d,#0874ad);color:white;font-weight:700;font-size:16px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.error{min-height:24px;margin-top:12px;color:#ff9eb5;font-size:13px;text-align:center}.hint{text-align:center;color:#819eb8;font-size:12px;margin-top:16px}
+</style>
+</head>
+<body><main class="panel"><div class="logo">✧ LILU</div><div class="sub">Личный AI-компаньон</div>
+<form id="login"><label for="username">Логин</label><input id="username" name="username" autocomplete="username" value="lilu" required><label for="password">Пароль</label><input id="password" name="password" type="password" autocomplete="current-password" required autofocus><button id="submit" type="submit">Войти</button><div class="error" id="error" role="alert"></div></form>
+<div class="hint">Защищённое соединение · LILU</div></main>
+<script>
+document.getElementById('login').addEventListener('submit',async e=>{e.preventDefault();const b=document.getElementById('submit'),err=document.getElementById('error');b.disabled=true;err.textContent='Проверяю данные…';try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('username').value,password:document.getElementById('password').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось войти');location.replace('/')}catch(x){err.textContent=x.message;b.disabled=false}});
+</script></body></html>
