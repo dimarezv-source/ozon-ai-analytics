@@ -12,13 +12,15 @@ const AI_PROVIDER = (process.env.AI_PROVIDER || "openai").trim().toLowerCase();
 const MODEL_DEFAULTS = {
   openai: "gpt-4.1-mini",
   gemini: "gemini-3.1-flash-lite-preview",
-  groq: "openai/gpt-oss-20b"
+  groq: "openai/gpt-oss-20b",
+  openrouter: "openrouter/free"
 };
 const MODEL = process.env.AI_MODEL || (AI_PROVIDER === "openai" ? process.env.OPENAI_MODEL : "") || MODEL_DEFAULTS[AI_PROVIDER] || "gpt-4.1-mini";
 const API_KEYS = {
   openai: process.env.OPENAI_API_KEY || "",
   gemini: process.env.GEMINI_API_KEY || "",
-  groq: process.env.GROQ_API_KEY || ""
+  groq: process.env.GROQ_API_KEY || "",
+  openrouter: process.env.OPENROUTER_API_KEY || ""
 };
 const API_KEY = API_KEYS[AI_PROVIDER] || "";
 const APP_USER = process.env.APP_USER || "lilu";
@@ -136,7 +138,7 @@ async function askGemini(history, message) {
   const data = await readUpstream(upstream);
   return (data.candidates?.[0]?.content?.parts || []).filter(part => typeof part.text === "string").map(part => part.text).join("\n").trim();
 }
-async function askGroq(history, message) {
+async function askOpenRouter(history, message) {\n  const messages = [\n    { role: "system", content: SYSTEM_PROMPT },\n    ...history.map(item => ({ role: item.role, content: item.content })),\n    { role: "user", content: message }\n  ];\n  const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {\n    method: "POST",\n    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://lilu-voice-avatar.onrender.com", "X-Title": "LILU Voice Avatar" },\n    body: JSON.stringify({ model: MODEL, messages, temperature: 0.8, max_tokens: 900 }),\n    signal: AbortSignal.timeout(45000)\n  });\n  const data = await readUpstream(upstream);\n  return data.choices?.[0]?.message?.content?.trim() || "";\n}\nasync function askGroq(history, message) {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history.map(item => ({ role: item.role, content: item.content })),
@@ -157,7 +159,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(503).json({ error: "Неизвестный AI_PROVIDER. Доступны openai, gemini и groq." });
     }
     if (!API_KEY) {
-      const envName = { openai: "OPENAI_API_KEY", gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY" }[AI_PROVIDER];
+      const envName = { openai: "OPENAI_API_KEY", gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", openrouter: "OPENROUTER_API_KEY" }[AI_PROVIDER];
       return res.status(503).json({ error: `Для провайдера ${AI_PROVIDER} добавьте ${envName} в переменные окружения сервера.` });
     }
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
@@ -167,7 +169,7 @@ app.post("/api/chat", async (req, res) => {
       ? await askOpenAI([...history, { role: "user", content: message }])
       : AI_PROVIDER === "gemini"
         ? await askGemini(history, message)
-        : await askGroq(history, message);
+        : AI_PROVIDER === "groq"\n          ? await askGroq(history, message)\n          : await askOpenRouter(history, message);
     if (!answer) return res.status(502).json({ error: "Модель вернула пустой ответ." });
     res.json({ answer, provider: AI_PROVIDER, model: MODEL });
   } catch (err) {
