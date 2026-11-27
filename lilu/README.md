@@ -7,7 +7,7 @@ A standalone Node.js web app inside the repository's `lilu/` directory.
 - Animated blinking, subtle hair motion, expression-specific eye direction and mouth shapes.
 - Russian speech recognition through the browser Web Speech API (Chrome/Edge recommended).
 - Russian text-to-speech through browser speech synthesis.
-- Server-side AI adapter for OpenAI Responses, Google Gemini Developer API, or Groq Chat Completions.
+- Server-side AI adapter for OpenAI Responses, Google Gemini Developer API, Groq Chat Completions, or OpenRouter Free Models Router.
 - HMAC-signed, HttpOnly session cookie; separate login page; rate limiting and security headers.
 - API keys remain server-side and are never sent to the browser.
 
@@ -22,10 +22,11 @@ Set one of the following in the Render service environment. See [FREE_AI_SETUP.m
 | OpenAI | `openai` | `gpt-4.1-mini` | `OPENAI_API_KEY` |
 | Google Gemini | `gemini` | `gemini-3.1-flash-lite-preview` | `GEMINI_API_KEY` |
 | Groq | `groq` | `openai/gpt-oss-20b` | `GROQ_API_KEY` |
+| OpenRouter free router | `openrouter` | `openrouter/free` | `OPENROUTER_API_KEY` |
 
 Optionally set `AI_MODEL` to override the default model. For OpenAI, `OPENAI_MODEL` remains supported as a legacy fallback.
 
-**Free-tier and privacy notes:** Google documents a free Gemini API tier for selected models, but says content submitted on that tier may be used to improve Google products. Review the current terms before sending personal or confidential information. Groq documents a free-plan rate-limit table; quotas can change and the account's actual limits are authoritative. Availability, account eligibility, and signup requirements are determined by each provider. No payment method or free access is guaranteed by this application. Do not add billing or a payment method unless you independently choose to do so.
+**Free-tier and privacy notes:** Google documents a free Gemini API tier for selected models, but says content submitted on that tier may be used to improve Google products. Review the current terms before sending personal or confidential information. Groq documents a free-plan rate-limit table; quotas can change and the account's actual limits are authoritative. OpenRouter offers free model routing without a credit purchase for free variants; its current free-model limit is 50 requests/day and 20 requests/minute. The router selects from available upstream models, so model quality, availability, and upstream data handling may vary. Availability, account eligibility, and signup requirements are determined by each provider. No payment method or free access is guaranteed by this application. Do not add billing or a payment method unless you independently choose to do so.
 
 ## Deploy on Render
 
