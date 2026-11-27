@@ -54,6 +54,12 @@ app.post("/api/logout", (req, res) => {
   res.json({ ok: true });
 });
 
+// Public, rate-limited health probe: exposes no credentials or session data.
+app.get("/api/health", rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }), (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true, apiConfigured: Boolean(API_KEY), model: MODEL });
+});
+
 app.post("/api/login", loginLimiter, (req, res) => {
   if (!APP_PASSWORD) return res.status(503).json({ error: "Авторизация не настроена на сервере." });
   const username = typeof req.body?.username === "string" ? req.body.username : "";
@@ -82,7 +88,6 @@ app.get("/", (_req, res) => {
 
 app.use("/api/", rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }));
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, apiConfigured: Boolean(API_KEY), model: MODEL }));
 app.post("/api/chat", async (req, res) => {
   try {
     if (!API_KEY) return res.status(503).json({ error: "Для живого диалога добавьте OPENAI_API_KEY в переменные окружения сервера." });
