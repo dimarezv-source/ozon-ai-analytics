@@ -46,25 +46,48 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
   } catch(e) { host.remove(); return; }
   const resize=()=>{const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
   const observer=new ResizeObserver(resize);observer.observe(stage);resize();
-  const nodes={};
+  const nodes={},morphs=[],clockMixer=null;let mixer=null,modelRoot=null,expressionMap={};
   const names=['hips','spine','chest','upperChest','neck','head','leftShoulder','rightShoulder','leftUpperArm','rightUpperArm','leftLowerArm','rightLowerArm','leftUpperLeg','rightUpperLeg'];
+  const aliases={hips:['hips','pelvis'],spine:['spine','spine1'],chest:['chest','spine2'],upperChest:['upperchest','spine3'],neck:['neck'],head:['head'],leftShoulder:['leftshoulder','shoulder_l'],rightShoulder:['rightshoulder','shoulder_r'],leftUpperArm:['leftupperarm','upperarm_l','arm_l'],rightUpperArm:['rightupperarm','upperarm_r','arm_r'],leftLowerArm:['leftlowerarm','lowerarm_l','forearm_l'],rightLowerArm:['rightlowerarm','lowerarm_r','forearm_r'],leftUpperLeg:['leftupperleg','thigh_l','upleg_l'],rightUpperLeg:['rightupperleg','thigh_r','upleg_r']};
   const loader=new GLTFLoader();loader.crossOrigin='anonymous';loader.register(parser=>new VRMLoaderPlugin(parser));
-  loader.load('/lilu-avatar.vrm',gltf=>{
-    vrm=gltf.userData.vrm;if(!vrm)throw new Error('VRM extension missing');
-    try{VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}catch(e){}
-    vrm.scene.traverse(o=>{o.frustumCulled=false;});
-    scene.add(vrm.scene);
-    for(const n of names){const b=vrm.humanoid?.getNormalizedBoneNode(n);if(b)nodes[n]={bone:b,rest:b.rotation.clone()};}
-    modelLoaded=true;stage.classList.add('model-ready');document.getElementById('heard').textContent='3D-модель Лилу загружена';
-  },undefined,err=>{console.info('LILU VRM model not installed yet; keeping approved PNG portrait.',err);host.remove();observer.disconnect();});
-  const apply=(name,v)=>{try{vrm?.expressionManager?.setValue(name,THREE.MathUtils.clamp(v,0,1));}catch(e){}};
+  const setupModel=(gltf,isVRM)=>{
+    modelRoot=isVRM?gltf.userData.vrm.scene:gltf.scene;
+    vrm=isVRM?gltf.userData.vrm:null;
+    modelRoot.traverse(o=>{
+      o.frustumCulled=false;
+      if(o.isSkinnedMesh&&o.morphTargetDictionary&&o.morphTargetInfluences){
+        for(const [key,index] of Object.entries(o.morphTargetDictionary))morphs.push({mesh:o,index,key:key.toLowerCase()});
+      }
+    });
+    if(vrm){
+      try{VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}catch(e){}
+      for(const n of names){const bone=vrm.humanoid?.getNormalizedBoneNode(n);if(bone)nodes[n]={bone,rest:bone.rotation.clone()};}
+      expressionMap={blink:'blink',happy:'happy',sad:'sad',surprised:'surprised',relaxed:'relaxed',aa:'aa',ih:'ih',ou:'ou',ee:'ee',oh:'oh'};
+    }else{
+      const boneMap={};modelRoot.traverse(o=>{if(o.isBone)boneMap[o.name.toLowerCase().replace(/[^a-z0-9]/g,'')]=o;});
+      for(const n of names){const bone=Object.entries(boneMap).find(([key])=>aliases[n].some(alias=>key===alias.replace(/[^a-z0-9]/g,'')||key.endsWith(alias.replace(/[^a-z0-9]/g,''))))?.[1];if(bone)nodes[n]={bone,rest:bone.rotation.clone()};}
+      expressionMap={blink:'blink',happy:'happy',sad:'sad',surprised:'surprised',aa:'aa',ih:'ih',ou:'ou',ee:'ee',oh:'oh'};
+      if(gltf.animations?.length){mixer=new THREE.AnimationMixer(modelRoot);const idle=gltf.animations.find(c=>/idle|stand|breath/i.test(c.name))||gltf.animations[0];mixer.clipAction(idle).play();}
+    }
+    const box=new THREE.Box3().setFromObject(modelRoot),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+    if(size.y>0){const scale=2.0/size.y;modelRoot.scale.setScalar(scale);modelRoot.position.set(-center.x*scale,-box.min.y*scale,-center.z*scale);camera.position.set(0,1.12,3.55);camera.lookAt(0,1.0,0);}
+    scene.add(modelRoot);stage.classList.add('model-ready');document.getElementById('heard').textContent=isVRM?'3D-модель Лилу загружена':'3D-модель загружена (GLB)';
+  };
+  loader.load('/lilu-avatar.vrm',gltf=>setupModel(gltf,true),undefined,()=>{
+    const generic=new GLTFLoader();generic.crossOrigin='anonymous';
+    generic.load('/lilu-avatar.glb',gltf=>setupModel(gltf,false),undefined,err=>{
+      console.info('No LILU VRM/GLB model installed; keeping approved PNG portrait.',err);host.remove();observer.disconnect();
+    });
+  });
+  const apply=(name,v)=>{const value=THREE.MathUtils.clamp(v,0,1);try{if(vrm?.expressionManager?.setValue){vrm.expressionManager.setValue(name,value);return;}const target=expressionMap[name]||name;for(const m of morphs)if(m.key.includes(target))m.mesh.morphTargetInfluences[m.index]=value;}catch(e){}};
   const resetExpressions=()=>{for(const n of ['happy','sad','surprised','relaxed','angry','aa','ih','ou','ee','oh'])apply(n,0);};
-  const setExpression=m=>{if(!vrm?.expressionManager)return;resetExpressions();if(m==='happy')apply('happy',.55);if(m==='sad')apply('sad',.45);if(m==='surprised')apply('surprised',.65);if(m==='thinking')apply('relaxed',.25);};
+  const setExpression=m=>{if(!vrm?.expressionManager&&!morphs.length)return;resetExpressions();if(m==='happy')apply('happy',.55);if(m==='sad')apply('sad',.45);if(m==='surprised')apply('surprised',.65);if(m==='thinking')apply('relaxed',.25);};
   window.addEventListener('lilu:mood',e=>{mode=e.detail||'idle';setExpression(mode);});
-  window.addEventListener('lilu:word',()=>{if(!vrm)return;speakingWord=true;const vowel=['aa','ee','oh'][Math.floor(Math.random()*3)];for(const n of ['aa','ee','oh'])apply(n,n===vowel?.42:0);setTimeout(()=>{speakingWord=false;for(const n of ['aa','ee','oh'])apply(n,0);},105);});
+  window.addEventListener('lilu:word',()=>{if(!vrm&&!morphs.length)return;speakingWord=true;const vowel=['aa','ee','oh'][Math.floor(Math.random()*3)];for(const n of ['aa','ee','oh'])apply(n,n===vowel?.42:0);setTimeout(()=>{speakingWord=false;for(const n of ['aa','ee','oh'])apply(n,0);},105);});
   function animate(){
     raf=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);elapsed+=dt;
-    if(vrm){
+    if(vrm||modelRoot){
+      if(mixer)mixer.update(dt);
       const breathe=Math.sin(elapsed*1.35),sway=Math.sin(elapsed*.62);
       for(const [name,obj] of Object.entries(nodes)){
         const b=obj.bone,r=obj.rest;b.rotation.copy(r);
@@ -81,7 +104,7 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
       const blink=Math.pow(Math.max(0,Math.sin(elapsed*.73+1.4)),28)*.92;
       apply('blink',blink);
       if(mode==='speaking'&&speakingWord===false)apply('aa',.10+Math.max(0,Math.sin(elapsed*12))*.13);
-      vrm.update(dt);
+      if(vrm)vrm.update(dt);
     }
     renderer.render(scene,camera);
   }
