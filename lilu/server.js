@@ -138,7 +138,27 @@ async function askGemini(history, message) {
   const data = await readUpstream(upstream);
   return (data.candidates?.[0]?.content?.parts || []).filter(part => typeof part.text === "string").map(part => part.text).join("\n").trim();
 }
-async function askOpenRouter(history, message) {\n  const messages = [\n    { role: "system", content: SYSTEM_PROMPT },\n    ...history.map(item => ({ role: item.role, content: item.content })),\n    { role: "user", content: message }\n  ];\n  const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {\n    method: "POST",\n    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://lilu-voice-avatar.onrender.com", "X-Title": "LILU Voice Avatar" },\n    body: JSON.stringify({ model: MODEL, messages, temperature: 0.8, max_tokens: 900 }),\n    signal: AbortSignal.timeout(45000)\n  });\n  const data = await readUpstream(upstream);\n  return data.choices?.[0]?.message?.content?.trim() || "";\n}\nasync function askGroq(history, message) {
+async function askOpenRouter(history, message) {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...history.map(item => ({ role: item.role, content: item.content })),
+    { role: "user", content: message }
+  ];
+  const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://lilu-voice-avatar.onrender.com",
+      "X-Title": "LILU Voice Avatar"
+    },
+    body: JSON.stringify({ model: MODEL, messages, temperature: 0.8, max_tokens: 900 }),
+    signal: AbortSignal.timeout(45000)
+  });
+  const data = await readUpstream(upstream);
+  return data.choices?.[0]?.message?.content?.trim() || "";
+}
+async function askGroq(history, message) {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history.map(item => ({ role: item.role, content: item.content })),
