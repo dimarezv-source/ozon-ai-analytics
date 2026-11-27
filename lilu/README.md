@@ -48,3 +48,15 @@ Open http://localhost:3000. Never commit `.env`.
 ## Voice and animation limitations
 
 Browser voice uses speech recognition plus speech synthesis, not a full-duplex streaming voice model. Avatar face states are switched by the app and speech playback; the mouth animation is expressive approximation, not phoneme-level audio lip-sync. True real-time lip-sync and a 3D rig remain future work.
+
+## Full-body VRM avatar (optional)
+
+The web client now includes a progressive Three.js + `@pixiv/three-vrm` runtime. It keeps the approved PNG portrait visible as a fallback and only switches to the rigged avatar when a compatible model is present.
+
+- Put the approved, licensed VRM 1.0 character model at `lilu/public/lilu-avatar.vrm`.
+- The model should preserve LILU's approved identity (sky-blue bob, brown eyes) and include a humanoid skeleton plus VRM facial expressions (`blink`, `aa`, `happy`, `sad`, `surprised`).
+- The runtime drives subtle idle breathing/body sway, head and arm gestures, blinking, expression changes and speech-word mouth cues.
+- If the model is missing, WebGL is unavailable, or loading fails, the original PNG remains in use.
+- No third-party avatar service or paid API key is required. The browser downloads Three.js and three-vrm ES modules from jsDelivr; deployments that block that CDN will keep the PNG fallback.
+
+**Important:** a VRM model asset is not bundled yet. The runtime is integrated, but genuine 3D full-body animation becomes active only after a correctly rigged LILU VRM file is added. Do not substitute an unrelated stock character.
